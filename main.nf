@@ -46,10 +46,13 @@
 Channel
 	.fromFilePairs("s3://olgabot-maca/sra/homo_sapiens/smartseq2_quartzseq/**_{1,2}.fastq.gz")
 	.set{ human_samples }
+println human_samples
 
 Channel
 	.fromFilePairs("s3://olgabot-maca/sra/danio_rerio/smart-seq/whole_kidney_marrow_prjna393431/**_{1,2}.fastq.gz")
 	.set{ zebrafish_samples }
+
+println zebrafish_samples
 
 samples_ch = human_samples.concat(zebrafish_samples)
 
