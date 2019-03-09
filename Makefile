@@ -7,6 +7,8 @@ run_aws:
 run:
 	nextflow run main.nf
 
-
 run_ndnd:
 	sudo nextflow run main.nf -work-dir ${HOME}/pure-scratch/nextflow/
+
+run_ndnd_local:
+	sudo nextflow run main.nf -work-dir ${HOME}/pure-scratch/nextflow/  -process.executor='local'
