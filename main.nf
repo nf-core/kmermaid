@@ -1,7 +1,9 @@
 
-// def paths = file('directories.txt').readLines().findAll { it.size()>0 }
+println "asdlfkijasdlkf"
 
-// println paths
+def paths = file('directories.txt').readLines().findAll { it.size()>0 }
+
+println paths
 
 
 // // --- Try both glob patterns ---
@@ -41,6 +43,10 @@
 
 
 // println "samples_ch" samples_ch
+
+Channel
+	.fromPath("s3://olgabot-maca/sra/homo_sapiens/smartseq2_quartzseq/")
+	.println()
 
 
 Channel
@@ -106,4 +112,3 @@ process sourmash_compare_sketches {
 	"""
 
 }
-
