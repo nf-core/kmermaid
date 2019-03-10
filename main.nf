@@ -97,6 +97,8 @@ process sourmash_compute_sketch {
 process sourmash_compare_sketches {
 	container 'czbiohub/kmer-hashing'
 
+	memory '32 GB'
+
 	input:
 	file sketches from sourmash_sketches.collect()
 
