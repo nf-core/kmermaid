@@ -21,7 +21,7 @@ if(workflow.profile == 'awsbatch'){
 }
 
 process sourmash_compute_sketch {
-	tag "${sample_id}_molecule:${params.molecule}_ksize:${params.ksize}_log2sketchsize:${params.log2_sketch_size}"
+	tag "${sample_id}_molecule-${params.molecule}_ksize-${params.ksize}_log2sketchsize-${params.log2_sketch_size}"
 
 	container 'czbiohub/kmer-hashing'
 
