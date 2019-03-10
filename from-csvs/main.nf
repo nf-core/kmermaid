@@ -36,6 +36,7 @@ process sourmash_compute_sketch {
 	sourmash compute \
 		--num-hashes \$((2**$params.log2_sketch_size)) \
 		--ksizes $params.ksize \
+		--$params.molecule \
 		--output ${sample_id}.sig \
 		--merge '$sample_id' $read1 $read2
 	"""
@@ -55,7 +56,7 @@ process sourmash_compare_sketches {
 	sourmash compare \
         --ksize $params.ksize \
         --$params.molecule \
-        --csv similarities_ksize=${ksize}_molecule=${molecule}.csv \
+        --csv similarities_ksize=${params.ksize}_molecule=${params.molecule}.csv \
         $sketches
 	"""
 
