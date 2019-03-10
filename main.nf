@@ -79,7 +79,10 @@ process sourmash_compute_sketch {
 	tag "$name"
 	publishDir "${params.outdir}/sketches/${sketch_id}", mode: 'copy'
 	container 'czbiohub/kmer-hashing'
-	memory '2 GB'
+
+	// If job fails, try again with more memory
+	memory { 2.GB * task.attempt }
+	errorStrategy 'retry'
 
 	input:
 	set val(name), file(reads) from samples_ch
@@ -104,7 +107,10 @@ process sourmash_compute_sketch {
 process sourmash_compare_sketches {
 	container 'czbiohub/kmer-hashing'
 	publishDir "${params.outdir}/", mode: 'copy'
-	memory '64 GB'
+
+	// If job fails, try again with more memory
+	memory { 64.GB * task.attempt }
+	errorStrategy 'retry'
 
 	input:
 	file ("sketches/${sketch_id}/*") from sourmash_sketches.collect()
@@ -117,7 +123,7 @@ process sourmash_compare_sketches {
 	sourmash compare \
         --ksize $ksize \
         --$molecule \
-        --csv similarities_ksize=${ksize}_molecule=${molecule}.csv \
+        --csv similarities_${sketch_id}.csv \
         --traverse-directory .
 	"""
 
