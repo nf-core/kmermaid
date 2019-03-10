@@ -47,7 +47,7 @@ process sourmash_compute_sketch {
 process sourmash_compare_sketches {
 	container 'czbiohub/kmer-hashing'
 	publishDir "${params.outdir}/", mode: 'copy'
-	memory '32 GB'
+	memory '128 GB'
 
 	input:
 	file ("sketches/${sketch_id}/*") from sourmash_sketches.collect()
