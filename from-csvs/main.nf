@@ -12,8 +12,6 @@ Channel
 	.set{ samples_ch }
 
 
-
-
 //AWSBatch sanity checking
 if(workflow.profile == 'awsbatch'){
     if (!params.awsqueue || !params.awsregion) exit 1, "Specify correct --awsqueue and --awsregion parameters on AWSBatch!"
@@ -27,19 +25,19 @@ process sourmash_compute_sketch {
 	memory '2 GB'
 
 	input:
-	set val(name), file(reads) from samples_ch
+	set sample_id, file(read1), file(read2) from samples_ch
 
 	output:
-	file "${name}.sig" into sourmash_sketches
+	file "${sample_id}.sig" into sourmash_sketches
 
 	script:
 	"""
 	sourmash compute \
-		--num-hashes \$((2**$log2_sketch_size)) \
-		--ksizes $ksize \
-		--$molecule \
-		--output ${name}.sig \
-		--merge '$name' $reads
+		--num-hashes \$((2**$params.log2_sketch_size)) \
+		--ksizes $params.ksize \
+		--$params.molecule \
+		--output ${sample_id}.sig \
+		--merge '$sample_id' $read1 $read2
 	"""
 }
 
