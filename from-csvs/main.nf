@@ -5,6 +5,9 @@ params.ksize = 15
 params.molecule = 'protein'
 params.outdir = "s3://olgabot-maca/nf-kmer-similarity/human_mouse_zebrafish/"
 
+sketch_id = "molecule-${params.molecule}_ksize-${params.ksize}_log2sketchsize-${params.log2_sketch_size}"
+
+
 Channel
 	.fromPath(params.samples)
 	.splitCsv(header:true)
@@ -19,7 +22,7 @@ if(workflow.profile == 'awsbatch'){
 }
 
 process sourmash_compute_sketch {
-	tag "${sample_id}_molecule-${params.molecule}_ksize-${params.ksize}_log2sketchsize-${params.log2_sketch_size}"
+	tag "${sample_id}_${sketch_id}"
 	publishDir "${params.outdir}/sketches/${sketch_id}", mode: 'copy'
 	container 'czbiohub/kmer-hashing'
 
@@ -60,9 +63,9 @@ process sourmash_compare_sketches {
 	script:
 	"""
 	sourmash compare \
-        --ksize $ksize \
-        --$molecule \
-        --csv similarities_ksize=${ksize}_molecule=${molecule}.csv \
+        --ksize $params.ksize \
+        --$params.molecule \
+        --csv similarities_${sketch_id}.csv \
         --traverse-directory .
 	"""
 
