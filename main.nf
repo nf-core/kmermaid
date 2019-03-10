@@ -88,6 +88,7 @@ process sourmash_compute_sketch {
 	sourmash compute \
 		--num-hashes \$((2**$log2_sketch_size)) \
 		--ksizes $ksize \
+		--$molecule \
 		--output ${name}.sig \
 		--merge '$name' $reads
 	"""
