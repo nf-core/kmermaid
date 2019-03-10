@@ -62,6 +62,7 @@ println zebrafish_samples
 
 samples_ch = human_samples.concat(zebrafish_samples)
 
+params.outdir = "s3://olgabot-maca/nf-kmer-similarity/human_zebrafish/"
 ksize = 15
 log2_sketch_size = 10
 molecule = 'protein'
@@ -72,10 +73,13 @@ if(workflow.profile == 'awsbatch'){
     if (!workflow.workDir.startsWith('s3') || !params.outdir.startsWith('s3')) exit 1, "Specify S3 URLs for workDir and outdir parameters on AWSBatch!"
 }
 
+sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
+
 process sourmash_compute_sketch {
 	tag "$name"
-
+	publishDir "${params.outdir}/sketches/${sketch_id}", mode: 'copy'
 	container 'czbiohub/kmer-hashing'
+	memory '2 GB'
 
 	input:
 	set val(name), file(reads) from samples_ch
@@ -94,16 +98,19 @@ process sourmash_compute_sketch {
 	"""
 }
 
+
+
+
 process sourmash_compare_sketches {
 	container 'czbiohub/kmer-hashing'
-
+	publishDir "${params.outdir}/", mode: 'copy'
 	memory '32 GB'
 
 	input:
-	file sketches from sourmash_sketches.collect()
+	file ("sketches/${sketch_id}/*") from sourmash_sketches.collect()
 
 	output:
-	file "similarities_ksize=${ksize}_molecule=${molecule}.csv"
+	file "similarities_${sketch_id}.csv"
 
 	script:
 	"""
@@ -111,7 +118,7 @@ process sourmash_compare_sketches {
         --ksize $ksize \
         --$molecule \
         --csv similarities_ksize=${ksize}_molecule=${molecule}.csv \
-        $sketches
+        --traverse-directory .
 	"""
 
 }
