@@ -1,11 +1,17 @@
 
-params.samples = "samples.csv"
-params.log2_sketch_size = 10
-params.ksize = 15
-params.molecule = 'protein'
-params.outdir = "s3://olgabot-maca/nf-kmer-similarity/human_mouse_zebrafish/"
+// params.samples = "samples.csv"
+// params.log2_sketch_size = 12
+// params.ksize = 15
+// params.molecule = 'protein'
+// params.outdir = "s3://olgabot-maca/nf-kmer-similarity/human_mouse_zebrafish/"
 
 sketch_id = "molecule-${params.molecule}_ksize-${params.ksize}_log2sketchsize-${params.log2_sketch_size}"
+
+if (params.molecule == "protein") {
+	other_molecule = "dna"
+} else {
+	other_molecule = "protein"
+}
 
 
 Channel
@@ -41,6 +47,7 @@ process sourmash_compute_sketch {
 	sourmash compute \
 		--num-hashes \$((2**$params.log2_sketch_size)) \
 		--ksizes $params.ksize \
+		--no-${other_molecule} \
 		--$params.molecule \
 		--output ${sample_id}.sig \
 		--merge '$sample_id' $read1 $read2
@@ -49,9 +56,13 @@ process sourmash_compute_sketch {
 
 
 process sourmash_compare_sketches {
+	tag "fromcsvs_${sketch_id}"
+
 	container 'czbiohub/kmer-hashing'
 	publishDir "${params.outdir}/", mode: 'copy'
-	memory { 64.GB * task.attempt }
+	memory { 1024.GB * task.attempt }
+	// memory { sourmash_sketches.size() < 100 ? 8.GB :
+	// 	sourmash_sketches.size() * 100.MB * task.attempt}
 	errorStrategy 'retry'
 
 	input:
