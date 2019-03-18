@@ -1,17 +1,17 @@
 
-// params.samples = "samples.csv"
+	params.samples = "samples.csv"
 // params.log2_sketch_size = 12
 // params.ksize = 15
 // params.molecule = 'protein'
-// params.outdir = "s3://olgabot-maca/nf-kmer-similarity/human_mouse_zebrafish/"
+params.outdir = "s3://olgabot-maca/nf-kmer-similarity/human_mouse_zebrafish/"
 
-sketch_id = "molecule-${params.molecule}_ksize-${params.ksize}_log2sketchsize-${params.log2_sketch_size}"
+// sketch_id = "molecule-${params.molecule}_ksize-${params.ksize}_log2sketchsize-${params.log2_sketch_size}"
 
-if (params.molecule == "protein") {
-	other_molecule = "dna"
-} else {
-	other_molecule = "protein"
-}
+// if (params.molecule == "protein") {
+// 	other_molecule = "dna"
+// } else {
+// 	other_molecule = "protein"
+// }
 
 
 Channel
@@ -27,9 +27,19 @@ if(workflow.profile == 'awsbatch'){
     if (!workflow.workDir.startsWith('s3') || !params.outdir.startsWith('s3')) exit 1, "Specify S3 URLs for workDir and outdir parameters on AWSBatch!"
 }
 
+
+ksizes = Channel.from([15, 21, 27, 33, 51])
+molecules = Channel.from(['protein', 'dna'])
+log2_sketch_sizes = Channel.from([10, 12, 14, 16])
+
+parameters = molecules
+	.combine(ksizes)
+	.combine(log2_sketch_sizes)
+
+
 process sourmash_compute_sketch {
-	tag "${sample_id}_${sketch_id}"
-	publishDir "${params.outdir}/sketches/${sketch_id}", mode: 'copy'
+	tag "${sample_id}_molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
+	publishDir "${params.outdir}/sketches/molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}", mode: 'copy'
 	container 'czbiohub/kmer-hashing'
 
 	// If job fails, try again with more memory
@@ -37,6 +47,9 @@ process sourmash_compute_sketch {
 	errorStrategy 'retry'
 
 	input:
+	each ksizes from ksizes
+	each molecule from molecules
+	each log2_sketch_sizes from log2_sketch_sizes
 	set sample_id, file(read1), file(read2) from samples_ch
 
 	output:
@@ -45,10 +58,9 @@ process sourmash_compute_sketch {
 	script:
 	"""
 	sourmash compute \
-		--num-hashes \$((2**$params.log2_sketch_size)) \
-		--ksizes $params.ksize \
-		--no-${other_molecule} \
-		--$params.molecule \
+		--num-hashes \$((2**$log2_sketch_size)) \
+		--ksizes $ksize \
+		--$molecule \
 		--output ${sample_id}.sig \
 		--merge '$sample_id' $read1 $read2
 	"""
@@ -56,7 +68,7 @@ process sourmash_compute_sketch {
 
 
 process sourmash_compare_sketches {
-	tag "fromcsvs_${sketch_id}"
+	tag "fromcsvs_molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
 
 	container 'czbiohub/kmer-hashing'
 	publishDir "${params.outdir}/", mode: 'copy'
@@ -66,17 +78,20 @@ process sourmash_compare_sketches {
 	errorStrategy 'retry'
 
 	input:
-	file ("sketches/${sketch_id}/*") from sourmash_sketches.collect()
+	each ksizes from ksizes
+	each molecule from molecules
+	each log2_sketch_sizes from log2_sketch_sizes
+	file ("sketches/molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}/*") from sourmash_sketches.collect()
 
 	output:
-	file "similarities_${sketch_id}.csv"
+	file "similarities_molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}.csv"
 
 	script:
 	"""
 	sourmash compare \
-        --ksize $params.ksize \
-        --$params.molecule \
-        --csv similarities_${sketch_id}.csv \
+        --ksize $ksize \
+        --$molecule \
+        --csv similarities_molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}.csv \
         --traverse-directory .
 	"""
 
