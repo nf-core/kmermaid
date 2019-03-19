@@ -47,9 +47,9 @@ process sourmash_compute_sketch {
 	errorStrategy 'retry'
 
 	input:
-	each ksizes from ksizes
+	each ksize from ksizes
 	each molecule from molecules
-	each log2_sketch_sizes from log2_sketch_sizes
+	each log2_sketch_size from log2_sketch_sizes
 	set sample_id, file(read1), file(read2) from samples_ch
 
 	output:
@@ -78,9 +78,9 @@ process sourmash_compare_sketches {
 	errorStrategy 'retry'
 
 	input:
-	each ksizes from ksizes
+	each ksize from ksizes
 	each molecule from molecules
-	each log2_sketch_sizes from log2_sketch_sizes
+	each log2_sketch_size from log2_sketch_sizes
 	file ("sketches/molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}/*") from sourmash_sketches.collect()
 
 	output:

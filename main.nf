@@ -105,6 +105,7 @@ process sourmash_compute_sketch {
 
 
 process sourmash_compare_sketches {
+	tag "from_${sketch_id}"
 	container 'czbiohub/kmer-hashing'
 	publishDir "${params.outdir}/", mode: 'copy'
 
