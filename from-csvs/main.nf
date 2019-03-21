@@ -1,5 +1,6 @@
 
-	params.samples = "samples.csv"
+params.sra = "SRP016501"
+params.samples = "samples.csv"
 // params.log2_sketch_size = 12
 // params.ksize = 15
 // params.molecule = 'protein'
@@ -15,11 +16,17 @@ params.outdir = "s3://olgabot-maca/nf-kmer-similarity/human_mouse_zebrafish/"
 
 
 Channel
+    .fromSRA( params.sra )
+    .set{ sra_reads }
+
+Channel
 	.fromPath(params.samples)
 	.splitCsv(header:true)
 	.map{ row -> tuple(row.sample_id, file(row.read1), file(row.read2))}
-	.set{ samples_ch }
+	.set{ reads_ch }
 
+
+samples_ch = reads_ch.concat(sra_reads)
 
 //AWSBatch sanity checking
 if(workflow.profile == 'awsbatch'){
