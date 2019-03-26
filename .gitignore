@@ -4,3 +4,9 @@
 work/
 results
 my-results
+
+# Nextflow outputs
+timeline.html*
+trace.txt*
+report.html*
+dag.dot*

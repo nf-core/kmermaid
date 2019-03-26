@@ -1,0 +1,26 @@
+digraph "dag" {
+p0 [shape=point,label="",fixedsize=true,width=0.1,xlabel="Channel.fromPath"];
+p1 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="println"];
+p0 -> p1;
+
+p2 [shape=point,label="",fixedsize=true,width=0.1,xlabel="Channel.fromFilePairs"];
+p4 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="concat"];
+p2 -> p4 [label="human_samples"];
+
+p3 [shape=point,label="",fixedsize=true,width=0.1,xlabel="Channel.fromFilePairs"];
+p4 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="concat"];
+p3 -> p4 [label="zebrafish_samples"];
+
+p4 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="concat"];
+p5 [label="sourmash_compute_sketch"];
+p4 -> p5 [label="samples_ch"];
+
+p5 [label="sourmash_compute_sketch"];
+p6 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="collect"];
+p5 -> p6 [label="sourmash_sketches"];
+
+p6 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="collect"];
+p7 [label="sourmash_compare_sketches"];
+p6 -> p7;
+
+}

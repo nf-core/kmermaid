@@ -1,0 +1,22 @@
+digraph "dag" {
+p0 [shape=point,label="",fixedsize=true,width=0.1,xlabel="Channel.fromFilePairs"];
+p2 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="combine"];
+p0 -> p2 [label="sra_style"];
+
+p1 [shape=point,label="",fixedsize=true,width=0.1,xlabel="Channel.fromFilePairs"];
+p2 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="combine"];
+p1 -> p2;
+
+p2 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="combine"];
+p3 [label="sourmash_compute_sketch"];
+p2 -> p3 [label="samples_ch"];
+
+p3 [label="sourmash_compute_sketch"];
+p4 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="collect"];
+p3 -> p4 [label="sourmash_sketches"];
+
+p4 [shape=circle,label="",fixedsize=true,width=0.1,xlabel="collect"];
+p5 [label="sourmash_compare_sketches"];
+p4 -> p5;
+
+}
