@@ -1,47 +1,102 @@
 
-params.sra = "SRP016501"
-params.samples = "samples.csv"
-// params.log2_sketch_size = 12
-// params.ksize = 15
-// params.molecule = 'protein'
-params.outdir = "s3://olgabot-maca/nf-kmer-similarity/merkin2012/"
+def helpMessage() {
+    log.info """
+    ==============================================================
+      _                            _       _ _         _ _
+     | |_ ___ _____ ___ ___    ___|_|_____|_| |___ ___|_| |_ _ _
+     | '_|___|     | -_|  _|  |_ -| |     | | | .'|  _| |  _| | |
+     |_,_|   |_|_|_|___|_|    |___|_|_|_|_|_|_|__,|_| |_|_| |_  |
+                                                            |___|
+    ==============================================================
 
-// sketch_id = "molecule-${params.molecule}_ksize-${params.ksize}_log2sketchsize-${params.log2_sketch_size}"
+    Usage:
 
-// if (params.molecule == "protein") {
-// 	other_molecule = "dna"
-// } else {
-// 	other_molecule = "protein"
-// }
+    The typical command for running the pipeline is as follows.
 
+    With a samples.csv file:
 
-Channel
-    .fromSRA( params.sra )
-    .set{ samples_ch }
+      nextflow run czbiohub/nf-kmer-similarity --outdir s3://olgabot-maca/nf-kmer-similarity/ --samples samples.csv
 
-// Channel
-// 	.fromPath(params.samples)
-// 	.splitCsv(header:true)
-// 	.map{ row -> tuple(row.sample_id, file(row.read1), file(row.read2))}
-// 	.set{ reads_ch }
+    With multitple s3 directories:
+
+      nextflow run czbiohub/nf-kmer-similarity --outdir s3://olgabot-maca/nf-kmer-similarity/ --directories s3://olgabot-maca/sra/homo_sapiens/smartseq2_quartzseq,s3://olgabot-maca/sra/danio_rerio/smart-seq/whole_kidney_marrow_prjna393431/
+
+    With SRA ids:
+
+      nextflow run czbiohub/nf-kmer-similarity --outdir s3://olgabot-maca/nf-kmer-similarity/ --sra SRP016501
 
 
-// samples_ch = reads_ch.concat(sra_reads)
+    Mandatory Arguments:
+      --outdir                      Local or S3 directory to output the comparison matrix to
 
-//AWSBatch sanity checking
+    Sample Arguments -- One or more of:
+      --samples                     CSV file with columns id, read1, read2 for each sample
+      --directories                 Local or s3 directories containing *R{1,2}*.fastq.gz
+                                    files, separated by commas
+      --sra                         SRR, ERR, SRP IDs representing a project. Only compatible with
+                                    Nextflow 19.03-edge or greater
+
+
+    Options:
+      --ksizes                      Which nucleotide k-mer sizes to use. Multiple are
+                                    separated by commas. Default is '21,27,33,51'
+      --molecules                   Which molecule to compare on. Default is both DNA
+                                    and protein, i.e. 'dna,protein'
+      --log2-sketch-sizes           Which log2 sketch sizes to use. Multiple are separated
+                                    by commas. Default is '10,12,14,16'
+    """.stripIndent()
+}
+
+
+
+// Show help emssage
+if (params.help){
+    helpMessage()
+    exit 0
+}
+
+/*
+ * SET UP CONFIGURATION VARIABLES
+ */
+
+// Get all possible input samples
+reads_ch = Channel.create()
+
+// Provided SRA ids
+if (params.sra){
+  Channel
+      .fromSRA( params.sra )
+      .set{ sra_ch }
+  reads_ch = reads_ch.concat(sra_ch)
+}
+// Provided a samples.csv file
+if (params.samples){
+  Channel
+  	.fromPath(params.samples)
+  	.splitCsv(header:true)
+  	.map{ row -> tuple(row.sample_id, file(row.read1), file(row.read2))}
+  	.set{ samples_ch }
+  reads_ch = reads_ch.concat(samples_ch)
+}
+// Provided s3 or local directories
+if (params.directories){
+  Channel
+    .fromFilePairs(params.directories.splitCsv())
+    .set{ directories_ch }
+  reads_ch = reads_ch.concat(directories_ch)
+}
+
+
+// AWSBatch sanity checking
 if(workflow.profile == 'awsbatch'){
     if (!params.awsqueue || !params.awsregion) exit 1, "Specify correct --awsqueue and --awsregion parameters on AWSBatch!"
     if (!workflow.workDir.startsWith('s3') || !params.outdir.startsWith('s3')) exit 1, "Specify S3 URLs for workDir and outdir parameters on AWSBatch!"
 }
 
 
-ksizes = Channel.from([21, 27, 33, 51])
-molecules = Channel.from(['protein', 'dna'])
-log2_sketch_sizes = Channel.from([12, 14, 16])
-
-parameters = molecules
-	.combine(ksizes)
-	.combine(log2_sketch_sizes)
+params.ksizes = [21, 27, 33, 51]
+params.molecules =  ['dna', 'protein']
+params.log2_sketch_sizes = [10, 12, 14, 16]
 
 
 process sourmash_compute_sketch {
@@ -54,10 +109,10 @@ process sourmash_compute_sketch {
 	errorStrategy 'retry'
 
 	input:
-	each ksize from ksizes
-	each molecule from molecules
-	each log2_sketch_size from log2_sketch_sizes
-	set sample_id, file(read1), file(read2) from samples_ch
+	each ksize from params.ksizes
+	each molecule from params.molecules
+	each log2_sketch_size from params.log2_sketch_sizes
+	set sample_id, file(read1), file(read2) from reads_ch
 
 	output:
 	file "${sample_id}.sig" into sourmash_sketches

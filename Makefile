@@ -20,3 +20,7 @@ run_aws_csv:
 
 run_ndnd_local:
 	sudo nextflow run main.nf -work-dir ${HOME}/pure-scratch/nextflow/  -process.executor='local'
+
+
+test_sra:
+		nextflow run main.nf --sra "SRP016501"
