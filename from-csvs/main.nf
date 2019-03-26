@@ -4,7 +4,7 @@ params.samples = "samples.csv"
 // params.log2_sketch_size = 12
 // params.ksize = 15
 // params.molecule = 'protein'
-params.outdir = "s3://olgabot-maca/nf-kmer-similarity/human_mouse_zebrafish/"
+params.outdir = "s3://olgabot-maca/nf-kmer-similarity/merkin2012/"
 
 // sketch_id = "molecule-${params.molecule}_ksize-${params.ksize}_log2sketchsize-${params.log2_sketch_size}"
 
@@ -17,16 +17,16 @@ params.outdir = "s3://olgabot-maca/nf-kmer-similarity/human_mouse_zebrafish/"
 
 Channel
     .fromSRA( params.sra )
-    .set{ sra_reads }
+    .set{ samples_ch }
 
-Channel
-	.fromPath(params.samples)
-	.splitCsv(header:true)
-	.map{ row -> tuple(row.sample_id, file(row.read1), file(row.read2))}
-	.set{ reads_ch }
+// Channel
+// 	.fromPath(params.samples)
+// 	.splitCsv(header:true)
+// 	.map{ row -> tuple(row.sample_id, file(row.read1), file(row.read2))}
+// 	.set{ reads_ch }
 
 
-samples_ch = reads_ch.concat(sra_reads)
+// samples_ch = reads_ch.concat(sra_reads)
 
 //AWSBatch sanity checking
 if(workflow.profile == 'awsbatch'){
@@ -35,9 +35,9 @@ if(workflow.profile == 'awsbatch'){
 }
 
 
-ksizes = Channel.from([15, 21, 27, 33, 51])
+ksizes = Channel.from([21, 27, 33, 51])
 molecules = Channel.from(['protein', 'dna'])
-log2_sketch_sizes = Channel.from([10, 12, 14, 16])
+log2_sketch_sizes = Channel.from([12, 14, 16])
 
 parameters = molecules
 	.combine(ksizes)
