@@ -1,71 +1,32 @@
 
-println "asdlfkijasdlkf"
+params.sra = "SRP016501"
+params.samples = "samples.csv"
+// params.log2_sketch_size = 12
+// params.ksize = 15
+// params.molecule = 'protein'
+params.outdir = "s3://olgabot-maca/nf-kmer-similarity/merkin2012/"
 
-def paths = file('directories.txt').readLines().findAll { it.size()>0 }
+// sketch_id = "molecule-${params.molecule}_ksize-${params.ksize}_log2sketchsize-${params.log2_sketch_size}"
 
-println paths
-
-
-// // --- Try both glob patterns ---
-// // This is the Illumina style R1/R2 specification
-// Channel
-// 	.from(paths)
-// 	.map{ it + "**_{R1,R2}_*.fastq.gz"}
-// 	.set{ illumina_style }
-
-// // This is the SRA style R1/R2 specifiation
-// Channel
-// 	.from(paths)
-// 	.map{ it + "**_{1,2}.fastq.gz"}
-// 	.set{ sra_style }
-
-
-// paths_concatenated = illumina_style.concat(sra_style)
-
-
-// Channel
-// 	.from(paths_concatenated)
-// 	.map{ fromFilePairs(it) }
-// 	.println()
-// 	// .subscribe onNext: { println it }, onComplete: { println 'Done' }
-
-// 	// .set{ samples_ch }
-
-
-// // Channel
-// // 	.fromFilePairs(  "${paths}**_{1,2}.fastq.gz" )
-// //     .set{ samples_ch }
-
-// // Channel
-// // 	.fromFilePairs(  "${paths}**_{R1,R2}_*.fastq.gz" )
-// // 	.combine(sra_style)
-// //     .set{ samples_ch }
-
-
-// println "samples_ch" samples_ch
-
-Channel
-	.fromPath("s3://olgabot-maca/sra/homo_sapiens/smartseq2_quartzseq/")
-	.println()
+// if (params.molecule == "protein") {
+// 	other_molecule = "dna"
+// } else {
+// 	other_molecule = "protein"
+// }
 
 
 Channel
-	.fromFilePairs("s3://olgabot-maca/sra/homo_sapiens/smartseq2_quartzseq/**_{1,2}.fastq.gz")
-	.set{ human_samples }
-println human_samples
+    .fromSRA( params.sra )
+    .set{ samples_ch }
 
-Channel
-	.fromFilePairs("s3://olgabot-maca/sra/danio_rerio/smart-seq/whole_kidney_marrow_prjna393431/**_{1,2}.fastq.gz")
-	.set{ zebrafish_samples }
+// Channel
+// 	.fromPath(params.samples)
+// 	.splitCsv(header:true)
+// 	.map{ row -> tuple(row.sample_id, file(row.read1), file(row.read2))}
+// 	.set{ reads_ch }
 
-println zebrafish_samples
 
-samples_ch = human_samples.concat(zebrafish_samples)
-
-params.outdir = "s3://olgabot-maca/nf-kmer-similarity/human_zebrafish/"
-ksize = 15
-log2_sketch_size = 10
-molecule = 'protein'
+// samples_ch = reads_ch.concat(sra_reads)
 
 //AWSBatch sanity checking
 if(workflow.profile == 'awsbatch'){
@@ -73,11 +34,19 @@ if(workflow.profile == 'awsbatch'){
     if (!workflow.workDir.startsWith('s3') || !params.outdir.startsWith('s3')) exit 1, "Specify S3 URLs for workDir and outdir parameters on AWSBatch!"
 }
 
-sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
+
+ksizes = Channel.from([21, 27, 33, 51])
+molecules = Channel.from(['protein', 'dna'])
+log2_sketch_sizes = Channel.from([12, 14, 16])
+
+parameters = molecules
+	.combine(ksizes)
+	.combine(log2_sketch_sizes)
+
 
 process sourmash_compute_sketch {
-	tag "$name"
-	publishDir "${params.outdir}/sketches/${sketch_id}", mode: 'copy'
+	tag "${sample_id}_molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
+	publishDir "${params.outdir}/sketches/molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}", mode: 'copy'
 	container 'czbiohub/kmer-hashing'
 
 	// If job fails, try again with more memory
@@ -85,10 +54,13 @@ process sourmash_compute_sketch {
 	errorStrategy 'retry'
 
 	input:
-	set val(name), file(reads) from samples_ch
+	each ksize from ksizes
+	each molecule from molecules
+	each log2_sketch_size from log2_sketch_sizes
+	set sample_id, file(read1), file(read2) from samples_ch
 
 	output:
-	file "${name}.sig" into sourmash_sketches
+	file "${sample_id}.sig" into sourmash_sketches
 
 	script:
 	"""
@@ -96,35 +68,37 @@ process sourmash_compute_sketch {
 		--num-hashes \$((2**$log2_sketch_size)) \
 		--ksizes $ksize \
 		--$molecule \
-		--output ${name}.sig \
-		--merge '$name' $reads
+		--output ${sample_id}.sig \
+		--merge '$sample_id' $read1 $read2
 	"""
 }
 
 
-
-
 process sourmash_compare_sketches {
-	tag "from_${sketch_id}"
+	tag "fromcsvs_molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
+
 	container 'czbiohub/kmer-hashing'
 	publishDir "${params.outdir}/", mode: 'copy'
-
-	// If job fails, try again with more memory
-	memory { 64.GB * task.attempt }
+	memory { 1024.GB * task.attempt }
+	// memory { sourmash_sketches.size() < 100 ? 8.GB :
+	// 	sourmash_sketches.size() * 100.MB * task.attempt}
 	errorStrategy 'retry'
 
 	input:
-	file ("sketches/${sketch_id}/*") from sourmash_sketches.collect()
+	each ksize from ksizes
+	each molecule from molecules
+	each log2_sketch_size from log2_sketch_sizes
+	file ("sketches/molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}/*") from sourmash_sketches.collect()
 
 	output:
-	file "similarities_${sketch_id}.csv"
+	file "similarities_molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}.csv"
 
 	script:
 	"""
 	sourmash compare \
         --ksize $ksize \
         --$molecule \
-        --csv similarities_${sketch_id}.csv \
+        --csv similarities_molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}.csv \
         --traverse-directory .
 	"""
 
