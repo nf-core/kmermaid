@@ -65,7 +65,7 @@ reads_ch = Channel.create()
 // Provided SRA ids
 if (params.sra){
   Channel
-      .fromSRA( params.sra )
+      .fromSRA( params.sra.tokenize(',') )
       .set{ sra_ch }
   reads_ch = reads_ch.concat(sra_ch)
 }
@@ -81,7 +81,7 @@ if (params.samples){
 // Provided s3 or local directories
 if (params.directories){
   Channel
-    .fromFilePairs(params.directories.splitCsv())
+    .fromFilePairs(params.directories.tokenize(','))
     .set{ directories_ch }
   reads_ch = reads_ch.concat(directories_ch)
 }
@@ -94,24 +94,29 @@ if(workflow.profile == 'awsbatch'){
 }
 
 
-params.ksizes = [21, 27, 33, 51]
-params.molecules =  ['dna', 'protein']
-params.log2_sketch_sizes = [10, 12, 14, 16]
+params.ksizes = '21,27,33,51'
+params.molecules =  'dna,protein'
+params.log2_sketch_sizes = '10,12,14,16'
+
+// Parse the parameters
+ksizes = params.ksizes.tokenize(',')
+molecules = params.molecules.tokenize(',')
+log2_sketch_sizes = params.log2_sketch_sizes.tokenize(',')
 
 
 process sourmash_compute_sketch {
 	tag "${sample_id}_molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
 	publishDir "${params.outdir}/sketches/molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}", mode: 'copy'
-	container 'czbiohub/kmer-hashing'
+	container 'czbiohub/nf-kmer-similarity'
 
 	// If job fails, try again with more memory
 	memory { 2.GB * task.attempt }
 	errorStrategy 'retry'
 
 	input:
-	each ksize from params.ksizes
-	each molecule from params.molecules
-	each log2_sketch_size from params.log2_sketch_sizes
+	each ksize from ksizes
+	each molecule from molecules
+	each log2_sketch_size from log2_sketch_sizes
 	set sample_id, file(read1), file(read2) from reads_ch
 
 	output:
@@ -130,9 +135,9 @@ process sourmash_compute_sketch {
 
 
 process sourmash_compare_sketches {
-	tag "fromcsvs_molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
+	tag "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
 
-	container 'czbiohub/kmer-hashing'
+	container 'czbiohub/nf-kmer-similarity'
 	publishDir "${params.outdir}/", mode: 'copy'
 	memory { 1024.GB * task.attempt }
 	// memory { sourmash_sketches.size() < 100 ? 8.GB :
@@ -142,7 +147,7 @@ process sourmash_compare_sketches {
 	input:
 	each ksize from ksizes
 	each molecule from molecules
-	each log2_sketch_size from log2_sketch_sizes
+	each log2_sketch_size from params.log2_sketch_sizes
 	file ("sketches/molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}/*") from sourmash_sketches.collect()
 
 	output:
