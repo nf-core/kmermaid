@@ -62,15 +62,19 @@ if (params.help){
 // Get all possible input samples
 reads_ch = Channel.create()
 
+sra = params.sra ?: ''
+directories = params.directories ?: ''
+samples = params.samples ?: ''
+
 // Provided SRA ids
-if (params.sra){
+if (sra){
   Channel
       .fromSRA( params.sra.tokenize(',') )
       .set{ sra_ch }
   reads_ch = reads_ch.concat(sra_ch)
 }
 // Provided a samples.csv file
-if (params.samples){
+if (samples){
   Channel
   	.fromPath(params.samples)
   	.splitCsv(header:true)
@@ -78,8 +82,8 @@ if (params.samples){
   	.set{ samples_ch }
   reads_ch = reads_ch.concat(samples_ch)
 }
-// Provided s3 or local directories
-if (params.directories){
+// Provided s3 or local directories containing R1, R2 fastq file pairs
+if (directories){
   Channel
     .fromFilePairs(params.directories.tokenize(','))
     .set{ directories_ch }
