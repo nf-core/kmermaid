@@ -23,4 +23,12 @@ run_ndnd_local:
 
 
 test_sra:
-		nextflow run main.nf --sra "SRP016501"
+		nextflow run main.nf --sra "SRP016501" -profile aws
+
+test_samples:
+		nextflow run main.nf --ksizes 21 --log2_sketch_sizes 10 \
+			--molecules dna, \
+			--samples testing/samples.csv -profile local
+
+
+test.csv: test_sra test_samples
