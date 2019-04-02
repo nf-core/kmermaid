@@ -2,7 +2,7 @@
 
 This is a [Nextflow](nextflow.io) workflow for running k-mer similarity
 
-![Docker Cloud Build Status](https://img.shields.io/docker/cloud/build/czbiohub/nf-kmer-similarity.svg)
+[![Docker Cloud Build Status](https://img.shields.io/docker/cloud/build/czbiohub/nf-kmer-similarity.svg)](https://cloud.docker.com/u/czbiohub/repository/docker/czbiohub/nf-kmer-similarity)
 
 ## Usage
 
