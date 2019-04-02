@@ -23,4 +23,32 @@ run_ndnd_local:
 
 
 test_sra:
-		nextflow run main.nf --sra "SRP016501"
+	nextflow run main.nf --sra "SRP016501" -profile aws
+
+test_samplescsv:
+	nextflow run main.nf --ksizes 21 --log2_sketch_sizes 10 \
+			--molecules dna \
+			--samples testing/samples.csv -profile local
+
+test_sra_samplescsv:
+	nextflow run main.nf \
+		-profile aws \
+		--sra SRP016501 \
+		--samples testing/samples.csv
+
+
+test: test_sra test_samplescsv test_sra_samplescsv
+
+
+docker: docker_build docker_push
+
+docker_build:
+	@docker build \
+		--build-arg VCS_REF=`git rev-parse --short HEAD`  \
+		--build-arg BUILD_DATE=`date -u +"%Y-%m-%dT%H:%M:%SZ"` \
+		-t czbiohub/nf-kmer-similarity .
+
+docker_push:
+	sudo docker login
+	sudo docker push czbiohub/nf-kmer-similarity
+	docker images
