@@ -1,2 +1,0 @@
-s3://olgabot-maca/sra/homo_sapiens/smartseq2_quartzseq/
-s3://olgabot-maca/sra/danio_rerio/smart-seq/whole_kidney_marrow_prjna393431/
