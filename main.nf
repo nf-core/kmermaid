@@ -63,37 +63,35 @@ if (params.help){
  * SET UP CONFIGURATION VARIABLES
  */
 
-// Samples from SRA
-sra_ch = Channel.create()
-// R1, R2 pairs from a samples.csv file
-samples_ch = Channel.create()
-// Extract R1, R2 pairs from a directory
-directories_ch = Channel.create()
+ // Samples from SRA
+ sra_ch = Channel.create()
+ // R1, R2 pairs from a samples.csv file
+ samples_ch = Channel.create()
+ // Extract R1, R2 pairs from a directory
+ directories_ch = Channel.create()
 
-// Provided SRA ids
-if (params.sra){
-  sra_ch = Channel
-      .fromSRA( params.sra?.toString()?.tokenize(',') )
-}
-// Provided a samples.csv file
-if (params.samples){
-  samples_ch = Channel
-  	.fromPath(params.samples)
-  	.splitCsv(header:true)
-  	.map{ row -> tuple(row.sample_id, file(row.read1), file(row.read2))}
-}
-// Provided s3 or local directories
-if (params.directories){
-  directories_ch = Channel
-    .from(params.directories?.toString()?.tokenize(','))
-    .map(it + "*{R1,R2}*.fastq.gz")
-    .fromFilePairs()
-}
+ // Provided SRA ids
+ if (params.sra){
+   sra_ch = Channel
+       .fromSRA( params.sra?.toString()?.tokenize(',') )
+ }
+ // Provided a samples.csv file
+ if (params.samples){
+   samples_ch = Channel
+   	.fromPath(params.samples)
+   	.splitCsv(header:true)
+   	.map{ row -> tuple(row.sample_id, tuple(row.read1, row.read2))}
+ }
+ // Provided s3 or local directories
+ if (params.directories){
+   directories_ch = Channel
+     .from(params.directories?.toString()?.tokenize(','))
+     .map(it + "*{R1,R2}*.fastq.gz")
+     .fromFilePairs()
+ }
 
 sra_ch.concat(samples_ch, directories_ch)
   .set{ reads_ch }
-
-println reads_ch
 
 // AWSBatch sanity checking
 if(workflow.profile == 'awsbatch'){
@@ -126,7 +124,7 @@ process sourmash_compute_sketch {
 	each ksize from ksizes
 	each molecule from molecules
 	each log2_sketch_size from log2_sketch_sizes
-	set sample_id, file(read1), file(read2) from reads_ch
+	set sample_id, file(reads) from reads_ch
 
 	output:
 	file "${sample_id}.sig" into sourmash_sketches
@@ -148,7 +146,7 @@ process sourmash_compute_sketch {
       --ksizes $ksize \
       --$molecule \
       --output ${sample_id}.sig \
-      --merge '$sample_id' $read1 $read2
+      --merge '$sample_id' $reads
     """
   }
 
