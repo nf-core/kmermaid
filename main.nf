@@ -17,9 +17,9 @@ def helpMessage() {
 
       nextflow run czbiohub/nf-kmer-similarity --outdir s3://olgabot-maca/nf-kmer-similarity/ --samples samples.csv
 
-    With one or more s3 directories:
+    With one or more semicolon-separated s3 directories:
 
-      nextflow run czbiohub/nf-kmer-similarity --outdir s3://olgabot-maca/nf-kmer-similarity/ --directories s3://olgabot-maca/sra/homo_sapiens/smartseq2_quartzseq,s3://olgabot-maca/sra/danio_rerio/smart-seq/whole_kidney_marrow_prjna393431/
+      nextflow run czbiohub/nf-kmer-similarity --outdir s3://olgabot-maca/nf-kmer-similarity/ --directories s3://olgabot-maca/sra/homo_sapiens/smartseq2_quartzseq/*{R1,R2}*.fastq.gz;s3://olgabot-maca/sra/danio_rerio/smart-seq/whole_kidney_marrow_prjna393431/*{R1,R2}*.fastq.gz
 
     With SRA ids (requires nextflow v19.03-edge or greater):
 
@@ -63,46 +63,30 @@ if (params.help){
  * SET UP CONFIGURATION VARIABLES
  */
 
-//  // Samples from SRA
-//  sra_ch = Channel.create()
-//  // R1, R2 pairs from a samples.csv file
-//  samples_ch = Channel.create()
-//  // Extract R1, R2 pairs from a directory
-//  directories_ch = Channel.create()
-//
-//  // Provided SRA ids
-//  if (params.sra){
-//    sra_ch = Channel
-//        .fromSRA( params.sra?.toString()?.tokenize(',') )
-//  }
-//  // Provided a samples.csv file
-//  if (params.samples){
-   // samples_ch = Channel
-   // 	.fromPath(params.samples)
-   // 	.splitCsv(header:true)
-   // 	.map{ row -> tuple(row.sample_id, tuple(row.read1, row.read2))}
-//  }
-//  // Provided s3 or local directories
-//  if (params.directories){
-//    directories_ch = Channel
-//      .from(params.directories?.toString()?.tokenize(','))
-//      .map(it + "*{R1,R2}*.fastq.gz")
-//      .fromFilePairs()
-//  }
-//
-// sra_ch.concat(samples_ch, directories_ch)
-//   .set{ reads_ch }
+ // Samples from SRA
+ sra_ch = Channel.empty()
+ // R1, R2 pairs from a samples.csv file
+ samples_ch = Channel.empty()
+ // Extract R1, R2 pairs from a directory
+ directories_ch = Channel.empty()
 
-Channel
-  .fromPath(params.samples)
-  .splitCsv(header:true)
-  .map{ row -> tuple(row.sample_id, tuple(row.read1, row.read2))}
-  .set{ reads_ch }
-
-
-// Channel
-//   .fromSRA( params.sra?.toString()?.tokenize(',') )
-//   .set{ reads_ch }
+ // Provided SRA ids
+ if (params.sra){
+   sra_ch = Channel
+       .fromSRA( params.sra.toString()?.tokenize(',') )
+ }
+ // Provided a samples.csv file
+ if (params.samples){
+   samples_ch = Channel
+    .fromPath(params.samples)
+    .splitCsv(header:true)
+    .map{ row -> tuple(row.sample_id, tuple(row.read1, row.read2))}
+ }
+ // Provided s3 or local directories
+ if (params.directories){
+   directories_ch = Channel
+     .fromFilePairs(params.directories.toString()?.tokenize(';'))
+ }
 
 // AWSBatch sanity checking
 if(workflow.profile == 'awsbatch'){
