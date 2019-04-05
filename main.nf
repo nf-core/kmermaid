@@ -116,7 +116,7 @@ process sourmash_compute_sketch {
 	// If job fails, try again with more memory
 	memory { 8.GB * task.attempt }
 	errorStrategy 'retry'
-  maxRetries 5
+  maxRetries 3
 
 	input:
 	each ksize from ksizes
