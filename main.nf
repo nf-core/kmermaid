@@ -114,7 +114,7 @@ process sourmash_compute_sketch {
 	container 'czbiohub/nf-kmer-similarity'
 
 	// If job fails, try again with more memory
-	memory { 2.GB * task.attempt }
+	memory { 8.GB * task.attempt }
 	errorStrategy 'retry'
   maxRetries 5
 
@@ -156,9 +156,9 @@ process sourmash_compare_sketches {
 
 	container 'czbiohub/nf-kmer-similarity'
 	publishDir "${params.outdir}/", mode: 'copy'
-	memory { 256.GB * task.attempt }
+	memory { 512.GB * task.attempt }
 	errorStrategy 'retry'
-  maxRetries 5
+  maxRetries 3
 
 	input:
 	each ksize from ksizes
