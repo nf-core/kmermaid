@@ -156,7 +156,7 @@ process sourmash_compare_sketches {
 
 	container 'czbiohub/nf-kmer-similarity'
 	publishDir "${params.outdir}/", mode: 'copy'
-	memory { 8.GB * task.attempt }
+	memory { 256.GB * task.attempt }
 	errorStrategy 'retry'
   maxRetries 5
 
