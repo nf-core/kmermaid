@@ -73,7 +73,7 @@ if (params.help){
  // Provided SRA ids
  if (params.sra){
    sra_ch = Channel
-       .fromSRA( params.sra.toString()?.tokenize(',') )
+       .fromSRA( params.sra?.toString()?.tokenize(';') )
  }
  // Provided a samples.csv file
  if (params.samples){
@@ -85,7 +85,7 @@ if (params.help){
  // Provided s3 or local directories
  if (params.directories){
    directories_ch = Channel
-     .fromFilePairs(params.directories.toString()?.tokenize(';'))
+     .fromFilePairs(params.directories?.toString()?.tokenize(';'))
  }
 
 // AWSBatch sanity checking
