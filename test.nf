@@ -12,7 +12,7 @@ directories_ch = Channel.empty()
 // Provided SRA ids
 if (params.sra){
   sra_ch = Channel
-      .fromSRA( params.sra?.toString()?.tokenize(',') )
+      .fromSRA( params.sra.toString()?.tokenize(',') )
 }
 // Provided a samples.csv file
 if (params.samples){
@@ -24,10 +24,10 @@ if (params.samples){
 // Provided s3 or local directories
 if (params.directories){
   directories_ch = Channel
-    .fromFilePairs(params.directories?.toString()?.tokenize(','))
+    .fromFilePairs(params.directories.toString()?.tokenize(';'))
 }
 
 sra_ch.concat(samples_ch, directories_ch)
  .set{ reads_ch }
 
-println reads_ch
+println reads_cha
