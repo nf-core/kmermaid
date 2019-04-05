@@ -31,6 +31,10 @@ test_samplescsv:
 			--molecules dna \
 			--samples testing/samples.csv -profile local
 
+test_directories:
+		nextflow run main.nf \
+			--directories s3://olgabot-maca/sra/danio_rerio/smart-seq/whole_kidney_marrow_prjna393431/*{R1,R2}*.fastq.gz
+
 test_sra_samplescsv:
 	nextflow run main.nf \
 		-profile aws \
