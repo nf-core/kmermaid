@@ -88,6 +88,9 @@ if (params.help){
      .fromFilePairs(params.directories?.toString()?.tokenize(';'))
  }
 
+ sra_ch.concat(samples_ch, directories_ch)
+  .set{ reads_ch }
+
 // AWSBatch sanity checking
 if(workflow.profile == 'awsbatch'){
     if (!params.awsqueue || !params.awsregion) exit 1, "Specify correct --awsqueue and --awsregion parameters on AWSBatch!"
