@@ -105,6 +105,7 @@ if (params.help){
  if (params.fastas){
    fastas_ch = Channel
      .fromPath(params.fastas?.toString()?.tokenize(';'))
+     .map{ f -> tuple(f.baseName, f) }
  }
 
  sra_ch.concat(samples_ch, read_pairs_ch)
