@@ -108,7 +108,7 @@ if (params.help){
      .map{ f -> tuple(f.baseName, f) }
  }
 
- sra_ch.concat(samples_ch, read_pairs_ch)
+ sra_ch.concat(samples_ch, read_pairs_ch, fastas_ch)
   .set{ reads_ch }
 
 // AWSBatch sanity checking
