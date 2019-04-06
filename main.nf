@@ -163,7 +163,7 @@ process sourmash_compare_sketches {
 	input:
 	each ksize from ksizes
 	each molecule from molecules
-	each log2_sketch_size from params.log2_sketch_sizes
+	each log2_sketch_size from log2_sketch_sizes
 	file ("sketches/molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}/*") from sourmash_sketches.collect()
 
 	output:
