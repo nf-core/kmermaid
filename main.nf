@@ -15,15 +15,26 @@ def helpMessage() {
 
     With a samples.csv file containing the columns sample_id,read1,read2:
 
-      nextflow run czbiohub/nf-kmer-similarity --outdir s3://olgabot-maca/nf-kmer-similarity/ --samples samples.csv
+      nextflow run czbiohub/nf-kmer-similarity \
+        --outdir s3://olgabot-maca/nf-kmer-similarity/ --samples samples.csv
 
-    With one or more semicolon-separated s3 directories:
 
-      nextflow run czbiohub/nf-kmer-similarity --outdir s3://olgabot-maca/nf-kmer-similarity/ --directories s3://olgabot-maca/sra/homo_sapiens/smartseq2_quartzseq/*{R1,R2}*.fastq.gz;s3://olgabot-maca/sra/danio_rerio/smart-seq/whole_kidney_marrow_prjna393431/*{R1,R2}*.fastq.gz
+    With read pairs in one or more semicolon-separated s3 directories:
+
+      nextflow run czbiohub/nf-kmer-similarity \
+        --outdir s3://olgabot-maca/nf-kmer-similarity/ \
+        --directories s3://olgabot-maca/sra/homo_sapiens/smartseq2_quartzseq/*{R1,R2}*.fastq.gz;s3://olgabot-maca/sra/danio_rerio/smart-seq/whole_kidney_marrow_prjna393431/*{R1,R2}*.fastq.gz
+
+    With plain ole fastas in one or more semicolon-separated s3 directories:
+
+      nextflow run czbiohub/nf-kmer-similarity \
+        --outdir s3://olgabot-maca/nf-kmer-similarity/choanoflagellates_richter2018/ \
+        --fastas /home/olga/data/figshare/choanoflagellates_richter2018/1_choanoflagellate_transcriptomes/*.fasta
 
     With SRA ids (requires nextflow v19.03-edge or greater):
 
-      nextflow run czbiohub/nf-kmer-similarity --outdir s3://olgabot-maca/nf-kmer-similarity/ --sra SRP016501
+      nextflow run czbiohub/nf-kmer-similarity \
+        --outdir s3://olgabot-maca/nf-kmer-similarity/ --sra SRP016501
 
 
     Mandatory Arguments:
@@ -31,7 +42,8 @@ def helpMessage() {
 
     Sample Arguments -- One or more of:
       --samples                     CSV file with columns id, read1, read2 for each sample
-      --directories                 Local or s3 directories containing *R{1,2}*.fastq.gz
+      --fastas
+      --read_pairs                 Local or s3 directories containing *R{1,2}*.fastq.gz
                                     files, separated by commas
       --sra                         SRR, ERR, SRP IDs representing a project. Only compatible with
                                     Nextflow 19.03-edge or greater
@@ -68,7 +80,9 @@ if (params.help){
  // R1, R2 pairs from a samples.csv file
  samples_ch = Channel.empty()
  // Extract R1, R2 pairs from a directory
- directories_ch = Channel.empty()
+ read_pairs_ch = Channel.empty()
+ // vanilla fastas
+ fastas_ch = Channel.empty()
 
  // Provided SRA ids
  if (params.sra){
@@ -82,13 +96,18 @@ if (params.help){
     .splitCsv(header:true)
     .map{ row -> tuple(row.sample_id, tuple(row.read1, row.read2))}
  }
+ // Provided fastq gz read pairs
+ if (params.read_pairs){
+   read_pairs_ch = Channel
+     .fromFilePairs(params.read_pairs?.toString()?.tokenize(';'))
+ }
  // Provided s3 or local directories
- if (params.directories){
-   directories_ch = Channel
-     .fromFilePairs(params.directories?.toString()?.tokenize(';'))
+ if (params.fastas){
+   fastas_ch = Channel
+     .fromPath(params.fastas?.toString()?.tokenize(';'))
  }
 
- sra_ch.concat(samples_ch, directories_ch)
+ sra_ch.concat(samples_ch, read_pairs_ch)
   .set{ reads_ch }
 
 // AWSBatch sanity checking
