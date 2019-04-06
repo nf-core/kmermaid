@@ -101,11 +101,11 @@ if (params.help){
    read_pairs_ch = Channel
      .fromFilePairs(params.read_pairs?.toString()?.tokenize(';'))
  }
- // Provided s3 or local directories
+ // Provided vanilla fastas
  if (params.fastas){
    fastas_ch = Channel
      .fromPath(params.fastas?.toString()?.tokenize(';'))
-     .map{ f -> tuple(f.baseName, f) }
+     .map{ f -> tuple(f.baseName, tuple(f)) }
  }
 
  sra_ch.concat(samples_ch, read_pairs_ch, fastas_ch)
