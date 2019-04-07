@@ -145,7 +145,7 @@ process sourmash_compute_sketch {
 	set sample_id, file(reads) from reads_ch
 
 	output:
-	file "${sample_id}.sig" into sourmash_sketches
+	file "${sample_id}_molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}.sig" into sourmash_sketches
 
 	script:
   if ( params.one_signature_per_record ){
