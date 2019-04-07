@@ -94,7 +94,7 @@ if (params.help){
    samples_ch = Channel
     .fromPath(params.samples)
     .splitCsv(header:true)
-    .map{ row -> tuple(row.sample_id, tuple(row.read1, row.read2))}
+    .map{ row -> tuple(row.sample_id, tuple(file(row.read1), file(row.read2)))}
  }
  // Provided fastq gz read pairs
  if (params.read_pairs){
@@ -105,7 +105,7 @@ if (params.help){
  if (params.fastas){
    fastas_ch = Channel
      .fromPath(params.fastas?.toString()?.tokenize(';'))
-     .map{ f -> tuple(f.baseName, tuple(f)) }
+     .map{ f -> tuple(f.baseName, tuple(file(f))) }
  }
 
  sra_ch.concat(samples_ch, read_pairs_ch, fastas_ch)
@@ -134,7 +134,7 @@ process sourmash_compute_sketch {
 	container 'czbiohub/nf-kmer-similarity'
 
 	// If job fails, try again with more memory
-	memory { 8.GB * task.attempt }
+	// memory { 8.GB * task.attempt }
 	errorStrategy 'retry'
   maxRetries 3
 
@@ -176,7 +176,6 @@ process sourmash_compare_sketches {
 
 	container 'czbiohub/nf-kmer-similarity'
 	publishDir "${params.outdir}/", mode: 'copy'
-	memory { 512.GB * task.attempt }
 	errorStrategy 'retry'
   maxRetries 3
 
