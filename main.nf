@@ -130,7 +130,7 @@ log2_sketch_sizes = params.log2_sketch_sizes?.toString().tokenize(',')
 
 process sourmash_compute_sketch {
 	tag "${sample_id}_molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
-	publishDir "${params.outdir}/sketches/molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}", mode: 'copy'
+	publishDir "${params.outdir}/sketches", mode: 'copy'
 	container 'czbiohub/nf-kmer-similarity'
 
 	// If job fails, try again with more memory
@@ -184,7 +184,7 @@ process sourmash_compare_sketches {
 	each ksize from ksizes
 	each molecule from molecules
 	each log2_sketch_size from log2_sketch_sizes
-	file ("sketches/molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}/*") from sourmash_sketches.collect()
+	file ("sketches/*molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}*.sig") from sourmash_sketches.collect()
 
 	output:
 	file "similarities_molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}.csv"
