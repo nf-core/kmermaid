@@ -154,7 +154,7 @@ process sourmash_compute_sketch {
       --num-hashes \$((2**$log2_sketch_size)) \
       --ksizes $ksize \
       --$molecule \
-      --output ${sample_id}.sig \
+      --output ${sample_id}_molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}.sig \
       $read1 $read2
     """
   } else {
