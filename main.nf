@@ -25,11 +25,13 @@ def helpMessage() {
         --outdir s3://olgabot-maca/nf-kmer-similarity/ \
         --directories s3://olgabot-maca/sra/homo_sapiens/smartseq2_quartzseq/*{R1,R2}*.fastq.gz;s3://olgabot-maca/sra/danio_rerio/smart-seq/whole_kidney_marrow_prjna393431/*{R1,R2}*.fastq.gz
 
+
     With plain ole fastas in one or more semicolon-separated s3 directories:
 
       nextflow run czbiohub/nf-kmer-similarity \
         --outdir s3://olgabot-maca/nf-kmer-similarity/choanoflagellates_richter2018/ \
         --fastas /home/olga/data/figshare/choanoflagellates_richter2018/1_choanoflagellate_transcriptomes/*.fasta
+
 
     With SRA ids (requires nextflow v19.03-edge or greater):
 
@@ -129,7 +131,7 @@ log2_sketch_sizes = params.log2_sketch_sizes?.toString().tokenize(',')
 
 
 process sourmash_compute_sketch {
-	tag "${sample_id}_molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
+	tag "${sample_id}_${sketch_id}"
 	publishDir "${params.outdir}/sketches", mode: 'copy'
 	container 'czbiohub/nf-kmer-similarity'
 
@@ -145,16 +147,19 @@ process sourmash_compute_sketch {
 	set sample_id, file(reads) from reads_ch
 
 	output:
-	file "${sample_id}_molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}.sig" into sourmash_sketches
+  set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches
 
 	script:
+  sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
+  molecule = molecule
+  ksize = ksize
   if ( params.one_signature_per_record ){
     """
     sourmash compute \
       --num-hashes \$((2**$log2_sketch_size)) \
       --ksizes $ksize \
       --$molecule \
-      --output ${sample_id}_molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}.sig \
+      --output ${sample_id}_${sketch_id}.sig \
       $read1 $read2
     """
   } else {
@@ -163,16 +168,18 @@ process sourmash_compute_sketch {
       --num-hashes \$((2**$log2_sketch_size)) \
       --ksizes $ksize \
       --$molecule \
-      --output ${sample_id}_molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}.sig \
+      --output ${sample_id}_${sketch_id}.sig \
       --merge '$sample_id' $reads
     """
   }
 
 }
 
+// sourmash_sketches.println()
+// sourmash_sketches.groupTuple(by: [0,3]).println()
 
 process sourmash_compare_sketches {
-	tag "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
+	tag "${sketch_id}"
 
 	container 'czbiohub/nf-kmer-similarity'
 	publishDir "${params.outdir}/", mode: 'copy'
@@ -180,20 +187,18 @@ process sourmash_compare_sketches {
   maxRetries 3
 
 	input:
-	each ksize from ksizes
-	each molecule from molecules
-	each log2_sketch_size from log2_sketch_sizes
-	file ("sketches/*molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}*.sig") from sourmash_sketches.collect()
+  set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file ("sketches/*.sig") \
+    from sourmash_sketches.groupTuple(by: [0, 3])
 
 	output:
-	file "similarities_molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}.csv"
+	file "similarities_${sketch_id}.csv"
 
 	script:
 	"""
 	sourmash compare \
-        --ksize $ksize \
-        --$molecule \
-        --csv similarities_molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}.csv \
+        --ksize ${ksize[0]} \
+        --${molecule[0]} \
+        --csv similarities_${sketch_id}.csv \
         --traverse-directory .
 	"""
 
