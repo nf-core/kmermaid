@@ -24,16 +24,26 @@ run_ndnd_local:
 
 
 test_sra:
-		nextflow run main.nf --sra "SRP016501" -profile aws
+		nextflow run main.nf --sra "SRP016501" -profile local \
+			--ksizes 11 \
+			--log2_sketch_sizes 2 \
+			--molecules dna
+
 
 test_samplescsv:
-		nextflow run main.nf --ksizes 21 --log2_sketch_sizes 10 \
-			--molecules dna \
-			--samples testing/samples.csv -profile local
+		nextflow run main.nf --ksizes 3,9 --log2_sketch_sizes 2,3 \
+			--outdir testing-output/samplescsv/ \
+			--molecules dna,protein \
+			--samples testing/samples.csv \
+			-profile local
 
 test_directories:
 		nextflow run main.nf \
-			--directories s3://olgabot-maca/sra/danio_rerio/smart-seq/whole_kidney_marrow_prjna393431/*{R1,R2}*.fastq.gz
+			--ksizes 3,9 \
+			--log2_sketch_sizes 2,4 \
+			--molecules dna,protein \
+			--read_pairs testing/fastqs/*{1,2}.fastq.gz \
+			-profile local
 
 test_sra_samplescsv:
 	nextflow run main.nf \
