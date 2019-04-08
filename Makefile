@@ -37,7 +37,7 @@ test_samplescsv:
 			--samples testing/samples.csv \
 			-profile local
 
-test_directories:
+test_read_pairs:
 		nextflow run main.nf \
 			--ksizes 3,9 \
 			--log2_sketch_sizes 2,4 \
@@ -45,11 +45,13 @@ test_directories:
 			--read_pairs testing/fastqs/*{1,2}.fastq.gz \
 			-profile local
 
-test_sra_samplescsv:
-	nextflow run main.nf \
-		-profile aws \
-		--sra SRP016501 \
-		--samples testing/samples.csv
+test_fastas:
+		nextflow run main.nf \
+			--ksizes 3,9 \
+			--log2_sketch_sizes 2,4 \
+			--molecules dna,protein \
+			--fastas testing/fastas/*.fasta \
+			-profile local
 
 
-test: test_sra test_samplescsv test_sra_samplescsv
+test: test_sra test_samplescsv test_read_pairs test_fastas
