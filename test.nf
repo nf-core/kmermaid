@@ -9,6 +9,7 @@ samples_ch = Channel.empty()
 // Extract R1, R2 pairs from a directory
 directories_ch = Channel.empty()
 
+
 // Provided SRA ids
 if (params.sra){
   sra_ch = Channel
@@ -30,4 +31,4 @@ if (params.directories){
 sra_ch.concat(samples_ch, directories_ch)
  .set{ reads_ch }
 
-println reads_cha
+println reads_ch
