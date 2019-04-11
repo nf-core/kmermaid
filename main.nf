@@ -23,7 +23,7 @@ def helpMessage() {
 
       nextflow run czbiohub/nf-kmer-similarity \
         --outdir s3://olgabot-maca/nf-kmer-similarity/ \
-        --directories s3://olgabot-maca/sra/homo_sapiens/smartseq2_quartzseq/*{R1,R2}*.fastq.gz;s3://olgabot-maca/sra/danio_rerio/smart-seq/whole_kidney_marrow_prjna393431/*{R1,R2}*.fastq.gz
+        --read_pairs s3://olgabot-maca/sra/homo_sapiens/smartseq2_quartzseq/*{R1,R2}*.fastq.gz;s3://olgabot-maca/sra/danio_rerio/smart-seq/whole_kidney_marrow_prjna393431/*{R1,R2}*.fastq.gz
 
 
     With plain ole fastas in one or more semicolon-separated s3 directories:
