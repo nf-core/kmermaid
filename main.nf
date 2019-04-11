@@ -13,17 +13,30 @@ def helpMessage() {
 
     The typical command for running the pipeline is as follows.
 
-    With a samples.csv file:
+    With a samples.csv file containing the columns sample_id,read1,read2:
 
-      nextflow run czbiohub/nf-kmer-similarity --outdir s3://olgabot-maca/nf-kmer-similarity/ --samples samples.csv
+      nextflow run czbiohub/nf-kmer-similarity \
+        --outdir s3://olgabot-maca/nf-kmer-similarity/ --samples samples.csv
 
-    With multitple s3 directories:
 
-      nextflow run czbiohub/nf-kmer-similarity --outdir s3://olgabot-maca/nf-kmer-similarity/ --directories s3://olgabot-maca/sra/homo_sapiens/smartseq2_quartzseq,s3://olgabot-maca/sra/danio_rerio/smart-seq/whole_kidney_marrow_prjna393431/
+    With read pairs in one or more semicolon-separated s3 directories:
 
-    With SRA ids:
+      nextflow run czbiohub/nf-kmer-similarity \
+        --outdir s3://olgabot-maca/nf-kmer-similarity/ \
+        --directories s3://olgabot-maca/sra/homo_sapiens/smartseq2_quartzseq/*{R1,R2}*.fastq.gz;s3://olgabot-maca/sra/danio_rerio/smart-seq/whole_kidney_marrow_prjna393431/*{R1,R2}*.fastq.gz
 
-      nextflow run czbiohub/nf-kmer-similarity --outdir s3://olgabot-maca/nf-kmer-similarity/ --sra SRP016501
+
+    With plain ole fastas in one or more semicolon-separated s3 directories:
+
+      nextflow run czbiohub/nf-kmer-similarity \
+        --outdir s3://olgabot-maca/nf-kmer-similarity/choanoflagellates_richter2018/ \
+        --fastas /home/olga/data/figshare/choanoflagellates_richter2018/1_choanoflagellate_transcriptomes/*.fasta
+
+
+    With SRA ids (requires nextflow v19.03-edge or greater):
+
+      nextflow run czbiohub/nf-kmer-similarity \
+        --outdir s3://olgabot-maca/nf-kmer-similarity/ --sra SRP016501
 
 
     Mandatory Arguments:
@@ -31,7 +44,8 @@ def helpMessage() {
 
     Sample Arguments -- One or more of:
       --samples                     CSV file with columns id, read1, read2 for each sample
-      --directories                 Local or s3 directories containing *R{1,2}*.fastq.gz
+      --fastas
+      --read_pairs                 Local or s3 directories containing *R{1,2}*.fastq.gz
                                     files, separated by commas
       --sra                         SRR, ERR, SRP IDs representing a project. Only compatible with
                                     Nextflow 19.03-edge or greater
@@ -42,8 +56,12 @@ def helpMessage() {
                                     separated by commas. Default is '21,27,33,51'
       --molecules                   Which molecule to compare on. Default is both DNA
                                     and protein, i.e. 'dna,protein'
-      --log2-sketch-sizes           Which log2 sketch sizes to use. Multiple are separated
+      --log2_sketch_sizes           Which log2 sketch sizes to use. Multiple are separated
                                     by commas. Default is '10,12,14,16'
+      --one_signature_per_record    Make a k-mer signature for each record in the FASTQ/FASTA files.
+                                    Useful for comparing e.g. assembled transcriptomes or metagenomes.
+                                    (Not typically used for raw sequencing data as this would create
+                                    a k-mer signature for each read!)
     """.stripIndent()
 }
 
@@ -59,33 +77,41 @@ if (params.help){
  * SET UP CONFIGURATION VARIABLES
  */
 
-// Get all possible input samples
-reads_ch = Channel.create()
+ // Samples from SRA
+ sra_ch = Channel.empty()
+ // R1, R2 pairs from a samples.csv file
+ samples_ch = Channel.empty()
+ // Extract R1, R2 pairs from a directory
+ read_pairs_ch = Channel.empty()
+ // vanilla fastas
+ fastas_ch = Channel.empty()
 
-// Provided SRA ids
-if (params.sra){
-  Channel
-      .fromSRA( params.sra.tokenize(',') )
-      .set{ sra_ch }
-  reads_ch = reads_ch.concat(sra_ch)
-}
-// Provided a samples.csv file
-if (params.samples){
-  Channel
-  	.fromPath(params.samples)
-  	.splitCsv(header:true)
-  	.map{ row -> tuple(row.sample_id, file(row.read1), file(row.read2))}
-  	.set{ samples_ch }
-  reads_ch = reads_ch.concat(samples_ch)
-}
-// Provided s3 or local directories
-if (params.directories){
-  Channel
-    .fromFilePairs(params.directories.tokenize(','))
-    .set{ directories_ch }
-  reads_ch = reads_ch.concat(directories_ch)
-}
+ // Provided SRA ids
+ if (params.sra){
+   sra_ch = Channel
+       .fromSRA( params.sra?.toString()?.tokenize(';') )
+ }
+ // Provided a samples.csv file
+ if (params.samples){
+   samples_ch = Channel
+    .fromPath(params.samples)
+    .splitCsv(header:true)
+    .map{ row -> tuple(row.sample_id, tuple(file(row.read1), file(row.read2)))}
+ }
+ // Provided fastq gz read pairs
+ if (params.read_pairs){
+   read_pairs_ch = Channel
+     .fromFilePairs(params.read_pairs?.toString()?.tokenize(';'))
+ }
+ // Provided vanilla fastas
+ if (params.fastas){
+   fastas_ch = Channel
+     .fromPath(params.fastas?.toString()?.tokenize(';'))
+     .map{ f -> tuple(f.baseName, tuple(file(f))) }
+ }
 
+ sra_ch.concat(samples_ch, read_pairs_ch, fastas_ch)
+  .set{ reads_ch }
 
 // AWSBatch sanity checking
 if(workflow.profile == 'awsbatch'){
@@ -99,66 +125,80 @@ params.molecules =  'dna,protein'
 params.log2_sketch_sizes = '10,12,14,16'
 
 // Parse the parameters
-ksizes = params.ksizes.tokenize(',')
-molecules = params.molecules.tokenize(',')
-log2_sketch_sizes = params.log2_sketch_sizes.tokenize(',')
+ksizes = params.ksizes?.toString().tokenize(',')
+molecules = params.molecules?.toString().tokenize(',')
+log2_sketch_sizes = params.log2_sketch_sizes?.toString().tokenize(',')
 
 
 process sourmash_compute_sketch {
-	tag "${sample_id}_molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
-	publishDir "${params.outdir}/sketches/molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}", mode: 'copy'
+	tag "${sample_id}_${sketch_id}"
+	publishDir "${params.outdir}/sketches", mode: 'copy'
 	container 'czbiohub/nf-kmer-similarity'
 
 	// If job fails, try again with more memory
-	memory { 2.GB * task.attempt }
+	// memory { 8.GB * task.attempt }
 	errorStrategy 'retry'
+  maxRetries 3
 
 	input:
 	each ksize from ksizes
 	each molecule from molecules
 	each log2_sketch_size from log2_sketch_sizes
-	set sample_id, file(read1), file(read2) from reads_ch
+	set sample_id, file(reads) from reads_ch
 
 	output:
-	file "${sample_id}.sig" into sourmash_sketches
+  set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches
 
 	script:
-	"""
-	sourmash compute \
-		--num-hashes \$((2**$log2_sketch_size)) \
-		--ksizes $ksize \
-		--$molecule \
-		--output ${sample_id}.sig \
-		--merge '$sample_id' $read1 $read2
-	"""
+  sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
+  molecule = molecule
+  ksize = ksize
+  if ( params.one_signature_per_record ){
+    """
+    sourmash compute \
+      --num-hashes \$((2**$log2_sketch_size)) \
+      --ksizes $ksize \
+      --$molecule \
+      --output ${sample_id}_${sketch_id}.sig \
+      $read1 $read2
+    """
+  } else {
+    """
+    sourmash compute \
+      --num-hashes \$((2**$log2_sketch_size)) \
+      --ksizes $ksize \
+      --$molecule \
+      --output ${sample_id}_${sketch_id}.sig \
+      --merge '$sample_id' $reads
+    """
+  }
+
 }
 
+// sourmash_sketches.println()
+// sourmash_sketches.groupTuple(by: [0,3]).println()
 
 process sourmash_compare_sketches {
-	tag "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
+	tag "${sketch_id}"
 
 	container 'czbiohub/nf-kmer-similarity'
 	publishDir "${params.outdir}/", mode: 'copy'
-	memory { 1024.GB * task.attempt }
-	// memory { sourmash_sketches.size() < 100 ? 8.GB :
-	// 	sourmash_sketches.size() * 100.MB * task.attempt}
 	errorStrategy 'retry'
+  maxRetries 3
 
 	input:
-	each ksize from ksizes
-	each molecule from molecules
-	each log2_sketch_size from params.log2_sketch_sizes
-	file ("sketches/molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}/*") from sourmash_sketches.collect()
+  set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file ("sketches/*.sig") \
+    from sourmash_sketches.groupTuple(by: [0, 3])
 
 	output:
-	file "similarities_molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}.csv"
+	file "similarities_${sketch_id}.csv"
 
 	script:
 	"""
 	sourmash compare \
-        --ksize $ksize \
-        --$molecule \
-        --csv similarities_molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}.csv \
+        --ksize ${ksize[0]} \
+        --${molecule[0]} \
+        --csv similarities_${sketch_id}.csv \
         --traverse-directory .
 	"""
 
