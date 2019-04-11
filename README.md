@@ -12,14 +12,22 @@ This is a [Nextflow](nextflow.io) workflow for running k-mer similarity
 nextflow run czbiohub/nf-kmer-similarity --outdir s3://olgabot-maca/nf-kmer-similarity/ --samples samples.csv
 ```
 
-### With multitple s3 directories:
+### With R1, R2 read pairs:
 
 ```
-nextflow run czbiohub/nf-kmer-similarity --outdir s3://olgabot-maca/nf-kmer-similarity/ --directories s3://olgabot-maca/sra/homo_sapiens/smartseq2_quartzseq,s3://olgabot-maca/sra/danio_rerio/smart-seq/whole_kidney_marrow_prjna393431/
+nextflow run czbiohub/nf-kmer-similarity --outdir s3://olgabot-maca/nf-kmer-similarity/ \
+  --read_pairs 's3://olgabot-maca/sra/homo_sapiens/smartseq2_quartzseq/*{R1,R2}*.fastq.gz,s3://olgabot-maca/sra/danio_rerio/smart-seq/whole_kidney_marrow_prjna393431/*{1,2}.fastq.gz'
 ```
 
 ### With SRA ids:
 
 ```
 nextflow run czbiohub/nf-kmer-similarity --outdir s3://olgabot-maca/nf-kmer-similarity/ --sra SRP016501
+```
+
+### With fasta files:
+
+```
+nextflow run czbiohub/nf-kmer-similarity --outdir s3://olgabot-maca/nf-kmer-similarity/ \
+  --fastas '*.fasta'
 ```
