@@ -6,29 +6,21 @@ python: '3.6'
 cache: pip
 matrix:
   fast_finish: true
-
 before_install:
-  # Pull the docker image first so the test doesn't wait for this
-  - docker pull czbiohub/nf-kmer-similarity
-  # Fake the tag locally so that the pipeline runs properly
-  - docker tag czbiohub/nf-kmer-similarity czbiohub/nf-kmer-similarity:latest
-
+- docker pull czbiohub/nf-kmer-similarity
+- docker tag czbiohub/nf-kmer-similarity czbiohub/nf-kmer-similarity:latest
 install:
-  # Install Nextflow
-  - mkdir /tmp/nextflow && cd /tmp/nextflow
-  - wget -qO- get.nextflow.io | bash
-  - sudo ln -s /tmp/nextflow/nextflow /usr/local/bin/nextflow
-  # Install nf-core/tools
-  - pip install nf-core
-  # Reset
-  - cd ${TRAVIS_BUILD_DIR}
-
+- mkdir /tmp/nextflow && cd /tmp/nextflow
+- wget -qO- get.nextflow.io | bash
+- sudo ln -s /tmp/nextflow/nextflow /usr/local/bin/nextflow
+- pip install nf-core
+- cd ${TRAVIS_BUILD_DIR}
 env:
-  - NXF_VER='19.03.0-edge' # Specify a minimum NF version that should be tested and work
-  - NXF_VER='' # Plus: get the latest NF version and check that it works
-
+  matrix:
+  - NXF_VER='19.03.0-edge'
+  - NXF_VER=''
+  global:
+  - secure: JKY4EB7KYuJRV3Gaq9dCImBdmZLUuvbtxwRInrG6mK9oDY4QBm2Rscwpmm6EiBnA3H6SuSnVEgWuq2o+et4cbnr/uM3P1aMhoo2pwVHy2xXPfVhzMK3dhid0qObaBfSKA26QVusSv8HvR+tkKZ6Ek5nLDOFltTmAsOVlSk1Ya0mfB81JCDZNHTk5HhJZL+1km+O2BNWoHrOMCJeFS+ZfbxHbifLxudpDoIDhMooH9QS3I0xefXh8ZPVbm3pKJEqgcQHRQKQg17KbH5XzAi8nEpw7J+YIa6LNavQvh3BWi16JCHA4ubOqw1Y2A3cU2etMn5/J48ud+DuKf92a/ptr+NYmccKuZ5hEaFRds5Af7zMUsWUxltWJ43EA6gWqxksqvy4emmIACMsLtX7n0VO52SNVFNSw/xXXQEye+KZnZH+W5gR7wvE+ifAJKavfjK5DHv59EfcJihvh/fyasLwq83RAeYL0+GFXSQ/TswlB+zw/aaY+k3ZEjVJ2YVlcPQBaNkbBFDogok4wsxIKiQLLQ/KG4VbVi7w/2uq6L4loQMahgRXmqz6t49F7Bs56HdH7mrt0WQZqIy8BoVonnW+hCXu6ldDslRb7jqP+1oGPZF8qcx4mRyVJf3tB/ZR5wXzbIws3rOj8uFNrMpHFjsaDW9BEcm1f6q13OGbEWZfVmrw=
+  - secure: z0nBrrhPLuPvdyJMStidHpazFp1waRUoZlcKCmFsE62edF2w+q+JLX2udc+H10UCi2CxWiWv99p3eqNkHTcGR45Rt7EEyHzBMa8y8WwIAWMjvMecBZFsSwWQTwL+rl9aayAwt6v0Jqnm1bc6p4Hph1tFkAORIKWpkuWfmOGo/QzgeW32R9SeJ6gpceTQKYgc9DSaHKUxOZsn+hg5MnymY+jI9ABXUhHl+GE3wbwJv+2gFvuQeFoRDQn6mU7rIxrhjpjEzexZIoF7SGusnSkUDcUkc+VPgy5cCOdK5ZXw086sw3zrzQ715OsYSjwrJMt+Oe1KcTzsK6BUNIF+rPIJdftN8zl6TyfYtAxziIP33YvVyNkzRicJnlOgt4FT/hIgEU7yHc5vGCU7qfNevOpgun7TfNs5BShQD3mCcJ8eAwKmY8ApDtbyhVZhuLl2ouvtQR57oQNpfUUZbyolYdBvFcbcHoURnqrKt6z+xpjVf96G8dSgURAYBYgz8D5hxB6KemDJlp+RDT2ze/CetjE45VL9Clvaju701SfNgcihsJUpX0vlTf1NnX9yIXz12p37iGTC69MxwXcj4Z7gAXvj9dSMcfrwb2aGu1q/KgQsYVJfFWwweSGJFReV0yPO8BkUHKuUFt7onl/qdkwAQlxh2FM66BJ32u7pGdm9qpdRIhM=
 script:
-  # Lint the pipeline code
-  # - nf-core lint ${TRAVIS_BUILD_DIR}
-  # Run the pipeline with the test profile
-  - nextflow run ${TRAVIS_BUILD_DIR} -profile test,docker
+- nextflow run ${TRAVIS_BUILD_DIR} -profile test,docker
