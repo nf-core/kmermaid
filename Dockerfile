@@ -51,5 +51,3 @@ RUN which -a python3
 RUN python3 --version
 RUN sourmash info
 COPY docker/sysctl.conf /etc/sysctl.conf
-
-USER main
