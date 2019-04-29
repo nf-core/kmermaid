@@ -185,8 +185,8 @@ def create_workflow_summary(summary) {
     yaml_file.text  = """
     id: 'nf-large-assembly-summary'
     description: " - this information is collected when the pipeline is started."
-    section_name: 'nf-core/nf-large-assembly Workflow Summary'
-    section_href: 'https://github.com/nf-core/nf-large-assembly'
+    section_name: 'czbiohub/nf-kmer-simlarity Workflow Summary'
+    section_href: 'https://github.com/czbiohub/nf-kmer-simlarity'
     plot_type: 'html'
     data: |
         <dl class=\"dl-horizontal\">
