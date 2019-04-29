@@ -1,13 +1,9 @@
 
 def helpMessage() {
     log.info """
-    ==============================================================
-      _                            _       _ _         _ _
-     | |_ ___ _____ ___ ___    ___|_|_____|_| |___ ___|_| |_ _ _
-     | '_|___|     | -_|  _|  |_ -| |     | | | .'|  _| |  _| | |
-     |_,_|   |_|_|_|___|_|    |___|_|_|_|_|_|_|__,|_| |_|_| |_  |
-                                                            |___|
-    ==============================================================
+    =========================================
+     czbiohub/nf-kmer-similarity v${workflow.manifest.version}
+    =========================================
 
     Usage:
 
@@ -73,6 +69,14 @@ if (params.help){
     exit 0
 }
 
+// Has the run name been specified by the user?
+//  this has the bonus effect of catching both -name and --name
+custom_runName = params.name
+if( !(workflow.runName ==~ /[a-z]+_[a-z]+/) ){
+  custom_runName = workflow.runName
+}
+
+
 /*
  * SET UP CONFIGURATION VARIABLES
  */
@@ -111,7 +115,7 @@ if (params.help){
  }
 
  sra_ch.concat(samples_ch, read_pairs_ch, fastas_ch)
-  .set{ reads_ch }
+  .into{ read_files_fastqc; read_files_trimming }
 
 // AWSBatch sanity checking
 if(workflow.profile == 'awsbatch'){
@@ -129,6 +133,69 @@ ksizes = params.ksizes?.toString().tokenize(',')
 molecules = params.molecules?.toString().tokenize(',')
 log2_sketch_sizes = params.log2_sketch_sizes?.toString().tokenize(',')
 
+
+// Header log info
+log.info """=======================================================
+      _                            _       _ _         _ _
+     | |_ ___ _____ ___ ___    ___|_|_____|_| |___ ___|_| |_ _ _
+     | '_|___|     | -_|  _|  |_ -| |     | | | .'|  _| |  _| | |
+     |_,_|   |_|_|_|___|_|    |___|_|_|_|_|_|_|__,|_| |_|_| |_  |
+                                                            |___|
+
+czbiohub/nf-kmer-similarity v${workflow.manifest.version}"
+======================================================="""
+def summary = [:]
+summary['Pipeline Name']       = 'czbiohub/nf-kmer-similarity'
+summary['Pipeline Version']    = workflow.manifest.version
+summary['Run Name']            = custom_runName ?: workflow.runName
+summary['Read Pairs']          = params.read_pairs
+summary['Input fastas']        = params.fastas
+summary['SRA/ENA IDs']         = params.sra
+summary['Molecules']           = params.molecules
+summary['K-mer sizes']         = params.ksizes
+summary['Log2 sketch sizes']   = params.log2_sketch_sizes
+summary["Make one signature per record?"] = params.one_signature_per_record
+
+summary['Max Memory']   = params.max_memory
+summary['Max CPUs']     = params.max_cpus
+summary['Max Time']     = params.max_time
+summary['Output dir']   = params.outdir
+summary['Working dir']  = workflow.workDir
+summary['Container Engine'] = workflow.containerEngine
+if(workflow.containerEngine) summary['Container'] = workflow.container
+summary['Current home']   = "$HOME"
+summary['Current user']   = "$USER"
+summary['Current path']   = "$PWD"
+summary['Working dir']    = workflow.workDir
+summary['Output dir']     = params.outdir
+summary['Script dir']     = workflow.projectDir
+summary['Config Profile'] = workflow.profile
+if(workflow.profile == 'awsbatch'){
+   summary['AWS Region'] = params.awsregion
+   summary['AWS Queue'] = params.awsqueue
+}
+if(params.email) summary['E-mail Address'] = params.email
+log.info summary.collect { k,v -> "${k.padRight(15)}: $v" }.join("\n")
+log.info "========================================="
+
+
+def create_workflow_summary(summary) {
+
+    def yaml_file = workDir.resolve('workflow_summary_mqc.yaml')
+    yaml_file.text  = """
+    id: 'nf-large-assembly-summary'
+    description: " - this information is collected when the pipeline is started."
+    section_name: 'nf-core/nf-large-assembly Workflow Summary'
+    section_href: 'https://github.com/nf-core/nf-large-assembly'
+    plot_type: 'html'
+    data: |
+        <dl class=\"dl-horizontal\">
+${summary.collect { k,v -> "            <dt>$k</dt><dd><samp>${v ?: '<span style=\"color:#999999;\">N/A</a>'}</samp></dd>" }.join("\n")}
+        </dl>
+    """.stripIndent()
+
+   return yaml_file
+}
 
 /*
  * Parse software version numbers
@@ -180,15 +247,23 @@ process fastp {
         saveAs: {filename -> filename.indexOf(".zip") > 0 ? "zips/$filename" : "$filename"}
 
     input:
-    set val(name), file(read1_in), file(read2_in) from read_files_trimming
+    set val(name), file(reads) from read_files_trimming
 
     output:
     file "*_fastp.{zip,html}" into fastp_results
+    val name into sample_ids
+    file "${name}_R1_fastp_trimmed.fastq.gz" into read1_trimmed
+    file "${name}_R2_fastp_trimmed.fastq.gz" into read2_trimmed
 
     script:
+    read1 = reads[0]
+    read2 = reads[1]
     """
-    fastp -i $read1_in -I $read2_in \
-      -o $read1_out -O $read2_out \
+    fastp --in1 $read1 --in2 $read2 \
+      --thread ${task.cpus} \
+      --overrepresentation_analysis \
+      --out1 ${name}_R1_fastp_trimmed.fastq.gz \
+      --out2 ${name}_R2_fastp_trimmed.fastq.gz \
       -h ${name}_fastp.html \
       -j ${name}_fastp.json
     """
@@ -209,8 +284,9 @@ process sourmash_compute_sketch {
 	input:
 	each ksize from ksizes
 	each molecule from molecules
-	each log2_sketch_size from log2_sketch_sizes
-	set sample_id, file(reads) from reads_ch
+	set sample_id from sample_ids.collect()
+  set read1 from read1_trimmed.collect()
+  set read2 from read2_trimmed.collect()
 
 	output:
   set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches
