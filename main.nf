@@ -223,6 +223,7 @@ ${summary.collect { k,v -> "            <dt>$k</dt><dd><samp>${v ?: '<span style
  * Parse software version numbers
  */
 process get_software_versions {
+    container 'nfcore/base'
 
     output:
     file 'software_versions_mqc.yaml' into software_versions_yaml
@@ -266,6 +267,7 @@ process fastqc {
  */
 process fastp {
     tag "$name"
+    container 'quay.io/biocontainers/fastp:0.20.0--hdbcaa40_0'
     publishDir "${params.outdir}/fastp", mode: 'copy',
         saveAs: {filename -> filename.indexOf(".zip") > 0 ? "zips/$filename" : "$filename"}
 
@@ -373,6 +375,7 @@ process sourmash_compare_sketches {
  * STEP 2 - MultiQC
  */
 process multiqc {
+    container 'quay.io/biocontainers/multiqc:1.7--py_3'
     publishDir "${params.outdir}/MultiQC", mode: 'copy'
 
     input:
@@ -397,6 +400,7 @@ process multiqc {
  * STEP 3 - Output Description HTML
  */
 process output_documentation {
+    container 'quay.io/biocontainers/r-bcbiobase:0.4.1--r351_2'
     tag "$prefix"
     publishDir "${params.outdir}/Documentation", mode: 'copy'
 
