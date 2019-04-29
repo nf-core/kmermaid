@@ -51,3 +51,9 @@ RUN which -a python3
 RUN python3 --version
 RUN sourmash info
 COPY docker/sysctl.conf /etc/sysctl.conf
+
+# Install basic R things
+RUN apt-get update && apt-get -y install r-base
+
+# Install bioinformatics packages
+RUN conda install --yes --channel bioconda fastqc fastp multiqc
