@@ -58,6 +58,12 @@ def helpMessage() {
                                     Useful for comparing e.g. assembled transcriptomes or metagenomes.
                                     (Not typically used for raw sequencing data as this would create
                                     a k-mer signature for each read!)
+      --minlength                   Minimum length of reads after trimming, default 100
+
+    Other Options:
+      --email                       Set this parameter to your e-mail address to get a summary e-mail with details of the run sent to you when the workflow exits
+      -name                         Name for the pipeline run. If not specified, Nextflow will automatically generate a random mnemonic.
+
     """.stripIndent()
 }
 
@@ -68,6 +74,22 @@ if (params.help){
     helpMessage()
     exit 0
 }
+
+// Configurable variables
+params.name = false
+params.fastas = false
+params.sra = false
+params.samples = false
+params.read_pairs = false
+params.one_signature_per_record = false
+params.multiqc_config = "$baseDir/conf/multiqc_config.yaml"
+params.email = false
+params.plaintext_email = false
+params.minlength = 100
+params.outdir = "nextflow-output"
+
+multiqc_config = file(params.multiqc_config)
+output_docs = file("$baseDir/docs/output.md")
 
 // Has the run name been specified by the user?
 //  this has the bonus effect of catching both -name and --name
@@ -221,6 +243,7 @@ process get_software_versions {
  * STEP 1 - FastQC
  */
 process fastqc {
+    container 'quay.io/biocontainers/fastqc:0.11.8--1'
     tag "$name"
     publishDir "${params.outdir}/fastqc", mode: 'copy',
         saveAs: {filename -> filename.indexOf(".zip") > 0 ? "zips/$filename" : "$filename"}
@@ -260,6 +283,7 @@ process fastp {
     read2 = reads[1]
     """
     fastp --in1 $read1 --in2 $read2 \
+      --length_required ${params.minlength} \
       --thread ${task.cpus} \
       --overrepresentation_analysis \
       --out1 ${name}_R1_fastp_trimmed.fastq.gz \
@@ -274,7 +298,6 @@ process fastp {
 process sourmash_compute_sketch {
 	tag "${sample_id}_${sketch_id}"
 	publishDir "${params.outdir}/sketches", mode: 'copy'
-	container 'czbiohub/nf-kmer-similarity'
 
 	// If job fails, try again with more memory
 	// memory { 8.GB * task.attempt }
@@ -323,7 +346,6 @@ process sourmash_compute_sketch {
 process sourmash_compare_sketches {
 	tag "${sketch_id}"
 
-	container 'czbiohub/nf-kmer-similarity'
 	publishDir "${params.outdir}/", mode: 'copy'
 	errorStrategy 'retry'
   maxRetries 3
