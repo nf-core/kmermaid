@@ -54,7 +54,7 @@ test_fastas:
 			-profile local
 
 
-test: test_sra test_samplescsv test_read_pairs test_fastas
+test: test_read_pairs test_fastas test_samplescsv test_sra
 
 
 
