@@ -223,7 +223,7 @@ ${summary.collect { k,v -> "            <dt>$k</dt><dd><samp>${v ?: '<span style
  * Parse software version numbers
  */
 process get_software_versions {
-    container 'nfcore/base'
+    container 'czbiohub/nf-kmer-similarity'
 
     output:
     file 'software_versions_mqc.yaml' into software_versions_yaml
