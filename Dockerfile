@@ -57,3 +57,6 @@ RUN apt-get update && apt-get -y install r-base
 
 # Install bioinformatics packages
 RUN conda install --yes --channel bioconda fastqc fastp multiqc
+
+# Copy utility scripts to docker image
+COPY bin/* /usr/local/bin/
