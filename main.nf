@@ -244,7 +244,6 @@ process get_software_versions {
  * STEP 1 - FastQC
  */
 process fastqc {
-    container 'quay.io/biocontainers/fastqc:0.11.8--1'
     tag "$name"
     publishDir "${params.outdir}/fastqc", mode: 'copy',
         saveAs: {filename -> filename.indexOf(".zip") > 0 ? "zips/$filename" : "$filename"}
@@ -267,7 +266,6 @@ process fastqc {
  */
 process fastp {
     tag "$name"
-    container 'quay.io/biocontainers/fastp:0.20.0--hdbcaa40_0'
     publishDir "${params.outdir}/fastp", mode: 'copy',
         saveAs: {filename -> filename.indexOf(".zip") > 0 ? "zips/$filename" : "$filename"}
 
@@ -375,7 +373,6 @@ process sourmash_compare_sketches {
  * STEP 2 - MultiQC
  */
 process multiqc {
-    container 'quay.io/biocontainers/multiqc:1.7--py_3'
     publishDir "${params.outdir}/MultiQC", mode: 'copy'
 
     input:
@@ -400,7 +397,6 @@ process multiqc {
  * STEP 3 - Output Description HTML
  */
 process output_documentation {
-    container 'quay.io/biocontainers/r-bcbiobase:0.4.1--r351_2'
     tag "$prefix"
     publishDir "${params.outdir}/Documentation", mode: 'copy'
 
