@@ -27,7 +27,8 @@ test_sra:
 		nextflow run main.nf --sra "SRP016501" -profile local \
 			--ksizes 11 \
 			--log2_sketch_sizes 2 \
-			--molecules dna
+			--molecules dna \
+			-profile docker,local
 
 
 test_samplescsv:
@@ -35,7 +36,7 @@ test_samplescsv:
 			--outdir testing-output/samplescsv/ \
 			--molecules dna,protein \
 			--samples testing/samples.csv \
-			-profile local
+			-profile docker,local
 
 test_read_pairs:
 		nextflow run main.nf \
@@ -43,7 +44,7 @@ test_read_pairs:
 			--log2_sketch_sizes 2,4 \
 			--molecules dna,protein \
 			--read_pairs testing/fastqs/*{1,2}.fastq.gz \
-			-profile local
+			-profile docker,local -dump-channels
 
 test_fastas:
 		nextflow run main.nf \
@@ -51,7 +52,7 @@ test_fastas:
 			--log2_sketch_sizes 2,4 \
 			--molecules dna,protein \
 			--fastas testing/fastas/*.fasta \
-			-profile local
+			-profile docker,local
 
 
 test: test_read_pairs test_fastas test_samplescsv test_sra
