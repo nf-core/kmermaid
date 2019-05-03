@@ -36,15 +36,16 @@ test_samplescsv:
 			--outdir testing-output/samplescsv/ \
 			--molecules dna,protein \
 			--samples testing/samples.csv \
-			-profile docker,local
+			-profile docker
 
 test_read_pairs:
 		nextflow run main.nf \
+			-latest \
 			--ksizes 3,9 \
 			--log2_sketch_sizes 2,4 \
 			--molecules dna,protein \
 			--read_pairs 'testing/fastqs/*{1,2}.fastq.gz' \
-			-profile docker,local -dump-channels
+			-profile docker -dump-channels
 
 test_fastas:
 		nextflow run main.nf \
@@ -52,7 +53,7 @@ test_fastas:
 			--log2_sketch_sizes 2,4 \
 			--molecules dna,protein \
 			--fastas 'testing/fastas/*.fasta' \
-			-profile docker,local
+			-profile docker
 
 
 test: test_read_pairs test_fastas test_samplescsv test_sra
