@@ -24,7 +24,7 @@ run_ndnd_local:
 
 
 test_sra:
-		nextflow run main.nf --sra "SRP016501" -profile local \
+		nextflow run main.nf --sra "SRP016501"\
 			--ksizes 11 \
 			--log2_sketch_sizes 2 \
 			--molecules dna \
@@ -43,7 +43,7 @@ test_read_pairs:
 			--ksizes 3,9 \
 			--log2_sketch_sizes 2,4 \
 			--molecules dna,protein \
-			--read_pairs testing/fastqs/*{1,2}.fastq.gz \
+			--read_pairs 'testing/fastqs/*{1,2}.fastq.gz' \
 			-profile docker,local -dump-channels
 
 test_fastas:
@@ -51,7 +51,7 @@ test_fastas:
 			--ksizes 3,9 \
 			--log2_sketch_sizes 2,4 \
 			--molecules dna,protein \
-			--fastas testing/fastas/*.fasta \
+			--fastas 'testing/fastas/*.fasta' \
 			-profile docker,local
 
 
