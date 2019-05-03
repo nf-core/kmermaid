@@ -25,7 +25,8 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends ${PACKAGES} && \
     apt-get clean
 
-RUN conda update --yes -n base && conda init $(basename $SHELL) && exec $SHELL
+RUN conda update --yes -n base conda && conda init $(basename $SHELL) && exec $SHELL
+# Use conda to install khmer and sourmash scientific python dependencies
 RUN conda install --yes Cython bz2file pytest numpy matplotlib scipy sphinx alabaster
 
 RUN cd /home && \
@@ -61,7 +62,7 @@ RUN conda config --add channels bioconda
 RUN conda create --name fastp --yes fastp openjdk=8.0.152
 RUN conda create --name fastqc --yes fastqc
 RUN conda create --name multiqc --yes multiqc=1.6
-RUN conda create --name r-markdown --yes conda-forge::r-markdown=0.8 conda-forge::r-gplots=3.0.1 conda-forge::r-data.table=1.11.4
+RUN conda create --name r --yes conda-forge::r-markdown=0.8 conda-forge::r-gplots=3.0.1 conda-forge::r-data.table=1.11.4
 
 # Copy utility scripts to docker image
 COPY bin/* /usr/local/bin/
