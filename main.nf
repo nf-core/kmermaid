@@ -414,7 +414,7 @@ process output_documentation {
 
     script:
     """
-    conda activate r-markdown
+    conda activate r
     markdown_to_html.r $output_docs results_description.html
     """
 }
