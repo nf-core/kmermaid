@@ -1,4 +1,4 @@
-FROM continuumio/anaconda3
+FROM nfcore/base
 MAINTAINER olga.botvinnik@czbiohub.org
 
 # Suggested tags from https://microbadger.com/labels
@@ -12,27 +12,32 @@ WORKDIR /home
 USER root
 
 # Add user "main" because that's what is expected by this image
-RUN useradd -ms /bin/bash main
+# RUN useradd -ms /bin/bash main
 
 
-ENV PACKAGES zlib1g git g++ make ca-certificates gcc zlib1g-dev libc6-dev procps
+# ENV PACKAGES zlib1g git g++ make ca-certificates gcc zlib1g-dev libc6-dev procps
 
 ### don't modify things below here for version updates etc.
 
 WORKDIR /home
 
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends ${PACKAGES} && \
-    apt-get clean
+# RUN apt-get update && \
+#     apt-get install -y --no-install-recommends ${PACKAGES} && \
+#     apt-get clean
 
-RUN conda update --yes -n base conda && conda init $(basename $SHELL) && exec $SHELL
+# Set always yes
+RUN conda config --set always_yes yes --set changeps1 no
+
+RUN conda config --add channels conda-forge
+RUN conda config --add channels bioconda
+
+RUN conda update --yes -n base -c defaults conda && conda init $(basename $SHELL) && exec $SHELL
 # Use conda to install khmer and sourmash scientific python dependencies
-RUN conda install --yes Cython bz2file pytest numpy matplotlib scipy sphinx alabaster
+# RUN conda install --yes Cython bz2file pytest numpy matplotlib scipy sphinx alabaster khmer
 
-RUN cd /home && \
-    git clone https://github.com/dib-lab/khmer.git -b master && \
-    cd khmer && \
-    python3 setup.py install
+COPY environment.yml /
+RUN conda env create -f /environment.yml && conda clean -a
+ENV PATH /opt/conda/envs/czbiohub-nf-kmer-similarity-0.1/bin:$PATH
 
 # Check that khmer was installed properly
 RUN trim-low-abund.py --help
@@ -45,24 +50,12 @@ RUN trim-low-abund.py --version
 RUN cd /home && \
     git clone https://github.com/dib-lab/sourmash.git && \
     cd sourmash && \
-    python3 setup.py install
+    pip install .
 
 RUN which -a python3
 RUN python3 --version
 RUN sourmash info
 COPY docker/sysctl.conf /etc/sysctl.conf
-
-# Install basic R things
-# RUN apt-get update && apt-get -y install r-base
-
-RUN conda config --add channels conda-forge
-RUN conda config --add channels bioconda
-
-# Install bioinformatics packages in individual environments
-RUN conda create --name fastp --yes fastp openjdk=8.0.152
-RUN conda create --name fastqc --yes fastqc
-RUN conda create --name multiqc --yes multiqc=1.6
-RUN conda create --name r --yes conda-forge::r-markdown=0.8 conda-forge::r-gplots=3.0.1 conda-forge::r-data.table=1.11.4
 
 # Copy utility scripts to docker image
 COPY bin/* /usr/local/bin/
