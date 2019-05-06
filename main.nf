@@ -234,9 +234,8 @@ process get_software_versions {
     """
     echo $workflow.manifest.version > v_pipeline.txt
     echo $workflow.nextflow.version > v_nextflow.txt
-    conda activate multiqc && multiqc --version > v_multiqc.txt
-    conda activate fastqc && fastqc --version > v_fastqc.txt
-    conda deactivate
+    multiqc && multiqc --version > v_multiqc.txt
+    fastqc && fastqc --version > v_fastqc.txt
     sourmash info > v_sourmash.txt
     scrape_software_versions.py > software_versions_mqc.yaml
     """
@@ -259,7 +258,6 @@ process fastqc {
 
     script:
     """
-    conda activate fastqc
     fastqc -q $reads
     """
 }
@@ -287,7 +285,6 @@ process fastp {
     read1 = reads[0]
     read2 = reads[1]
     """
-    conda activate fastp
     fastp --in1 $read1 --in2 $read2 \
       --length_required ${params.minlength} \
       --thread ${task.cpus} \
@@ -414,7 +411,6 @@ process output_documentation {
 
     script:
     """
-    conda activate r
     markdown_to_html.r $output_docs results_description.html
     """
 }
