@@ -15,15 +15,15 @@ USER root
 # RUN useradd -ms /bin/bash main
 
 
-# ENV PACKAGES zlib1g git g++ make ca-certificates gcc zlib1g-dev libc6-dev procps
 
 ### don't modify things below here for version updates etc.
 
 WORKDIR /home
 
-# RUN apt-get update && \
-#     apt-get install -y --no-install-recommends ${PACKAGES} && \
-#     apt-get clean
+ENV PACKAGES zlib1g git g++ make ca-certificates gcc zlib1g-dev libc6-dev procps
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends ${PACKAGES} && \
+    apt-get clean
 
 # Set always yes
 RUN conda config --set always_yes yes --set changeps1 no
