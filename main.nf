@@ -297,6 +297,11 @@ if (!params.no_trimming) {
         -j ${name}_fastp.json
       """
   }
+} else {
+  val name, reads = read_files_trimming
+  read1_trimmed = reads[0]
+  read2_trimmed = reads[1]
+  sample_id = name
 }
 
 
