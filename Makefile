@@ -24,6 +24,7 @@ run_ndnd_local:
 
 test_docker:
 	nextflow run -profile test,docker main.nf -ansi-log false
+	nextflow run -profile test,docker main.nf --no_trimming
 
 test_sra:
 		nextflow run main.nf --sra "SRP016501"\
