@@ -51,10 +51,10 @@ test_fastas:
 			--log2_sketch_sizes 2,4 \
 			--molecules dna,protein \
 			--fastas testing/fastas/*.fasta \
-			-profile local
+			-profile local --one_signature_per_record
 
 
-test: test_sra test_samplescsv test_read_pairs test_fastas
+test: test_read_pairs test_fastas test_sra test_samplescsv  
 
 
 
