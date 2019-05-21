@@ -59,6 +59,7 @@ def helpMessage() {
                                     (Not typically used for raw sequencing data as this would create
                                     a k-mer signature for each read!)
       --minlength                   Minimum length of reads after trimming, default 100
+      --no_trimming                 Don't trim reads on quality
 
     Other Options:
       --email                       Set this parameter to your e-mail address to get a summary e-mail with details of the run sent to you when the workflow exits
@@ -87,6 +88,7 @@ params.email = false
 params.plaintext_email = false
 params.minlength = 100
 params.outdir = "nextflow-output"
+params.no_trimming = false
 
 multiqc_config = file(params.multiqc_config)
 output_docs = file("$baseDir/docs/output.md")
@@ -263,37 +265,38 @@ process fastqc {
 }
 
 
+if (!params.no_trimming) {
+  /*
+   * STEP 2 - trim reads - Fastp
+   */
+  process fastp {
+      tag "$name"
+      publishDir "${params.outdir}/fastp", mode: 'copy',
+          saveAs: {filename -> filename.indexOf(".zip") > 0 ? "zips/$filename" : "$filename"}
 
-/*
- * STEP 2 - trim reads - Fastp
- */
-process fastp {
-    tag "$name"
-    publishDir "${params.outdir}/fastp", mode: 'copy',
-        saveAs: {filename -> filename.indexOf(".zip") > 0 ? "zips/$filename" : "$filename"}
+      input:
+      set val(name), file(reads) from read_files_trimming
 
-    input:
-    set val(name), file(reads) from read_files_trimming
+      output:
+      file "*_fastp.{zip,html}" into fastp_results
+      val name into sample_ids
+      file "${name}_R1_fastp_trimmed.fastq.gz" into read1_trimmed
+      file "${name}_R2_fastp_trimmed.fastq.gz" into read2_trimmed
 
-    output:
-    file "*_fastp.{zip,html}" into fastp_results
-    val name into sample_ids
-    file "${name}_R1_fastp_trimmed.fastq.gz" into read1_trimmed
-    file "${name}_R2_fastp_trimmed.fastq.gz" into read2_trimmed
-
-    script:
-    read1 = reads[0]
-    read2 = reads[1]
-    """
-    fastp --in1 $read1 --in2 $read2 \
-      --length_required ${params.minlength} \
-      --thread ${task.cpus} \
-      --overrepresentation_analysis \
-      --out1 ${name}_R1_fastp_trimmed.fastq.gz \
-      --out2 ${name}_R2_fastp_trimmed.fastq.gz \
-      -h ${name}_fastp.html \
-      -j ${name}_fastp.json
-    """
+      script:
+      read1 = reads[0]
+      read2 = reads[1]
+      """
+      fastp --in1 $read1 --in2 $read2 \
+        --length_required ${params.minlength} \
+        --thread ${task.cpus} \
+        --overrepresentation_analysis \
+        --out1 ${name}_R1_fastp_trimmed.fastq.gz \
+        --out2 ${name}_R2_fastp_trimmed.fastq.gz \
+        -h ${name}_fastp.html \
+        -j ${name}_fastp.json
+      """
+  }
 }
 
 
@@ -328,7 +331,7 @@ process sourmash_compute_sketch {
       --ksizes $ksize \
       --$molecule \
       --output ${sample_id}_${sketch_id}.sig \
-      $read1 $read2
+      $reads
     """
   } else {
     """
