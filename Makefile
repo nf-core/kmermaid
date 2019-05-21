@@ -22,6 +22,8 @@ run_ndnd_local:
 	sudo nextflow run main.nf -work-dir ${HOME}/pure-scratch/nextflow/ \
 		-process.executor='local'
 
+test_docker:
+	nextflow run -profile test,docker main.nf -ansi-log false
 
 test_sra:
 		nextflow run main.nf --sra "SRP016501"\
