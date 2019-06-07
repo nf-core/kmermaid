@@ -54,7 +54,7 @@ test_fastas:
 			-profile local --one_signature_per_record
 
 
-test: test_read_pairs test_fastas test_sra test_samplescsv  
+test: test_read_pairs test_fastas test_sra test_samplescsv
 
 
 
@@ -64,9 +64,9 @@ docker_build:
 	@docker build \
 		--build-arg VCS_REF=`git rev-parse --short HEAD`  \
 		--build-arg BUILD_DATE=`date -u +"%Y-%m-%dT%H:%M:%SZ"` \
-		-t czbiohub/nf-kmer-similarity .
+		-t czbiohub/nf-kmer-similarity:dev .
 
 docker_push:
 	sudo docker login
-	sudo docker push czbiohub/nf-kmer-similarity
+	sudo docker push czbiohub/nf-kmer-similarity:dev
 	docker images
