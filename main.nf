@@ -399,26 +399,26 @@ process multiqc {
     multiqc -f $rtitle $rfilename --config $multiqc_config .
     """
 }
-
-/*
- * STEP 3 - Output Description HTML
- */
-process output_documentation {
-    tag "$prefix"
-    publishDir "${params.outdir}/Documentation", mode: 'copy'
-
-    input:
-    file output_docs
-
-    output:
-    file "results_description.html"
-
-    script:
-    """
-    markdown_to_html.r $output_docs results_description.html
-    """
-}
-
+// TODO
+// /*
+//  * STEP 3 - Output Description HTML
+//  */
+// process output_documentation {
+//     tag "$prefix"
+//     publishDir "${params.outdir}/Documentation", mode: 'copy'
+//
+//     input:
+//     file output_docs
+//
+//     output:
+//     file "results_description.html"
+//
+//     script:
+//     """
+//     markdown_to_html.r $output_docs results_description.html
+//     """
+// }
+//
 
 /*
  * Completion e-mail notification
