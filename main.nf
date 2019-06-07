@@ -141,7 +141,7 @@ if( !(workflow.runName ==~ /[a-z]+_[a-z]+/) ){
 
  sra_ch.concat(samples_ch, read_pairs_ch, fastas_ch)
   .ifEmpty { exit 1, "No read files provided! One of --sra, --samples, --read_pairs, --fastas must be provided" }
-  .into{ read_files_fastqc; read_files_trimming }
+  .into{ read_files_fastqc; read_files_trimming; read_files_sourmash }
 
 
 // AWSBatch sanity checking
@@ -245,60 +245,60 @@ process get_software_versions {
 }
 
 
-/*
- * STEP 1 - FastQC
- */
-process fastqc {
-    tag "$name"
-    publishDir "${params.outdir}/fastqc", mode: 'copy',
-        saveAs: {filename -> filename.indexOf(".zip") > 0 ? "zips/$filename" : "$filename"}
+// /*
+//  * STEP 1 - FastQC
+//  */
+// process fastqc {
+//     tag "$name"
+//     publishDir "${params.outdir}/fastqc", mode: 'copy',
+//         saveAs: {filename -> filename.indexOf(".zip") > 0 ? "zips/$filename" : "$filename"}
+//
+//     input:
+//     set val(name), file(reads) from read_files_fastqc
+//
+//     output:
+//     file "*_fastqc.{zip,html}" into fastqc_results
+//
+//     script:
+//     """
+//     fastqc -q $reads
+//     """
+// }
 
-    input:
-    set val(name), file(reads) from read_files_fastqc
 
-    output:
-    file "*_fastqc.{zip,html}" into fastqc_results
-
-    script:
-    """
-    fastqc -q $reads
-    """
-}
-
-
-if (!params.no_trimming) {
-  /*
-   * STEP 2 - trim reads - Fastp
-   */
-  process fastp {
-      tag "$name"
-      publishDir "${params.outdir}/fastp", mode: 'copy',
-          saveAs: {filename -> filename.indexOf(".zip") > 0 ? "zips/$filename" : "$filename"}
-
-      input:
-      set val(name), file(reads) from read_files_trimming
-
-      output:
-      file "*_fastp.{zip,html}" into fastp_results
-      val name into sample_ids
-      file "${name}_R1_fastp_trimmed.fastq.gz" into read1_trimmed
-      file "${name}_R2_fastp_trimmed.fastq.gz" into read2_trimmed
-
-      script:
-      read1 = reads[0]
-      read2 = reads[1]
-      """
-      fastp --in1 $read1 --in2 $read2 \
-        --length_required ${params.minlength} \
-        --thread ${task.cpus} \
-        --overrepresentation_analysis \
-        --out1 ${name}_R1_fastp_trimmed.fastq.gz \
-        --out2 ${name}_R2_fastp_trimmed.fastq.gz \
-        -h ${name}_fastp.html \
-        -j ${name}_fastp.json
-      """
-  }
-}
+// if (!params.no_trimming) {
+//   /*
+//    * STEP 2 - trim reads - Fastp
+//    */
+//   process fastp {
+//       tag "$name"
+//       publishDir "${params.outdir}/fastp", mode: 'copy',
+//           saveAs: {filename -> filename.indexOf(".zip") > 0 ? "zips/$filename" : "$filename"}
+//
+//       input:
+//       set val(name), file(reads) from read_files_trimming
+//
+//       output:
+//       file "*_fastp.{zip,html}" into fastp_results
+//       val name into sample_ids
+//       file "${name}_R1_fastp_trimmed.fastq.gz" into read1_trimmed
+//       file "${name}_R2_fastp_trimmed.fastq.gz" into read2_trimmed
+//
+//       script:
+//       read1 = reads[0]
+//       read2 = reads[1]
+//       """
+//       fastp --in1 $read1 --in2 $read2 \
+//         --length_required ${params.minlength} \
+//         --thread ${task.cpus} \
+//         --overrepresentation_analysis \
+//         --out1 ${name}_R1_fastp_trimmed.fastq.gz \
+//         --out2 ${name}_R2_fastp_trimmed.fastq.gz \
+//         -h ${name}_fastp.html \
+//         -j ${name}_fastp.json
+//       """
+//   }
+// }
 
 
 
@@ -314,9 +314,10 @@ process sourmash_compute_sketch {
 	input:
 	each ksize from ksizes
 	each molecule from molecules
-	set sample_id from sample_ids.collect()
-  set read1 from read1_trimmed.collect()
-  set read2 from read2_trimmed.collect()
+  set val(sample_id), file(reads) from read_files_sourmash
+	// set sample_id from sample_ids.collect()
+  // set read1 from read1_trimmed.collect()
+  // set read2 from read2_trimmed.collect()
 
 	output:
   set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches
