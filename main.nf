@@ -140,6 +140,7 @@ if( !(workflow.runName ==~ /[a-z]+_[a-z]+/) ){
  }
 
  sra_ch.concat(samples_ch, read_pairs_ch, fastas_ch)
+  .ifEmpty { exit 1, "No read files provided! One of --sra, --samples, --read_pairs, --fastas must be provided" }
   .into{ read_files_fastqc; read_files_trimming }
 
 
