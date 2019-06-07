@@ -142,6 +142,11 @@ if( !(workflow.runName ==~ /[a-z]+_[a-z]+/) ){
  sra_ch.concat(samples_ch, read_pairs_ch, fastas_ch)
   .into{ read_files_fastqc; read_files_trimming }
 
+// If user doesn't want trimming, set read_files_trimmed as empty
+// And use read_files_untrimmed directly
+(read_files_trimmed, read_files_untrimmed) = ( params.no_trimming
+                 ? [Channel.empty(), read_files_trimming]
+                 : [read_files_trimming, Channel.empty()] )
 
 // AWSBatch sanity checking
 if(workflow.profile == 'awsbatch'){
@@ -236,8 +241,8 @@ process get_software_versions {
     """
     echo $workflow.manifest.version > v_pipeline.txt
     echo $workflow.nextflow.version > v_nextflow.txt
-    multiqc && multiqc --version > v_multiqc.txt
-    fastqc && fastqc --version > v_fastqc.txt
+    multiqc --version > v_multiqc.txt
+    fastqc --version > v_fastqc.txt
     sourmash info > v_sourmash.txt
     scrape_software_versions.py > software_versions_mqc.yaml
     """
@@ -275,13 +280,11 @@ if (!params.no_trimming) {
           saveAs: {filename -> filename.indexOf(".zip") > 0 ? "zips/$filename" : "$filename"}
 
       input:
-      set val(name), file(reads) from read_files_trimming
+      set val(name), file(reads) from read_files_untrimmed
 
       output:
       file "*_fastp.{zip,html}" into fastp_results
-      val name into sample_ids
-      file "${name}_R1_fastp_trimmed.fastq.gz" into read1_trimmed
-      file "${name}_R2_fastp_trimmed.fastq.gz" into read2_trimmed
+      set val(name), file("*[12]_fastp_trimmed.fastq.gz") into reads_trimmed
 
       script:
       read1 = reads[0]
@@ -297,13 +300,7 @@ if (!params.no_trimming) {
         -j ${name}_fastp.json
       """
   }
-} else {
-  val name, reads = read_files_trimming
-  read1_trimmed = reads[0]
-  read2_trimmed = reads[1]
-  sample_id = name
 }
-
 
 
 process sourmash_compute_sketch {
@@ -318,9 +315,7 @@ process sourmash_compute_sketch {
 	input:
 	each ksize from ksizes
 	each molecule from molecules
-	set sample_id from sample_ids.collect()
-  set read1 from read1_trimmed.collect()
-  set read2 from read2_trimmed.collect()
+	set sample_id, file(reads) from read_files_untrimmed.mix(read_files_trimmed.collect())
 
 	output:
   set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches
