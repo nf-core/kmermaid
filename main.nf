@@ -312,6 +312,7 @@ process sourmash_compute_sketch {
   maxRetries 3
 
 	input:
+  each log2_sketch_size from log2_sketch_sizes
 	each ksize from ksizes
 	each molecule from molecules
   set val(sample_id), file(reads) from read_files_sourmash
