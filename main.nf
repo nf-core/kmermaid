@@ -77,31 +77,55 @@ if (params.help){
  * SET UP CONFIGURATION VARIABLES
  */
 
- // Samples from SRA
- sra_ch = Channel.empty()
- // R1, R2 pairs from a samples.csv file
- samples_ch = Channel.empty()
- // Extract R1, R2 pairs from a directory
- read_pairs_ch = Channel.empty()
- // vanilla fastas
- fastas_ch = Channel.empty()
+// Samples from SRA
+sra_ch = Channel.empty()
+
+// R1, R2 pairs from a samples.csv file
+samples_ch = Channel.empty()
+
+// Single-enede reads from a samples.csv file
+samples_singles_ch = Channel.empty()
+
+// Extract R1, R2 pairs from a directory
+read_pairs_ch = Channel.empty()
+
+// Extract single-ended from a directory
+read_singles_ch = Channel.empty()
+
+// vanilla fastas
+fastas_ch = Channel.empty()
+
 
  // Provided SRA ids
  if (params.sra){
    sra_ch = Channel
        .fromSRA( params.sra?.toString()?.tokenize(';') )
  }
- // Provided a samples.csv file
+ // Provided a samples.csv file of read pairs
  if (params.samples){
    samples_ch = Channel
     .fromPath(params.samples)
     .splitCsv(header:true)
-    .map{ row -> tuple(row.sample_id, tuple(file(row.read1), file(row.read2)))}
+    .map{ row -> tuple(row[0], tuple(file(row[1]), file(row[2])))}
  }
+
+ // Provided a samples.csv file of single-ended reads
+ if (params.samples_singles){
+   samples_singles_ch = Channel
+    .fromPath(params.samples_singles)
+    .splitCsv(header:true)
+    .map{ row -> tuple(row[0], tuple(file(row[1])))}
+ }
+
  // Provided fastq gz read pairs
  if (params.read_pairs){
    read_pairs_ch = Channel
      .fromFilePairs(params.read_pairs?.toString()?.tokenize(';'))
+ }
+ // Provided fastq gz read pairs
+ if (params.read_singles){
+   read_singles_ch = Channel
+     .fromFilePairs(params.read_singles?.toString()?.tokenize(';'), size: 1)
  }
  // Provided vanilla fastas
  if (params.fastas){
@@ -110,8 +134,17 @@ if (params.help){
      .map{ f -> tuple(f.baseName, tuple(file(f))) }
  }
 
- sra_ch.concat(samples_ch, read_pairs_ch, fastas_ch)
+ sra_ch.concat(samples_ch, samples_singles_ch, read_pairs_ch,
+  read_singles_ch, fastas_ch)
   .set{ reads_ch }
+
+
+// Has the run name been specified by the user?
+//  this has the bonus effect of catching both -name and --name
+custom_runName = params.name
+if( !(workflow.runName ==~ /[a-z]+_[a-z]+/) ){
+  custom_runName = workflow.runName
+}
 
 // AWSBatch sanity checking
 if(workflow.profile == 'awsbatch'){
@@ -128,6 +161,62 @@ params.log2_sketch_sizes = '10,12,14,16'
 ksizes = params.ksizes?.toString().tokenize(',')
 molecules = params.molecules?.toString().tokenize(',')
 log2_sketch_sizes = params.log2_sketch_sizes?.toString().tokenize(',')
+
+
+// Header log info
+log.info nfcoreHeader()
+def summary = [:]
+if(workflow.revision) summary['Pipeline Release'] = workflow.revision
+summary['Run Name']         = custom_runName ?: workflow.runName
+if(params.read_pairs)     summary['Read Pairs']                 = params.read_pairs
+if(params.read_singles)     summary['Single-end reads']         = params.read_singles
+if(params.samples) summary['Paired-end samples.csv']            = params.samples
+if(params.samples_singles) summary['Single-end samples.csv']    = params.samples_singles
+if(params.sra)       summary['SRA']                             = params.sra
+if(params.fasta)     summary["FASTAs"]                          = params.fasta
+summary['Data Type']        = params.singleEnd ? 'Single-End' : 'Paired-End'
+summary['Save prefs']     = "Ref Genome: "+(params.saveReference ? 'Yes' : 'No')+" / Trimmed FastQ: "+(params.saveTrimmed ? 'Yes' : 'No')+" / Alignment intermediates: "+(params.saveAlignedIntermediates ? 'Yes' : 'No')
+summary['Max Resources']    = "$params.max_memory memory, $params.max_cpus cpus, $params.max_time time per job"
+if(workflow.containerEngine) summary['Container'] = "$workflow.containerEngine - $workflow.container"
+summary['Output dir']       = params.outdir
+summary['Launch dir']       = workflow.launchDir
+summary['Working dir']      = workflow.workDir
+summary['Script dir']       = workflow.projectDir
+summary['User']             = workflow.userName
+if(workflow.profile == 'awsbatch'){
+   summary['AWS Region']    = params.awsregion
+   summary['AWS Queue']     = params.awsqueue
+}
+summary['Config Profile'] = workflow.profile
+if(params.config_profile_description) summary['Config Description'] = params.config_profile_description
+if(params.config_profile_contact)     summary['Config Contact']     = params.config_profile_contact
+if(params.config_profile_url)         summary['Config URL']         = params.config_profile_url
+if(params.email) {
+  summary['E-mail Address']  = params.email
+  summary['MultiQC maxsize'] = params.maxMultiqcEmailFileSize
+}
+log.info summary.collect { k,v -> "${k.padRight(18)}: $v" }.join("\n")
+log.info "\033[0m----------------------------------------------------\033[0m"
+
+// Check the hostnames against configured profiles
+checkHostname()
+
+def create_workflow_summary(summary) {
+    def yaml_file = workDir.resolve('workflow_summary_mqc.yaml')
+    yaml_file.text  = """
+    id: 'nf-core-rnaseq-summary'
+    description: " - this information is collected when the pipeline is started."
+    section_name: 'nf-core/rnaseq Workflow Summary'
+    section_href: 'https://github.com/nf-core/rnaseq'
+    plot_type: 'html'
+    data: |
+        <dl class=\"dl-horizontal\">
+${summary.collect { k,v -> "            <dt>$k</dt><dd><samp>${v ?: '<span style=\"color:#999999;\">N/A</a>'}</samp></dd>" }.join("\n")}
+        </dl>
+    """.stripIndent()
+
+   return yaml_file
+}
 
 
 process sourmash_compute_sketch {
@@ -204,4 +293,49 @@ process sourmash_compare_sketches {
         --traverse-directory .
 	"""
 
+}
+
+
+def nfcoreHeader(){
+    // Log colors ANSI codes
+    c_reset = params.monochrome_logs ? '' : "\033[0m";
+    c_dim = params.monochrome_logs ? '' : "\033[2m";
+    c_black = params.monochrome_logs ? '' : "\033[0;30m";
+    c_green = params.monochrome_logs ? '' : "\033[0;32m";
+    c_yellow = params.monochrome_logs ? '' : "\033[0;33m";
+    c_blue = params.monochrome_logs ? '' : "\033[0;34m";
+    c_purple = params.monochrome_logs ? '' : "\033[0;35m";
+    c_cyan = params.monochrome_logs ? '' : "\033[0;36m";
+    c_white = params.monochrome_logs ? '' : "\033[0;37m";
+
+    return """    ${c_dim}----------------------------------------------------${c_reset}
+                                            ${c_green},--.${c_black}/${c_green},-.${c_reset}
+    ${c_blue}        ___     __   __   __   ___     ${c_green}/,-._.--~\'${c_reset}
+    ${c_blue}  |\\ | |__  __ /  ` /  \\ |__) |__         ${c_yellow}}  {${c_reset}
+    ${c_blue}  | \\| |       \\__, \\__/ |  \\ |___     ${c_green}\\`-._,-`-,${c_reset}
+                                            ${c_green}`._,._,\'${c_reset}
+    ${c_purple}  nf-core/rnaseq v${workflow.manifest.version}${c_reset}
+    ${c_dim}----------------------------------------------------${c_reset}
+    """.stripIndent()
+}
+
+def checkHostname(){
+    def c_reset = params.monochrome_logs ? '' : "\033[0m"
+    def c_white = params.monochrome_logs ? '' : "\033[0;37m"
+    def c_red = params.monochrome_logs ? '' : "\033[1;91m"
+    def c_yellow_bold = params.monochrome_logs ? '' : "\033[1;93m"
+    if(params.hostnames){
+        def hostname = "hostname".execute().text.trim()
+        params.hostnames.each { prof, hnames ->
+            hnames.each { hname ->
+                if(hostname.contains(hname) && !workflow.profile.contains(prof)){
+                    log.error "====================================================\n" +
+                            "  ${c_red}WARNING!${c_reset} You are running with `-profile $workflow.profile`\n" +
+                            "  but your machine hostname is ${c_white}'$hostname'${c_reset}\n" +
+                            "  ${c_yellow_bold}It's highly recommended that you use `-profile $prof${c_reset}`\n" +
+                            "============================================================"
+                }
+            }
+        }
+    }
 }
