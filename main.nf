@@ -100,6 +100,7 @@ fastas_ch = Channel.empty()
  if (params.sra){
    sra_ch = Channel
        .fromSRA( params.sra?.toString()?.tokenize(';') )
+       .ifEmpty { exit 1, "params.sra ${params.sra} was not found - no input files supplied" }
  }
  // Provided a samples.csv file of read pairs
  if (params.samples){
@@ -107,7 +108,8 @@ fastas_ch = Channel.empty()
     .fromPath(params.samples)
     .splitCsv(header:true)
     .map{ row -> tuple(row[0], tuple(file(row[1]), file(row[2])))}
- }
+    .ifEmpty { exit 1, "params.samples was empty - no input files supplied" }
+}
 
  // Provided a samples.csv file of single-ended reads
  if (params.samples_singles){
@@ -115,27 +117,44 @@ fastas_ch = Channel.empty()
     .fromPath(params.samples_singles)
     .splitCsv(header:true)
     .map{ row -> tuple(row[0], tuple(file(row[1])))}
- }
+    .ifEmpty { exit 1, "params.samples_singles was empty - no input files supplied" }
+}
 
  // Provided fastq gz read pairs
  if (params.read_pairs){
    read_pairs_ch = Channel
      .fromFilePairs(params.read_pairs?.toString()?.tokenize(';'))
+     .ifEmpty { exit 1, "params.read_pairs was empty - no input files supplied" }
  }
  // Provided fastq gz read pairs
  if (params.read_singles){
    read_singles_ch = Channel
      .fromFilePairs(params.read_singles?.toString()?.tokenize(';'), size: 1)
- }
+     .ifEmpty { exit 1, "params.read_singles was empty - no input files supplied" }
+}
  // Provided vanilla fastas
  if (params.fastas){
    fastas_ch = Channel
      .fromPath(params.fastas?.toString()?.tokenize(';'))
      .map{ f -> tuple(f.baseName, tuple(file(f))) }
+     .ifEmpty { exit 1, "params.fastas was empty - no input files supplied" }
  }
 
- sra_ch.concat(samples_ch, samples_singles_ch, read_pairs_ch,
-  read_singles_ch, fastas_ch)
+ if(params.read_paths_singles){
+     read_paths_single_end_ch = Channel
+         .from(params.read_paths_singles)
+         .map { row -> [ row[0], [file(row[1][0])]] }
+         .ifEmpty { exit 1, "params.read_paths_single_end was empty - no input files supplied" }
+ }
+if (params.read_paths) {
+     read_paths_ch = Channel
+         .from(params.read_paths)
+         .map { row -> [ row[0], [file(row[1][0]), file(row[1][1])]] }
+         .ifEmpty { exit 1, "params.read_paths was empty - no input files supplied" }
+ }
+
+
+ sra_ch.concat(samples_ch, samples_singles_ch, read_pairs_ch, read_singles_ch, fastas_ch, read_paths_single_end_ch, read_paths_ch)
   .set{ reads_ch }
 
 
@@ -174,8 +193,8 @@ if(params.samples) summary['Paired-end samples.csv']            = params.samples
 if(params.samples_singles) summary['Single-end samples.csv']    = params.samples_singles
 if(params.sra)       summary['SRA']                             = params.sra
 if(params.fasta)     summary["FASTAs"]                          = params.fasta
-summary['Data Type']        = params.singleEnd ? 'Single-End' : 'Paired-End'
-summary['Save prefs']     = "Ref Genome: "+(params.saveReference ? 'Yes' : 'No')+" / Trimmed FastQ: "+(params.saveTrimmed ? 'Yes' : 'No')+" / Alignment intermediates: "+(params.saveAlignedIntermediates ? 'Yes' : 'No')
+if(params.read_paths) summary['Read paths (paired-end)']            = params.read_paths
+if(params.read_paths_singles) summary['Read paths (single-end)']    = params.read_paths_singles
 summary['Max Resources']    = "$params.max_memory memory, $params.max_cpus cpus, $params.max_time time per job"
 if(workflow.containerEngine) summary['Container'] = "$workflow.containerEngine - $workflow.container"
 summary['Output dir']       = params.outdir
@@ -241,23 +260,26 @@ process sourmash_compute_sketch {
 	script:
   sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
   molecule = molecule
+  not_dna = molecule == 'dna' ? '' : '--no-dna'
   ksize = ksize
   if ( params.one_signature_per_record ){
     """
-    sourmash compute \
-      --num-hashes \$((2**$log2_sketch_size)) \
-      --ksizes $ksize \
-      --$molecule \
-      --output ${sample_id}_${sketch_id}.sig \
-      $read1 $read2
+    sourmash compute \\
+      --num-hashes \$((2**$log2_sketch_size)) \\
+      --ksizes $ksize \\
+      --$molecule \\
+      $not_dna \\
+      --output ${sample_id}_${sketch_id}.sig \\
+      $reads
     """
   } else {
     """
-    sourmash compute \
-      --num-hashes \$((2**$log2_sketch_size)) \
-      --ksizes $ksize \
-      --$molecule \
-      --output ${sample_id}_${sketch_id}.sig \
+    sourmash compute \\
+      --num-hashes \$((2**$log2_sketch_size)) \\
+      --ksizes $ksize \\
+      --$molecule \\
+      $not_dna \\
+      --output ${sample_id}_${sketch_id}.sig \\
       --merge '$sample_id' $reads
     """
   }
