@@ -68,5 +68,5 @@ docker_build:
 
 docker_push:
 	sudo docker login
-	sudo docker push czbiohub/nf-kmer-similarity
+	sudo docker push czbiohub/nf-kmer-similarity:olgabot/dayhoff
 	docker images
