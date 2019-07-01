@@ -16,6 +16,6 @@ docker_build:
 
 docker_push:
 	sudo docker login
-	sudo docker push czbiohub/nf-kmer-similarity:olgabot/dayhoff
+	sudo docker push czbiohub/nf-kmer-similarity:olgabot-dayhoff
 	docker images
 >>>>>>> Update dockerfile to use olgabot/dayhoff branch"
