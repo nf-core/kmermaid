@@ -306,10 +306,10 @@ process sourmash_compare_sketches {
 
 	script:
 	"""
-	sourmash compare \
-        --ksize ${ksize[0]} \
-        --${molecule[0]} \
-        --csv similarities_${sketch_id}.csv \
+	sourmash compare \\
+        --ksize ${ksize[0]} \\
+        --${molecule[0]} \\
+        --csv similarities_${sketch_id}.csv \\
         --traverse-directory .
 	"""
 
