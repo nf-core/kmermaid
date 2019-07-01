@@ -121,7 +121,7 @@ if(workflow.profile == 'awsbatch'){
 
 
 params.ksizes = '21,27,33,51'
-params.molecules =  'dna,protein'
+params.molecules =  'dna,protein,dayhoff'
 params.log2_sketch_sizes = '10,12,14,16'
 
 // Parse the parameters
@@ -152,12 +152,16 @@ process sourmash_compute_sketch {
 	script:
   sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
   molecule = molecule
+  // Don't calculate DNA signature if this is protein, to minimize disk,
+  // memory and IO requirements in the future
+  def not_dna = molecule != 'dna' ? '--no-dna' : ''
   ksize = ksize
   if ( params.one_signature_per_record ){
     """
     sourmash compute \
       --num-hashes \$((2**$log2_sketch_size)) \
       --ksizes $ksize \
+      $not_dna \
       --$molecule \
       --output ${sample_id}_${sketch_id}.sig \
       $read1 $read2
@@ -167,6 +171,7 @@ process sourmash_compute_sketch {
     sourmash compute \
       --num-hashes \$((2**$log2_sketch_size)) \
       --ksizes $ksize \
+      $not_dna \
       --$molecule \
       --output ${sample_id}_${sketch_id}.sig \
       --merge '$sample_id' $reads
