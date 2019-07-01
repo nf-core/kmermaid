@@ -45,7 +45,7 @@ def helpMessage() {
     Sample Arguments -- One or more of:
       --samples                     CSV file with columns id, read1, read2 for each sample
       --fastas
-      --read_pairs                 Local or s3 directories containing *R{1,2}*.fastq.gz
+      --read_pairs                  Local or s3 directories containing *R{1,2}*.fastq.gz
                                     files, separated by commas
       --sra                         SRR, ERR, SRP IDs representing a project. Only compatible with
                                     Nextflow 19.03-edge or greater
