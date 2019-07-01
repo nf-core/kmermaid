@@ -36,7 +36,7 @@ RUN cd /home && \
 RUN trim-low-abund.py --help
 RUN trim-low-abund.py --version
 
-RUN conda install --channel bioconda --yes sourmash
+# RUN conda install --channel bioconda --yes sourmash
 
 # Required for multiprocessing of 10x bam file
 # RUN pip install pathos bamnostic
