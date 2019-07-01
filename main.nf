@@ -55,7 +55,7 @@ def helpMessage() {
       --ksizes                      Which nucleotide k-mer sizes to use. Multiple are
                                     separated by commas. Default is '21,27,33,51'
       --molecules                   Which molecule to compare on. Default is both DNA
-                                    and protein, i.e. 'dna,protein'
+                                    and protein, i.e. 'dna,protein,dayhoff'
       --log2_sketch_sizes           Which log2 sketch sizes to use. Multiple are separated
                                     by commas. Default is '10,12,14,16'
       --one_signature_per_record    Make a k-mer signature for each record in the FASTQ/FASTA files.
@@ -154,7 +154,7 @@ process sourmash_compute_sketch {
   molecule = molecule
   // Don't calculate DNA signature if this is protein, to minimize disk,
   // memory and IO requirements in the future
-  def not_dna = molecule != 'dna' ? '--no-dna' : ''
+  not_dna = molecule != 'dna' ? '--no-dna' : ''
   ksize = ksize
   if ( params.one_signature_per_record ){
     """
