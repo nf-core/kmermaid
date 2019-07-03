@@ -11,8 +11,7 @@ To start using the nf-core/nf-kmer-similarity pipeline, follow the steps below:
     * [Software deps: Docker and Singularity](#31-software-deps-docker-and-singularity)
     * [Software deps: Bioconda](#32-software-deps-bioconda)
     * [Configuration profiles](#33-configuration-profiles)
-4. [Reference genomes](#4-reference-genomes)
-5. [Appendices](#appendices)
+4. [Appendices](#appendices)
     * [Running on UPPMAX](#running-on-uppmax)
 
 ## 1) Install NextFlow
