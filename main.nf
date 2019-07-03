@@ -142,6 +142,7 @@ fastas_ch = Channel.empty()
      .ifEmpty { exit 1, "params.fastas was empty - no input files supplied" }
  }
 
+// Parameters for testing
  if(params.read_paths_singles){
      read_paths_single_end_ch = Channel
          .from(params.read_paths_singles)
