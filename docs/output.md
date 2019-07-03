@@ -8,6 +8,8 @@ The pipeline is built using [Nextflow](https://www.nextflow.io/)
 and processes data using the following steps:
 
 * [FastQC](#fastqc) - read quality control
+* [Sourmash sketch](#sourmash-sketch) - Compute a k-mer sketch of each sample
+* [Sourmash compare](#sourmash-compare) - Compare all samples on k-mer sketches
 * [MultiQC](#multiqc) - aggregate report, describing results of the whole pipeline
 
 ## FastQC
@@ -24,6 +26,53 @@ For further reading and documentation see the [FastQC help](http://www.bioinform
 * `zips/sample_fastqc.zip`
   * zip file containing the FastQC report, tab-delimited data file and plot images
 
+## Sourmash Sketch
+
+[Sourmash](https://sourmash.readthedocs.io/en/latest/) is a tool to compute MinHash sketches on nucleotide (DNA/RNA) and protein sequences. It allows for fast comparisons of sequences based on their nucleotide content.
+
+**Output directory: `results/sourmash/sketches`**
+
+For each sample and provided `molecule`, `ksize` and `log2_sketch_size`, a file is created:
+
+* `sample_molecule-$molecule_ksize-$ksize_log2sketchsize-$log2_sketch_size.sig`
+
+For example:
+
+```
+SRR4050379_molecule-dayhoff_ksize-3_log2sketchsize-2.sig
+SRR4050379_molecule-dayhoff_ksize-3_log2sketchsize-4.sig
+SRR4050379_molecule-dayhoff_ksize-9_log2sketchsize-2.sig
+SRR4050379_molecule-dayhoff_ksize-9_log2sketchsize-4.sig
+SRR4050379_molecule-dna_ksize-3_log2sketchsize-2.sig
+SRR4050379_molecule-dna_ksize-3_log2sketchsize-4.sig
+SRR4050379_molecule-dna_ksize-9_log2sketchsize-2.sig
+SRR4050379_molecule-dna_ksize-9_log2sketchsize-4.sig
+SRR4050379_molecule-protein_ksize-3_log2sketchsize-2.sig
+SRR4050379_molecule-protein_ksize-3_log2sketchsize-4.sig
+SRR4050379_molecule-protein_ksize-9_log2sketchsize-2.sig
+SRR4050379_molecule-protein_ksize-9_log2sketchsize-4.sig
+```
+
+## Sourmash Compare
+
+**Output directory: `results/sourmash`**
+
+For each provided `molecule`, `ksize` and `log2_sketch_size`, a file is created containing a symmetric matrix of the similarity between all samples, written as a comma-separated variable file:
+
+* `molecule-$molecule_ksize-$ksize_log2sketchsize-$log2_sketch_size.csv`
+
+For example,
+
+```
+similarities_molecule-dna_ksize-3_log2sketchsize-2.csv
+similarities_molecule-dna_ksize-3_log2sketchsize-4.csv
+similarities_molecule-dna_ksize-9_log2sketchsize-2.csv
+similarities_molecule-dna_ksize-9_log2sketchsize-4.csv
+similarities_molecule-protein_ksize-3_log2sketchsize-2.csv
+similarities_molecule-protein_ksize-3_log2sketchsize-4.csv
+similarities_molecule-protein_ksize-9_log2sketchsize-2.csv
+similarities_molecule-protein_ksize-9_log2sketchsize-4.csv
+```
 
 ## MultiQC
 [MultiQC](http://multiqc.info) is a visualisation tool that generates a single HTML report summarising all samples in your project. Most of the pipeline QC results are visualised in the report and further statistics are available in within the report data directory.
