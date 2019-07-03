@@ -12,11 +12,17 @@
         * [`awsbatch`](#awsbatch)
         * [`standard`](#standard)
         * [`none`](#none)
-    * [`--reads`](#--reads)
-    * [`--singleEnd`](#--singleend)
-* [Reference Genomes](#reference-genomes)
-    * [`--genome`](#--genome)
-    * [`--fasta`](#--fasta)
+    * [Read inputs](#read-inputs)
+        * [`--read_pairs`](#--read_pairs)
+        * [`--read_singles`](#--read_singles)
+        * [`--csv_pairs`](#--csv_pairs)
+        * [`--csv_singles`](#--csv_singles)
+        * [`--fastas`](#--fastas)
+        * [`--sra`](#--sra)
+    * [Sketch parameters](#sketch-parameters)
+        * [`--molecule`](#--molecule)
+        * [`--ksize`](#--ksize)
+        * [`--log2_sketch_size`](#--log2_sketch_size)
 * [Job Resources](#job-resources)
 * [Automatic resubmission](#automatic-resubmission)
 * [Custom resource requests](#custom-resource-requests)
@@ -104,29 +110,157 @@ Use this parameter to choose a configuration profile. Profiles can give configur
 * `none`
     * No configuration at all. Useful if you want to build your own config from scratch and want to avoid loading in the default `base` config profile (not recommended).
 
-### `--reads`
-Use this to specify the location of your input FastQ files. For example:
+## Read inputs
+
+This pipeline can take a large variety of input data, ranging from single-end or paired-end FASTQ files (`fastq.gz` totally cool, too), [SRA](https://www.ncbi.nlm.nih.gov/sra) ids or fasta files.
+
+### `--read_pairs`
+Use this to specify the location of your input *paired-end* FastQ files. Multiple paths can be separated by seimcolons (`;`). For example:
 
 ```bash
---reads 'path/to/data/sample_*_{1,2}.fastq'
+--read_pairs 'path/to/data/sample_*_{1,2}.fastq.gz;more/data/sample_*_{1,2}.fastq.gz'
 ```
 
 Please note the following requirements:
 
 1. The path must be enclosed in quotes
 2. The path must have at least one `*` wildcard character
-3. When using the pipeline with paired end data, the path must use `{1,2}` notation to specify read pairs.
+3. When using the pipeline with paired end data, the path must use `{1,2}` or `{R1,R2}` notation to specify read pairs.
 
 If left unspecified, a default pattern is used: `data/*{1,2}.fastq.gz`
 
-### `--singleEnd`
-By default, the pipeline expects paired-end data. If you have single-end data, you need to specify `--singleEnd` on the command line when you launch the pipeline. A normal glob pattern, enclosed in quotation marks, can then be used for `--reads`. For example:
+### `--read_singles`
+
+Use this to specify the location of your input *single-end* FastQ files.  Multiple paths can be separated by seimcolons (`;`). For example:
 
 ```bash
---singleEnd --reads '*.fastq'
+--read_singles 'path/to/data/sample_*.fastq;more/data/sample*.fastq.gz'
 ```
 
-It is not possible to run a mixture of single-end and paired-end files in one run.
+Please note the following requirements:
+
+1. The path must be enclosed in quotes
+2. The path must have at least one `*` wildcard character
+
+If left unspecified, no reads are used.
+
+### `--csv_pairs`
+Use this to specify the location of a csv containing the columns `sample_id`, `read1`, `read2` to your input *paired-end* FastQ files. For example:
+
+```bash
+--csv_pairs samples.csv
+```
+
+Please note the following requirements:
+
+1. The CSV contains a header, typically `sample_id`, `read1`, `read2`, but the names aren't used.
+1. The first column contains a sample ID
+1. The second column contains the full path to the R1 read
+1. The third column contains the full path to the R2 read
+
+If left unspecified, no reads are used.
+
+### `--csv_singles`
+Use this to specify the location of a csv containing the columns `sample_id`, `read1` to your input *single-end* FastQ files. For example:
+
+```bash
+--csv_singles samples.csv
+```
+
+Please note the following requirements:
+
+1. The CSV contains a header, typically `sample_id`, `read1` but the names aren't used.
+1. The first column contains a sample ID
+1. The second column contains the full path to the R1 read
+
+If left unspecified, no reads are used.
+
+### `--fastas`
+
+Use this to specify the location of fasta sequence files. Multiple inputs can be separated by seimcolons (`;`). For example:
+
+```bash
+--fastas 'path/to/data/elephant.fasta;more/data/*.fasta'
+```
+
+Please note the following requirements:
+
+1. The path must be enclosed in quotes
+2. The path *may* have at one or more `*` wildcard character
+
+If left unspecified, no samples are used.
+
+### `--sra`
+
+Use this to specify the location of fasta sequence files. Multiple inputs can be separated by seimcolons (`;`). For example:
+
+```bash
+--sra 'SRR4050379;SRR4050380;SRP016501'
+```
+
+Please note the following requirements:
+
+1. The path must be enclosed in quotes
+2. Any of the `SRR`, `SRP`, or `PRJNA` ids can be used
+
+If left unspecified, no samples are used.
+
+## Sketch parameters
+
+[K-mer](https://en.wikipedia.org/wiki/K-mer) [MinHash](https://en.wikipedia.org/wiki/MinHash) sketches are defined by three parameters:
+
+1. The [molecule](#--molecule) used to create k-mer words from each sample
+1. The [ksize](#--ksize) used to extract k-mer words from each sample
+1. The number of k-mer words specified by the [log2 sketch size](#--log2_sketch_size)
+
+### `--molecule`
+
+The molecule can be either `dna`, `protein`, or `dayhoff`, and if all of them are desired, then they can be separated by columns.
+
+* `dna` indicates to use the raw nucleotide sequence from each input file to create k-mers
+* `protein` indicates to translate each DNA k-mer into protein using [6-frame translation](https://en.wikipedia.org/wiki/Reading_frame#/media/File:Open_reading_frame.jpg), and hash the translated peptide fragment k-mers
+* `dayhoff`, developed by [Margaret Oakley Dayhoff](https://en.wikipedia.org/wiki/Margaret_Oakley_Dayhoff) is an extension of `protein`, where in addition to translating each amino acid k-mer in six frames, each amino acid is remapped to a degenerate amino acid encoding. This degenerate encoding doesn't penalize large evolutionary distances as a k-mer changing. For example, an small residue change of an Alanine (`A`) to a Glycine (`G`) doesn't hash to the same value and thus do not match, but a Dayhoff-encoded amino acid would allow for these small changes.
+
+| Amino acid    | Property              | Dayhoff |
+|---------------|-----------------------|---------|
+| C             | Sulfur polymerization | a       |
+| A, G, P, S, T | Small                 | b       |
+| D, E, N, Q    | Acid and amide        | c       |
+| H, K, R       | Basic                 | d       |
+| I, L, M, V    | Hydrophobic           | e       |
+| F, W, Y       | Aromatic              | f       |
+
+**Example parameters**
+
+* Default:
+  * `--molecule dna,protein,dayhoff`
+* DNA only:
+  * `--molecule dna`
+
+
+### `--ksize`
+
+The fundamental unit of the sketch is a [hashed](https://en.wikipedia.org/wiki/Hash_function) [k-mer](https://en.wikipedia.org/wiki/K-mer). The `--ksize` parameter determines how long of a DNA word to use to create the k-mers. When the  molecule is `protein` or `dayhoff`, then the `ksize/3` is used to create each k-mer.
+
+*NB: if either `protein` or `dayhoff` is specified, the k-mer size must be divisible by 3*
+
+**Example parameters**
+
+* Default:
+  * `--ksize 21,27,33,51`
+* k-mer size of 21 only:
+  * `--ksize 21`
+
+### `--log2_sketch_size`
+
+The log2 sketch size specifies the number of k-mers to use for the sketch. We use the log2 of the sketch size instead of the raw number of k-mers to be compatible for comparison with [`dashing`](https://github.com/dnbaker/dashing) that uses HyperLogLog instead of MinHash.
+
+**Example parameters**
+
+* Default:
+  * `--log2_sketch_size 10,12,14,16`
+* Only a log2 sketch size of 8 (2^8 = 256):
+  * `--log2_sketch_size 8`
 
 
 ## Reference Genomes
