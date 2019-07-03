@@ -1,4 +1,4 @@
-# nf-core/demux: Changelog
+# nf-core/nf-kmer-similarity: Changelog
 
-## v1.0dev - <date>
-Initial release of nf-core/demux, created with the [nf-core](http://nf-co.re/) template.
+## v1.0dev - June
+Initial release of nf-core/nf-kmer-similarity, created with the [nf-core](http://nf-co.re/) template.

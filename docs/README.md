@@ -1,6 +1,6 @@
-# nf-core/demux: Documentation
+# nf-core/nf-kmer-similarity: Documentation
 
-The nf-core/demux documentation is split into the following files:
+The nf-core/nf-kmer-similarity documentation is split into the following files:
 
 1. [Installation](installation.md)
 2. [Running the pipeline](usage.md)
