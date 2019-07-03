@@ -138,6 +138,7 @@ fastas_ch = Channel.empty()
      .map{ f -> tuple(f.baseName, tuple(file(f))) }
  }
 
+// Parameters for testing
  if(params.read_paths_singles){
      read_paths_single_end_ch = Channel
          .from(params.read_paths_singles)
