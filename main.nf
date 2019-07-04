@@ -251,12 +251,13 @@ process get_software_versions {
 
     output:
     file 'software_versions_mqc.yaml' into software_versions_yaml
-    file "software_versions.csv"
+    file "software_versions.txt"
 
     script:
     """
-    echo $workflow.nextflow.version &> v_nextflow.txt
-    sourmash info > v_sourmash.txt
+    echo $workflow.manifest.version > v_pipeline.txt
+    echo $workflow.nextflow.version > v_nextflow.txt
+    sourmash info &> v_sourmash.txt
     scrape_software_versions.py &> software_versions_mqc.yaml
     """
 }
@@ -347,9 +348,6 @@ workflow.onComplete {
 
     // Set up the e-mail variables
     def subject = "[nf-core/rnaseq] Successful: $workflow.runName"
-    if(skipped_poor_alignment.size() > 0){
-        subject = "[nf-core/rnaseq] Partially Successful (${skipped_poor_alignment.size()} skipped): $workflow.runName"
-    }
     if(!workflow.success){
       subject = "[nf-core/rnaseq] FAILED: $workflow.runName"
     }
@@ -373,24 +371,9 @@ workflow.onComplete {
     if(workflow.commitId) email_fields['summary']['Pipeline repository Git Commit'] = workflow.commitId
     if(workflow.revision) email_fields['summary']['Pipeline Git branch/tag'] = workflow.revision
     if(workflow.container) email_fields['summary']['Docker image'] = workflow.container
-    email_fields['skipped_poor_alignment'] = skipped_poor_alignment
     email_fields['summary']['Nextflow Version'] = workflow.nextflow.version
     email_fields['summary']['Nextflow Build'] = workflow.nextflow.build
     email_fields['summary']['Nextflow Compile Timestamp'] = workflow.nextflow.timestamp
-
-    // On success try attach the multiqc report
-    def mqc_report = null
-    try {
-        if (workflow.success && !params.skipMultiQC) {
-            mqc_report = multiqc_report.getVal()
-            if (mqc_report.getClass() == ArrayList){
-                log.warn "[nf-core/rnaseq] Found multiple reports from process 'multiqc', will use only one"
-                mqc_report = mqc_report[0]
-            }
-        }
-    } catch (all) {
-        log.warn "[nf-core/rnaseq] Could not attach MultiQC report to summary email"
-    }
 
     // Render the TXT template
     def engine = new groovy.text.GStringTemplateEngine()
