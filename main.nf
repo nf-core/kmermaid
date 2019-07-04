@@ -79,6 +79,9 @@ if (params.help){
  * SET UP CONFIGURATION VARIABLES
  */
 
+// read_paths is only used for testing
+read_paths_ch = Channel.empty()
+
 // Samples from SRA
 sra_ch = Channel.empty()
 
@@ -103,12 +106,6 @@ if (params.read_paths) {
          .from(params.read_paths)
          .map { row -> [ row[0], [file(row[1][0]), file(row[1][1])]] }
          .ifEmpty { exit 1, "params.read_paths was empty - no input files supplied" }
-   if(params.read_paths_singles){
-       read_paths_single_end_ch = Channel
-           .from(params.read_paths_singles)
-           .map { row -> [ row[0], [file(row[1][0])]] }
-           .ifEmpty { exit 1, "params.read_paths_single_end was empty - no input files supplied" }
-   }
  } else {
    // Provided SRA ids
    if (params.sra){
@@ -157,7 +154,7 @@ if (params.read_paths) {
 
 
  sra_ch.concat(samples_ch, csv_singles_ch, read_pairs_ch,
-   read_singles_ch, fastas_ch, read_paths_single_end_ch, read_paths_ch)
+   read_singles_ch, fastas_ch, read_paths_ch)
    .ifEmpty{ exit 1, "No reads provided! Check read input files"}
    .set{ reads_ch }
 
