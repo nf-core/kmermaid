@@ -239,6 +239,29 @@ ${summary.collect { k,v -> "            <dt>$k</dt><dd><samp>${v ?: '<span style
 }
 
 
+/*
+ * Parse software version numbers
+ */
+process get_software_versions {
+    publishDir "${params.outdir}/pipeline_info", mode: 'copy',
+    saveAs: {filename ->
+        if (filename.indexOf(".csv") > 0) filename
+        else null
+    }
+
+    output:
+    file 'software_versions_mqc.yaml' into software_versions_yaml
+    file "software_versions.csv"
+
+    script:
+    """
+    echo $workflow.nextflow.version &> v_nextflow.txt
+    sourmash info > v_sourmash.txt
+    scrape_software_versions.py &> software_versions_mqc.yaml
+    """
+}
+
+
 process sourmash_compute_sketch {
 	tag "${sample_id}_${sketch_id}"
 	publishDir "${params.outdir}/sketches", mode: 'copy'
