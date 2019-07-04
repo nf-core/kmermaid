@@ -1,6 +1,10 @@
 test:
 	nextflow run main.nf -profile docker,test
 
+docker_push:
+	sudo docker login
+	docker push czbiohub/nf-kmer-similarity:dev
+
 docker_build:
 	@docker build \
 		--build-arg VCS_REF=`git rev-parse --short HEAD`  \
