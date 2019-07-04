@@ -133,7 +133,6 @@ log2_sketch_sizes = params.log2_sketch_sizes?.toString().tokenize(',')
 process sourmash_compute_sketch {
 	tag "${sample_id}_${sketch_id}"
 	publishDir "${params.outdir}/sketches", mode: 'copy'
-	container 'czbiohub/nf-kmer-similarity:olgabot-dayhoff'
 
 	// If job fails, try again with more memory
 	// memory { 8.GB * task.attempt }
@@ -185,8 +184,6 @@ process sourmash_compute_sketch {
 
 process sourmash_compare_sketches {
 	tag "${sketch_id}"
-
-	container 'czbiohub/nf-kmer-similarity:olgabot-dayhoff'
 	publishDir "${params.outdir}/", mode: 'copy'
 	errorStrategy 'retry'
   maxRetries 3
