@@ -188,13 +188,19 @@ log.info nfcoreHeader()
 def summary = [:]
 if(workflow.revision) summary['Pipeline Release'] = workflow.revision
 summary['Run Name']         = custom_runName ?: workflow.runName
-if(params.read_pairs)     summary['Read Pairs']                 = params.read_pairs
-if(params.read_singles)     summary['Single-end reads']         = params.read_singles
-if(params.csv_pairs) summary['Paired-end samples.csv']            = params.csv_pairs
-if(params.csv_singles) summary['Single-end samples.csv']    = params.csv_singles
-if(params.sra)       summary['SRA']                             = params.sra
-if(params.fastas)     summary["FASTAs"]                          = params.fastas
-if(params.read_paths) summary['Read paths (paired-end)']            = params.read_paths
+// Input reads
+if(params.read_pairs)   summary['Read Pairs']                 = params.read_pairs
+if(params.read_singles) summary['Single-end reads']         = params.read_singles
+if(params.csv_pairs)    summary['Paired-end samples.csv']            = params.csv_pairs
+if(params.csv_singles)  summary['Single-end samples.csv']    = params.csv_singles
+if(params.sra)          summary['SRA']                             = params.sra
+if(params.fastas)       summary["FASTAs"]                          = params.fastas
+if(params.read_paths)   summary['Read paths (paired-end)']            = params.read_paths
+// Sketch parameters
+summary['K-mer sizes']            = params.ksizes
+summary['Molecule']               = params.molecules
+summary['Log2 Sketch Sizes']      = params.log2_sketch_sizes
+// Resource information
 summary['Max Resources']    = "$params.max_memory memory, $params.max_cpus cpus, $params.max_time time per job"
 if(workflow.containerEngine) summary['Container'] = "$workflow.containerEngine - $workflow.container"
 summary['Output dir']       = params.outdir
