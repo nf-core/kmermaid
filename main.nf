@@ -43,10 +43,12 @@ def helpMessage() {
       --outdir                      Local or S3 directory to output the comparison matrix to
 
     Sample Arguments -- One or more of:
-      --samples                     CSV file with columns id, read1, read2 for each sample
-      --fastas
       --read_pairs                  Local or s3 directories containing *R{1,2}*.fastq.gz
                                     files, separated by commas
+      --read_singles                Local or s3 directories of single-end read files, separated by commas
+      --csv_pairs                   CSV file with columns id, read1, read2 for each sample
+      --csv_singles                 CSV file with columns id, read1, read2 for each sample
+      --fastas
       --sra                         SRR, ERR, SRP IDs representing a project. Only compatible with
                                     Nextflow 19.03-edge or greater
 
@@ -84,7 +86,7 @@ sra_ch = Channel.empty()
 samples_ch = Channel.empty()
 
 // Single-enede reads from a samples.csv file
-samples_singles_ch = Channel.empty()
+csv_singles_ch = Channel.empty()
 
 // Extract R1, R2 pairs from a directory
 read_pairs_ch = Channel.empty()
@@ -102,20 +104,22 @@ fastas_ch = Channel.empty()
        .fromSRA( params.sra?.toString()?.tokenize(';') )
  }
  // Provided a samples.csv file of read pairs
- if (params.samples){
+ if (params.csv_pairs){
    samples_ch = Channel
-    .fromPath(params.samples)
+    .fromPath(params.csv_pairs)
     .splitCsv(header:true)
     .map{ row -> tuple(row[0], tuple(file(row[1]), file(row[2])))}
- }
+    .ifEmpty { exit 1, "params.csv_pairs was empty - no input files supplied" }
+}
 
  // Provided a samples.csv file of single-ended reads
- if (params.samples_singles){
-   samples_singles_ch = Channel
-    .fromPath(params.samples_singles)
+ if (params.csv_singles){
+   csv_singles_ch = Channel
+    .fromPath(params.csv_singles)
     .splitCsv(header:true)
     .map{ row -> tuple(row[0], tuple(file(row[1])))}
- }
+    .ifEmpty { exit 1, "params.csv_singles was empty - no input files supplied" }
+}
 
  // Provided fastq gz read pairs
  if (params.read_pairs){
@@ -134,8 +138,21 @@ fastas_ch = Channel.empty()
      .map{ f -> tuple(f.baseName, tuple(file(f))) }
  }
 
- sra_ch.concat(samples_ch, samples_singles_ch, read_pairs_ch,
-  read_singles_ch, fastas_ch)
+ if(params.read_paths_singles){
+     read_paths_single_end_ch = Channel
+         .from(params.read_paths_singles)
+         .map { row -> [ row[0], [file(row[1][0])]] }
+         .ifEmpty { exit 1, "params.read_paths_single_end was empty - no input files supplied" }
+ }
+if (params.read_paths) {
+     read_paths_ch = Channel
+         .from(params.read_paths)
+         .map { row -> [ row[0], [file(row[1][0]), file(row[1][1])]] }
+         .ifEmpty { exit 1, "params.read_paths was empty - no input files supplied" }
+ }
+
+
+ sra_ch.concat(samples_ch, csv_singles_ch, read_pairs_ch, read_singles_ch, fastas_ch, read_paths_single_end_ch, read_paths_ch)
   .set{ reads_ch }
 
 
@@ -170,8 +187,8 @@ if(workflow.revision) summary['Pipeline Release'] = workflow.revision
 summary['Run Name']         = custom_runName ?: workflow.runName
 if(params.read_pairs)     summary['Read Pairs']                 = params.read_pairs
 if(params.read_singles)     summary['Single-end reads']         = params.read_singles
-if(params.samples) summary['Paired-end samples.csv']            = params.samples
-if(params.samples_singles) summary['Single-end samples.csv']    = params.samples_singles
+if(params.csv_pairs) summary['Paired-end samples.csv']            = params.csv_pairs
+if(params.csv_singles) summary['Single-end samples.csv']    = params.csv_singles
 if(params.sra)       summary['SRA']                             = params.sra
 if(params.fasta)     summary["FASTAs"]                          = params.fasta
 summary['Data Type']        = params.singleEnd ? 'Single-End' : 'Paired-End'
@@ -204,10 +221,10 @@ checkHostname()
 def create_workflow_summary(summary) {
     def yaml_file = workDir.resolve('workflow_summary_mqc.yaml')
     yaml_file.text  = """
-    id: 'nf-core-rnaseq-summary'
+    id: 'nf-core-kmer-similarity-summary'
     description: " - this information is collected when the pipeline is started."
-    section_name: 'nf-core/rnaseq Workflow Summary'
-    section_href: 'https://github.com/nf-core/rnaseq'
+    section_name: 'nf-core/kmer-similarity Workflow Summary'
+    section_href: 'https://github.com/nf-core/kmer-similarity'
     plot_type: 'html'
     data: |
         <dl class=\"dl-horizontal\">
@@ -314,7 +331,7 @@ def nfcoreHeader(){
     ${c_blue}  |\\ | |__  __ /  ` /  \\ |__) |__         ${c_yellow}}  {${c_reset}
     ${c_blue}  | \\| |       \\__, \\__/ |  \\ |___     ${c_green}\\`-._,-`-,${c_reset}
                                             ${c_green}`._,._,\'${c_reset}
-    ${c_purple}  nf-core/rnaseq v${workflow.manifest.version}${c_reset}
+    ${c_purple}  nf-core/kmer-similarity v${workflow.manifest.version}${c_reset}
     ${c_dim}----------------------------------------------------${c_reset}
     """.stripIndent()
 }
