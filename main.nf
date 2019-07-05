@@ -195,7 +195,6 @@ if(params.csv_singles) summary['Single-end samples.csv']    = params.csv_singles
 if(params.sra)       summary['SRA']                             = params.sra
 if(params.fastas)     summary["FASTAs"]                          = params.fastas
 if(params.read_paths) summary['Read paths (paired-end)']            = params.read_paths
-if(params.read_paths_singles) summary['Read paths (single-end)']    = params.read_paths_singles
 summary['Max Resources']    = "$params.max_memory memory, $params.max_cpus cpus, $params.max_time time per job"
 if(workflow.containerEngine) summary['Container'] = "$workflow.containerEngine - $workflow.container"
 summary['Output dir']       = params.outdir
