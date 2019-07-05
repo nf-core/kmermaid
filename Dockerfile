@@ -36,14 +36,14 @@ RUN cd /home && \
 RUN trim-low-abund.py --help
 RUN trim-low-abund.py --version
 
-RUN conda install --channel bioconda --yes sourmash
+# RUN conda install --channel bioconda --yes sourmash
 
 # Required for multiprocessing of 10x bam file
 # RUN pip install pathos bamnostic
 
-# ENV SOURMASH_VERSION master
+ENV SOURMASH_VERSION 'olgabot/dayhoff'
 RUN cd /home && \
-    git clone https://github.com/dib-lab/sourmash.git && \
+    git clone --branch $SOURMASH_VERSION https://github.com/czbiohub/sourmash.git && \
     cd sourmash && \
     python3 setup.py install
 
@@ -51,5 +51,3 @@ RUN which -a python3
 RUN python3 --version
 RUN sourmash info
 COPY docker/sysctl.conf /etc/sysctl.conf
-
-USER main
