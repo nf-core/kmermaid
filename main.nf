@@ -274,11 +274,7 @@ process get_software_versions {
 process sourmash_compute_sketch {
 	tag "${sample_id}_${sketch_id}"
 	publishDir "${params.outdir}/sketches", mode: 'copy'
-
-	// If job fails, try again with more memory
-	// memory { 8.GB * task.attempt }
-	errorStrategy 'retry'
-  maxRetries 3
+  label 'low_memory'
 
 	input:
 	each ksize from ksizes
@@ -326,8 +322,7 @@ process sourmash_compute_sketch {
 process sourmash_compare_sketches {
 	tag "${sketch_id}"
 	publishDir "${params.outdir}/", mode: 'copy'
-	errorStrategy 'retry'
-  maxRetries 3
+  label 'mid_memory'
 
 	input:
   set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file ("sketches/*.sig") \
