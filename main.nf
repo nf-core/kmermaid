@@ -294,22 +294,22 @@ process sourmash_compute_sketch {
   ksize = ksize
   if ( params.one_signature_per_record ){
     """
-    sourmash compute \
-      --num-hashes \$((2**$log2_sketch_size)) \
-      --ksizes $ksize \
-      $not_dna \
-      --$molecule \
-      --output ${sample_id}_${sketch_id}.sig \
+    sourmash compute \\
+      --num-hashes \$((2**$log2_sketch_size)) \\
+      --ksizes $ksize \\
+      $not_dna \\
+      --$molecule \\
+      --output ${sample_id}_${sketch_id}.sig \\
       $read1 $read2
     """
   } else {
     """
-    sourmash compute \
-      --num-hashes \$((2**$log2_sketch_size)) \
-      --ksizes $ksize \
-      $not_dna \
-      --$molecule \
-      --output ${sample_id}_${sketch_id}.sig \
+    sourmash compute \\
+      --num-hashes \$((2**$log2_sketch_size)) \\
+      --ksizes $ksize \\
+      $not_dna \\
+      --$molecule \\
+      --output ${sample_id}_${sketch_id}.sig \\
       --merge '$sample_id' $reads
     """
   }
