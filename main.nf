@@ -64,6 +64,8 @@ def helpMessage() {
                                     Useful for comparing e.g. assembled transcriptomes or metagenomes.
                                     (Not typically used for raw sequencing data as this would create
                                     a k-mer signature for each read!)
+      --splitKmer                   If provided, use SKA to compute split k-mer sketches instead of
+                                    sourmash to compute k-mer sketches
     """.stripIndent()
 }
 
@@ -268,54 +270,89 @@ process get_software_versions {
     """
 }
 
+if (params.splitKmer){
+  ///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+/* --                                                                     -- */
+/* --                     CREATE SKA SKETCH                               -- */
+/* --                                                                     -- */
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
-process sourmash_compute_sketch {
-	tag "${sample_id}_${sketch_id}"
-	publishDir "${params.outdir}/sketches", mode: 'copy'
-	container 'czbiohub/nf-kmer-similarity'
+process ska_compute_sketch {
+    tag "${sequence_id}_${sketch_id}"
+    container 'phoenixajalogan/nf-ska'
+    publishDir "${params.outdir}", mode: 'copy'
+    errorStrategy 'retry'
+    maxRetries 3
 
-	// If job fails, try again with more memory
-	// memory { 8.GB * task.attempt }
-	errorStrategy 'retry'
-  maxRetries 3
 
-	input:
-	each ksize from ksizes
-	each molecule from molecules
-	each log2_sketch_size from log2_sketch_sizes
-	set sample_id, file(reads) from reads_ch
+    input:
+    set sequence_id, file(reads) from reads_ch
 
-	output:
-  set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches
+    output:
+    file "${sequence_id}_${sketch_id}.skf"
+    //set file("${sequence_id}_${sketch_id}.skf") into ska_sketches
 
-	script:
-  sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
-  molecule = molecule
-  not_dna = molecule == 'dna' ? '' : '--no-dna'
-  ksize = ksize
-  if ( params.one_signature_per_record ){
+    script:
+    sketch_id = "k15"
+    sequence_id = sequence_id
     """
-    sourmash compute \\
-      --num-hashes \$((2**$log2_sketch_size)) \\
-      --ksizes $ksize \\
-      --$molecule \\
-      $not_dna \\
-      --output ${sample_id}_${sketch_id}.sig \\
-      $reads
-    """
-  } else {
-    """
-    sourmash compute \\
-      --num-hashes \$((2**$log2_sketch_size)) \\
-      --ksizes $ksize \\
-      --$molecule \\
-      $not_dna \\
-      --output ${sample_id}_${sketch_id}.sig \\
-      --merge '$sample_id' $reads
+    ska fastq \\
+      -o ${sequence_id}_${sketch_id} \\
+      ${reads}
     """
   }
+} else {
+  process sourmash_compute_sketch {
+  	tag "${sample_id}_${sketch_id}"
+  	publishDir "${params.outdir}/sketches", mode: 'copy'
+  	container 'czbiohub/nf-kmer-similarity'
 
+  	// If job fails, try again with more memory
+  	// memory { 8.GB * task.attempt }
+  	errorStrategy 'retry'
+    maxRetries 3
+
+  	input:
+  	each ksize from ksizes
+  	each molecule from molecules
+  	each log2_sketch_size from log2_sketch_sizes
+  	set sample_id, file(reads) from reads_ch
+
+  	output:
+    set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches
+
+  	script:
+    sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
+    molecule = molecule
+    not_dna = molecule == 'dna' ? '' : '--no-dna'
+    ksize = ksize
+    if ( params.one_signature_per_record ){
+      """
+      sourmash compute \\
+        --num-hashes \$((2**$log2_sketch_size)) \\
+        --ksizes $ksize \\
+        --$molecule \\
+        $not_dna \\
+        --output ${sample_id}_${sketch_id}.sig \\
+        $reads
+      """
+    } else {
+      """
+      sourmash compute \\
+        --num-hashes \$((2**$log2_sketch_size)) \\
+        --ksizes $ksize \\
+        --$molecule \\
+        $not_dna \\
+        --output ${sample_id}_${sketch_id}.sig \\
+        --merge '$sample_id' $reads
+      """
+    }
+
+  }
 }
+
 
 // sourmash_sketches.println()
 // sourmash_sketches.groupTuple(by: [0,3]).println()
