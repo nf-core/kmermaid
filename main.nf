@@ -67,30 +67,8 @@ def helpMessage() {
                                     Useful for comparing e.g. assembled transcriptomes or metagenomes.
                                     (Not typically used for raw sequencing data as this would create
                                     a k-mer signature for each read!)
-      --write_barcode_meta_csv      For bam files, Csv file name relative to outdir/barcode_metadata to write number of reads and number of umis per barcode.
-                                    This csv file is empty with just header when the min_umi_per_barcode is zero i.e
-                                    Reads and umis per barcode are calculated only when the barcodes are filtered
-                                    based on min_umi_per_barcode
-      --min_umi_per_barcode         A barcode is only considered a valid barcode read
-                                    and its signature is written if number of umis are greater than min_umi_per_barcode
-      --line_count                  Number of lines to contain in each sharded bam file
-      --barcodes_file               For bam files, Optional absolute path to a .tsv barcodes file if the input is unfiltered 10x bam file
-      --rename_10x_barcodes         For bam files, Optional absolute path to a .tsv Tab-separated file mapping 10x barcode name
-                                    to new name, e.g. with channel or cell annotation label
-
-    Extract protein-coding options:
-      --peptide_fasta               Path to a well-curated fasta file of protein sequences. Used to filter for coding reads
-      --bloomfilter_tablesize       Maximum table size for bloom filter creation
-
-
-    Trimming options:
-      --minlength                   Minimum length of reads after trimming, default 100
-      --skipTrimming                 Don't trim reads on quality
-
-    Other Options:
-      --email                       Set this parameter to your e-mail address to get a summary e-mail with details of the run sent to you when the workflow exits
-      -name                         Name for the pipeline run. If not specified, Nextflow will automatically generate a random mnemonic.
-
+      --splitKmer                   If provided, use SKA to compute split k-mer sketches instead of
+                                    sourmash to compute k-mer sketches
     """.stripIndent()
 }
 
@@ -375,235 +353,92 @@ process get_software_versions {
     """
 }
 
-if (params.peptide_fasta){
-  process peptide_bloom_filter {
-    tag "${peptides}__${bloom_id}"
-    label "low_memory"
+if (params.splitKmer){
+  ///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+/* --                                                                     -- */
+/* --                     CREATE SKA SKETCH                               -- */
+/* --                                                                     -- */
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
-    publishDir "${params.outdir}/bloom_filter", mode: 'copy'
-
-    input:
-    file(peptides) from ch_peptide_fasta
-    peptide_ksize
-    peptide_molecule
-
-    output:
-    set val(bloom_id), val(peptide_molecule), file("${peptides.simpleName}__${bloom_id}.bloomfilter") into ch_khtools_bloom_filter
-
-    script:
-    bloom_id = "molecule-${peptide_molecule}_ksize-${peptide_ksize}"
-    """
-    khtools bloom-filter \\
-      --tablesize ${bloomfilter_tablesize} \\
-      --molecule ${peptide_molecule} \\
-      --peptide-ksize ${peptide_ksize} \\
-      --save-as ${peptides.simpleName}__${bloom_id}.bloomfilter \\
-      ${peptides}
-    """
-  }
-}
-
-
-
-
-
-if (params.bam) {
-  process sourmash_compute_sketch_bam {
-    tag "${sample_id}_${sketch_id}"
-    label "high_memory"
-    publishDir "${params.outdir}/${params.save_fastas}", pattern: '*.fasta', saveAs: { filename -> "${params.outdir}/${params.save_fastas}/${filename.replace("|", "-")}"}
-    publishDir "${params.outdir}/${barcode_metadata_folder}", pattern: '*.csv', mode: 'copy'
-
-
-    // If job fails, try again with more memory
-    // memory { 8.GB * task.attempt }
+process ska_compute_sketch {
+    tag "${sequence_id}_${sketch_id}"
+    container 'phoenixajalogan/nf-ska'
+    publishDir "${params.outdir}", mode: 'copy'
     errorStrategy 'retry'
-    maxRetries 1
+    maxRetries 3
+
 
     input:
-    val single_ksize
-    val single_molecule
-    val single_log2_sketch_size
-    file(barcodes_file) from barcodes_ch
-    set sample_id, file(bam) from bam_ch
-    file(rename_10x_barcodes) from rename_10x_barcodes_ch
+    set sequence_id, file(reads) from reads_ch
 
     output:
-    set val(sample_id), file("*.fasta") into reads_ch
-    // https://github.com/nextflow-io/patterns/blob/master/docs/optional-output.adoc
-    file("${params.write_barcode_meta_csv}") optional true
+    file "${sequence_id}_${sketch_id}.skf"
+    //set file("${sequence_id}_${sketch_id}.skf") into ska_sketches
 
     script:
-    molecule = single_molecule
-    ksize = single_ksize
-    log2_sketch_size = single_log2_sketch_size
-    sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
-    not_dna = molecule != 'dna' ? '--no-dna' : ''
-
-    min_umi_per_barcode = params.min_umi_per_barcode ? "--count-valid-reads ${params.min_umi_per_barcode}" : ''
-    line_count = params.line_count ? "--line-count ${params.line_count}" : ''
-    metadata = params.write_barcode_meta_csv ? "--write-barcode-meta-csv ${params.write_barcode_meta_csv}": ''
-    save_fastas = "--save-fastas ."
-    processes = "--processes ${params.max_cpus}"
-
-    def barcodes_file = params.barcodes_file ? "--barcodes-file ${barcodes_file.baseName}.tsv": ''
-    def rename_10x_barcodes = params.rename_10x_barcodes ? "--rename-10x-barcodes ${rename_10x_barcodes.baseName}.tsv": ''
+    sketch_id = "k15"
+    sequence_id = sequence_id
     """
-      sourmash compute \\
-        --ksize $ksize \\
-        --$molecule \\
-        $not_dna \\
-        --num-hashes \$((2**$log2_sketch_size)) \\
-        $processes \\
-        $min_umi_per_barcode \\
-        $line_count \\
-        $rename_10x_barcodes \\
-        $barcodes_file \\
-        $save_fastas \\
-        $metadata \\
-        --output ${sample_id}_${sketch_id}.sig \\
-        --input-is-10x $bam
-      find . -type f -name "*.fasta" | while read src; do if [[ \$src == *"|"* ]]; then mv "\$src" \$(echo "\$src" | tr "|" "_"); fi done
+    ska fastq \\
+      -o ${sequence_id}_${sketch_id} \\
+      ${reads}
     """
   }
-}
-
-
-if (params.peptide_fasta){
-  process extract_coding {
-    tag "${sample_id}"
-    label "low_memory"
-    publishDir "${params.outdir}/extract_coding/", mode: 'copy'
-
-    input:
-    set bloom_id, molecule, file(bloom_filter) from ch_khtools_bloom_filter.collect()
-    set sample_id, file(reads) from reads_ch
-
-    output:
-    // TODO also extract nucleotide sequence of coding reads and do sourmash compute using only DNA on that?
-    set val(sample_id), file("${sample_id}__coding_reads_peptides.fasta") into ch_coding_peptides
-    set val(sample_id), file("${sample_id}__coding_reads_nucleotides.fasta") into ch_coding_nucleotides
-    set val(sample_id), file("${sample_id}__coding_scores.csv") into ch_coding_scores
-
-    script:
-    """
-    khtools extract-coding \\
-      --molecule ${molecule} \\
-      --coding-nucleotide-fasta ${sample_id}__coding_reads_nucleotides.fasta \\
-      --csv ${sample_id}__coding_scores.csv \\
-      --json-summary ${sample_id}__coding_summary.json \\
-      --jaccard-threshold ${jaccard_threshold} \\
-      --peptides-are-bloom-filter \\
-      ${bloom_filter} \\
-      ${reads} > ${sample_id}__coding_reads_peptides.fasta
-    """
-  }
-  // Remove empty files
-  // it[0] = sample id
-  // it[1] = sequence fasta file
-  ch_coding_nucleotides_nonempty = ch_coding_nucleotides.filter{ it[1].size() > 0 }
-  ch_coding_peptides_nonempty = ch_coding_peptides.filter{ it[1].size() > 0 }
-
 } else {
-  // Send reads directly into coding/noncoding
-  reads_ch
-    .set{ ch_coding_nucleotides_nonempty }
-}
+  process sourmash_compute_sketch {
+  	tag "${sample_id}_${sketch_id}"
+  	publishDir "${params.outdir}/sketches", mode: 'copy'
+  	container 'czbiohub/nf-kmer-similarity'
 
+  	// If job fails, try again with more memory
+  	// memory { 8.GB * task.attempt }
+  	errorStrategy 'retry'
+    maxRetries 3
 
-process sourmash_compute_sketch_fastx_nucleotide {
-  tag "${sample_id}_${sketch_id}"
-  label "mid_memory"
-  publishDir "${params.outdir}/sketches_nucleotide", mode: 'copy'
+  	input:
+  	each ksize from ksizes
+  	each molecule from molecules
+  	each log2_sketch_size from log2_sketch_sizes
+  	set sample_id, file(reads) from reads_ch
 
-  input:
-  each ksize from ksizes
-  each log2_sketch_size from log2_sketch_sizes
-  set sample_id, file(reads) from ch_coding_nucleotides_nonempty
+  	output:
+    set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches
 
-  output:
-  set val(sketch_id), val("dna"), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches_nucleotide
-
-  script:
-  sketch_id = "molecule-dna_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
-  ksize = ksize
-
-  if ( params.one_signature_per_record ) {
-    """
-    sourmash compute \\
-      --num-hashes \$((2**$log2_sketch_size)) \\
-      --ksizes $ksize \\
-      --dna \\
-      --output ${sample_id}_${sketch_id}.sig \\
-      $reads
-    """
-  }
-  else {
-    """
-    sourmash compute \\
-      --num-hashes \$((2**$log2_sketch_size)) \\
-      --ksizes $ksize \\
-      --dna \\
-      --output ${sample_id}_${sketch_id}.sig \\
-      --merge '$sample_id' \\
-      $reads
-    """
-  }
-}
-
-if (params.peptide_fasta){
-  process sourmash_compute_sketch_fastx_peptide {
-    tag "${sample_id}_${sketch_id}"
-    label "mid_memory"
-    publishDir "${params.outdir}/sketches_peptide", mode: 'copy'
-
-    input:
-    each ksize from ksizes
-    each molecule from peptide_molecules
-    each log2_sketch_size from log2_sketch_sizes
-    set sample_id, file(reads) from ch_coding_peptides_nonempty
-
-    output:
-    set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches_peptide
-
-    script:
+  	script:
     sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
     molecule = molecule
+    not_dna = molecule == 'dna' ? '' : '--no-dna'
     ksize = ksize
+    if ( params.one_signature_per_record ){
+      """
+      sourmash compute \\
+        --num-hashes \$((2**$log2_sketch_size)) \\
+        --ksizes $ksize \\
+        --$molecule \\
+        $not_dna \\
+        --output ${sample_id}_${sketch_id}.sig \\
+        $reads
+      """
+    } else {
+      """
+      sourmash compute \\
+        --num-hashes \$((2**$log2_sketch_size)) \\
+        --ksizes $ksize \\
+        --$molecule \\
+        $not_dna \\
+        --output ${sample_id}_${sketch_id}.sig \\
+        --merge '$sample_id' $reads
+      """
+    }
 
-    if ( params.one_signature_per_record ) {
-      """
-      sourmash compute \\
-        --num-hashes \$((2**$log2_sketch_size)) \\
-        --ksizes $ksize \\
-        --input-is-protein \\
-        --$molecule \\
-        --no-dna \\
-        --output ${sample_id}_${sketch_id}.sig \\
-        $reads
-      """
-    }
-    else {
-      """
-      sourmash compute \\
-        --num-hashes \$((2**$log2_sketch_size)) \\
-        --ksizes $ksize \\
-        --input-is-protein \\
-        --$molecule \\
-        --no-dna \\
-        --output ${sample_id}_${sketch_id}.sig \\
-        --merge '$sample_id' \\
-        $reads
-      """
-    }
   }
-} else {
-  sourmash_sketches_peptide = Channel.empty()
 }
 
 
-// Combine peptide and nucleotide sketches
-sourmash_sketches = sourmash_sketches_peptide.concat(sourmash_sketches_nucleotide)
+// sourmash_sketches.println()
+// sourmash_sketches.groupTuple(by: [0,3]).println()
 
 process sourmash_compare_sketches {
   tag "${sketch_id}"
