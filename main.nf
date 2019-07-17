@@ -374,7 +374,7 @@ process ska_compute_sketch {
     set sequence_id, file(reads) from reads_ch
 
     output:
-    file "${sequence_id}_${sketch_id}.skf" into sketches
+    file "${sequence_id}_${sketch_id}.skf" into ska_sketches
     //set file("${sequence_id}_${sketch_id}.skf") into ska_sketches
 
     script:
@@ -404,7 +404,7 @@ process ska_compute_sketch {
   	set sample_id, file(reads) from reads_ch
 
   	output:
-    set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sketches
+    set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches
 
   	script:
     sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
