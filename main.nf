@@ -291,7 +291,7 @@ process ska_compute_sketch {
     set sequence_id, file(reads) from reads_ch
 
     output:
-    file "${sequence_id}_${sketch_id}.skf"
+    file "${sequence_id}_${sketch_id}.skf" into sketches
     //set file("${sequence_id}_${sketch_id}.skf") into ska_sketches
 
     script:
@@ -321,7 +321,7 @@ process ska_compute_sketch {
   	set sample_id, file(reads) from reads_ch
 
   	output:
-    set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches
+    set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sketches
 
   	script:
     sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
@@ -356,31 +356,34 @@ process ska_compute_sketch {
 
 // sourmash_sketches.println()
 // sourmash_sketches.groupTuple(by: [0,3]).println()
+if (params.splitKmer){
 
-process sourmash_compare_sketches {
-	tag "${sketch_id}"
+} else {
+  process sourmash_compare_sketches {
+  	tag "${sketch_id}"
 
-	container 'czbiohub/nf-kmer-similarity'
-	publishDir "${params.outdir}/", mode: 'copy'
-	errorStrategy 'retry'
-  maxRetries 3
+  	container 'czbiohub/nf-kmer-similarity'
+  	publishDir "${params.outdir}/", mode: 'copy'
+  	errorStrategy 'retry'
+    maxRetries 3
 
-	input:
-  set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file ("sketches/*.sig") \
-    from sourmash_sketches.groupTuple(by: [0, 3])
+  	input:
+    set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file ("sketches/*.sig") \
+      from sourmash_sketches.groupTuple(by: [0, 3])
 
-	output:
-	file "similarities_${sketch_id}.csv"
+  	output:
+  	file "similarities_${sketch_id}.csv"
 
-	script:
-	"""
-	sourmash compare \\
-        --ksize ${ksize[0]} \\
-        --${molecule[0]} \\
-        --csv similarities_${sketch_id}.csv \\
-        --traverse-directory .
-	"""
+  	script:
+  	"""
+  	sourmash compare \\
+          --ksize ${ksize[0]} \\
+          --${molecule[0]} \\
+          --csv similarities_${sketch_id}.csv \\
+          --traverse-directory .
+  	"""
 
+  }
 }
 
 
