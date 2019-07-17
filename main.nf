@@ -365,7 +365,7 @@ if (params.splitKmer){
 process ska_compute_sketch {
     tag "${sequence_id}_${sketch_id}"
     container 'phoenixajalogan/nf-ska'
-    publishDir "${params.outdir}", mode: 'copy'
+    publishDir "${params.outdir}/sketches/ska_split_kmer", mode: 'copy'
     errorStrategy 'retry'
     maxRetries 3
 
@@ -389,7 +389,7 @@ process ska_compute_sketch {
 } else {
   process sourmash_compute_sketch {
   	tag "${sample_id}_${sketch_id}"
-  	publishDir "${params.outdir}/sketches", mode: 'copy'
+  	publishDir "${params.outdir}/sketches/sourmash/", mode: 'copy'
   	container 'czbiohub/nf-kmer-similarity'
 
   	// If job fails, try again with more memory
