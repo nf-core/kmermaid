@@ -12,16 +12,6 @@ LABEL org.label-schema.vcs-ref=$VCS_REF \
 org.label-schema.vcs-url="e.g. https://github.com/czbiohub/nf-kmer-similarity"
 
 
-WORKDIR /home
-
-RUN which -a pip
-RUN which -a python
-ENV SOURMASH_VERSION 'olgabot/dayhoff'
-RUN cd /home && \
-    git clone --branch $SOURMASH_VERSION https://github.com/czbiohub/sourmash.git && \
-    cd sourmash && \
-    pip install -e .
-
 RUN which -a sourmash
 
 RUN which -a python3
