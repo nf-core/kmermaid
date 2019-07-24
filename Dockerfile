@@ -26,10 +26,6 @@ RUN apt-get update && \
 
 RUN which -a pip
 RUN which -a python
-RUN ls -1 /opt/conda/envs/czbiohub-nf-kmer-similarity-0.1dev/bin/ | grep gnu
-# RUN cd /opt/conda/envs/czbiohub-nf-kmer-similarity-0.1dev/bin/ && for f in $(ls -1 | grep gnu) ; do g=$(echo $f | tr -d x86_64-conda_cos6-linux-gnu ) ; ln -s $f $g ;done
-# RUN ls -1 /opt/conda/envs/czbiohub-nf-kmer-similarity-0.1dev/bin/ | grep g++
-# RUN ln -s /opt/conda/envs/czbiohub-nf-kmer-similarity-0.1dev/bin/x86_64-conda_cos6-linux-gnu-gcc /opt/conda/envs/czbiohub-nf-kmer-similarity-0.1dev/bin/gcc
 ENV SOURMASH_VERSION 'olgabot/dayhoff'
 RUN cd /home && \
     git clone --branch $SOURMASH_VERSION https://github.com/czbiohub/sourmash.git && \
