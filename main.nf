@@ -118,10 +118,10 @@ if (params.read_paths) {
    // Provided a samples.csv file of read pairs
    if (params.csv_pairs){
      samples_ch = Channel
-      .fromPath(params.csv_pairs)
-      .splitCsv(header:true)
-      .map{ row -> tuple(row[0], tuple(file(row[1]), file(row[2])))}
-      .ifEmpty { exit 1, "params.csv_pairs was empty - no input files supplied" }
+	    .fromPath(params.csv_pairs)
+	    .splitCsv(header:true)
+	    .map{ row -> tuple(row.id, tuple(file(row.read1), file(row.read2)))}
+	    .ifEmpty { exit 1, "params.csv_pairs was empty - no input files supplied" }
   }
 
    // Provided a samples.csv file of single-ended reads
@@ -280,26 +280,24 @@ if (params.splitKmer){
 ///////////////////////////////////////////////////////////////////////////////
 
 process ska_compute_sketch {
-    tag "${sequence_id}_${sketch_id}"
+    tag "${sketch_id}"
     container 'phoenixajalogan/nf-ska'
-    publishDir "${params.outdir}/sketches/ska_split_kmer", mode: 'copy'
+    publishDir "${params.outdir}/sketches/ska_split_kmer/07-26-19", mode: 'copy'
     errorStrategy 'retry'
     maxRetries 3
 
 
     input:
-    set sequence_id, file(reads) from reads_ch
+    set id, file(reads) from reads_ch
 
     output:
-    file "${sequence_id}_${sketch_id}.skf" into ska_sketches
-    //set file("${sequence_id}_${sketch_id}.skf") into ska_sketches
-
+	set file("${sketch_id}.skf") into ska_sketches
+	
     script:
-    sketch_id = "k15"
-    sequence_id = sequence_id
+    sketch_id = "${id}_k15"
     """
     ska fastq \\
-      -o ${sequence_id}_${sketch_id} \\
+      -o ${sketch_id} \\
       ${reads}
     """
   }
@@ -307,9 +305,9 @@ process ska_compute_sketch {
   process sourmash_compute_sketch {
   	tag "${sample_id}_${sketch_id}"
   	publishDir "${params.outdir}/sketches/sourmash/", mode: 'copy'
-  	container 'czbiohub/nf-kmer-similarity'
+  	container 'czbiohub/nf-kmer-If'
 
-  	// If job fails, try again with more memory
+  	// similarity job fails, try again with more memory
   	// memory { 8.GB * task.attempt }
   	errorStrategy 'retry'
     maxRetries 3
@@ -357,6 +355,26 @@ process ska_compute_sketch {
 // sourmash_sketches.println()
 // sourmash_sketches.groupTuple(by: [0,3]).println()
 if (params.splitKmer){
+     process ska_compare_sketches {
+  	tag "${sketch_id}"
+
+  	container 'phoenixajalogan/nf-ska'
+  	publishDir "${params.outdir}/ska-comparisons-nextflow/split-kmer/07-26-2019", mode: 'copy'
+  	errorStrategy 'retry'
+	maxRetries 3
+
+  	input:
+	file (sketches) from ska_sketches.collect()
+
+  	output:
+  	file "distances.distances.tsv"
+
+  	script:
+  	"""
+        ska distance -s 25 -i 0.95 ${sketches}
+  	"""
+
+  } 
 
 } else {
   process sourmash_compare_sketches {
