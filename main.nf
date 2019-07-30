@@ -282,7 +282,7 @@ if (params.splitKmer){
 process ska_compute_sketch {
     tag "${sketch_id}"
     container 'phoenixajalogan/nf-ska'
-    publishDir "${params.outdir}/sketches/ska_split_kmer/07-26-19", mode: 'copy'
+    publishDir "${params.outdir}/sketches/ska/", mode: 'copy'
     errorStrategy 'retry'
     maxRetries 3
 
@@ -359,7 +359,7 @@ if (params.splitKmer){
   	tag "${sketch_id}"
 
   	container 'phoenixajalogan/nf-ska'
-  	publishDir "${params.outdir}/ska-comparisons-nextflow/split-kmer/07-26-2019", mode: 'copy'
+  	publishDir "${params.outdir}/comparisons/", mode: 'copy'
   	errorStrategy 'retry'
 	maxRetries 3
 
