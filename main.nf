@@ -106,6 +106,7 @@ if (params.read_paths) {
          .from(params.read_paths)
          .map { row -> [ row[0], [file(row[1][0]), file(row[1][1])]] }
          .ifEmpty { exit 1, "params.read_paths (${params.read_paths}) was empty - no input files supplied" }
+
  } else {
    // Provided SRA ids
    if (params.sra){
@@ -113,7 +114,6 @@ if (params.read_paths) {
          .fromSRA( params.sra?.toString()?.tokenize(';') )
          .ifEmpty { exit 1, "params.sra (${params.sra}) was not found - no input files supplied" }
    }
-
    // Provided a samples.csv file of read pairs
    if (params.csv_pairs){
      samples_ch = Channel
@@ -153,6 +153,7 @@ if (params.read_paths) {
        .ifEmpty { exit 1, "params.fastas (${params.fastas}) was empty - no input files supplied" }
    }
 }
+
 
 
  sra_ch.concat(samples_ch, csv_singles_ch, read_pairs_ch,
@@ -297,18 +298,18 @@ process sourmash_compute_sketch {
     sourmash compute \\
       --num-hashes \$((2**$log2_sketch_size)) \\
       --ksizes $ksize \\
-      $not_dna \\
       --$molecule \\
+      $not_dna \\
       --output ${sample_id}_${sketch_id}.sig \\
-      $read1 $read2
+      $reads
     """
   } else {
     """
     sourmash compute \\
       --num-hashes \$((2**$log2_sketch_size)) \\
       --ksizes $ksize \\
-      $not_dna \\
       --$molecule \\
+      $not_dna \\
       --output ${sample_id}_${sketch_id}.sig \\
       --merge '$sample_id' $reads
     """
