@@ -44,7 +44,7 @@ def helpMessage() {
       --read_singles                Local or s3 directories of single-end read files, separated by commas
       --csv_pairs                   CSV file with columns id, read1, read2 for each sample
       --csv_singles                 CSV file with columns id, read1, read2 for each sample
-      --fastas
+      --fastas                      Path to FASTA sequence files
       --sra                         SRR, ERR, SRP IDs representing a project. Only compatible with
                                     Nextflow 19.03-edge or greater
 
@@ -60,8 +60,8 @@ def helpMessage() {
                                     Useful for comparing e.g. assembled transcriptomes or metagenomes.
                                     (Not typically used for raw sequencing data as this would create
                                     a k-mer signature for each read!)
-      --minlength                   Minimum length of reads after trimming, default 100
-      --no_trimming                 Don't trim reads on quality
+      --input_is_protein            Input data is protein sequences. Primarily applicable for fasta files
+
 
     Other Options:
       --email                       Set this parameter to your e-mail address to get a summary e-mail with details of the run sent to you when the workflow exits
@@ -201,62 +201,25 @@ if(workflow.profile == 'awsbatch'){
 }
 
 
-params.ksizes = '21,27,33,51'
-params.molecules =  'dna,protein'
-params.log2_sketch_sizes = '10,12,14,16'
+
 
 // Parse the parameters
 ksizes = params.ksizes?.toString().tokenize(',')
 molecules = params.molecules?.toString().tokenize(',')
 log2_sketch_sizes = params.log2_sketch_sizes?.toString().tokenize(',')
+one_signature_per_record = params.one_signature_per_record
+input_is_protein = params.input_is_protein
+
+if (input_is_protein){
+  if ('dna' in molecules){
+    exit 1, """--input_is_protein is incompatible with 'dna' in --molecules.
+    Can't calculate DNA signature when input is protein! Exiting
+    """
+  }
+}
 
 
 // Header log info
-=================================================================="""
-def summary = [:]
-summary['Pipeline Name']       = 'czbiohub/nf-kmer-similarity'
-summary['Pipeline Version']    = workflow.manifest.version
-summary['Run Name']            = custom_runName ?: workflow.runName
-summary['Read Pairs']          = params.read_pairs
-summary['Input fastas']        = params.fastas
-summary['SRA/ENA IDs']         = params.sra
-summary['Molecules']           = params.molecules
-summary['K-mer sizes']         = params.ksizes
-summary['Log2 sketch sizes']   = params.log2_sketch_sizes
-summary["Make one signature per record?"] = params.one_signature_per_record
-
-summary['Max Memory']   = params.max_memory
-summary['Max CPUs']     = params.max_cpus
-summary['Max Time']     = params.max_time
-summary['Output dir']   = params.outdir
-summary['Working dir']  = workflow.workDir
-summary['Container Engine'] = workflow.containerEngine
-if(workflow.containerEngine) summary['Container'] = workflow.container
-summary['Current home']   = "$HOME"
-summary['Current user']   = "$USER"
-summary['Current path']   = "$PWD"
-summary['Working dir']    = workflow.workDir
-summary['Output dir']     = params.outdir
-summary['Script dir']     = workflow.projectDir
-summary['Config Profile'] = workflow.profile
-if(workflow.profile == 'awsbatch'){
-   summary['AWS Region'] = params.awsregion
-   summary['AWS Queue'] = params.awsqueue
-}
-if(params.email) summary['E-mail Address'] = params.email
-log.info summary.collect { k,v -> "${k.padRight(15)}: $v" }.join("\n")
-log.info "========================================="
-
-
-def create_workflow_summary(summary) {
-
-    def yaml_file = workDir.resolve('workflow_summary_mqc.yaml')
-    yaml_file.text  = """
-    id: 'nf-large-assembly-summary'
-    description: " - this information is collected when the pipeline is started."
-    section_name: 'czbiohub/nf-kmer-simlarity Workflow Summary'
-    section_href: 'https://github.com/czbiohub/nf-kmer-simlarity'
-=======
 log.info nfcoreHeader()
 def summary = [:]
 if(workflow.revision) summary['Pipeline Release'] = workflow.revision
@@ -346,8 +309,6 @@ process sourmash_compute_sketch {
 	tag "${sample_id}_${sketch_id}"
 	publishDir "${params.outdir}/sketches", mode: 'copy'
 
-	// If job fails, try again with more memory
-	// memory { 8.GB * task.attempt }
 	errorStrategy 'retry'
   maxRetries 3
 
@@ -355,26 +316,26 @@ process sourmash_compute_sketch {
   each log2_sketch_size from log2_sketch_sizes
 	each ksize from ksizes
 	each molecule from molecules
-  set val(sample_id), file(reads) from read_files_sourmash
-	// set sample_id from sample_ids.collect()
-  // set read1 from read1_trimmed.collect()
-  // set read2 from read2_trimmed.collect()
+  set val(sample_id), file(reads) from reads_ch
 
 	output:
-  set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches
+  set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), \
+      file("${sample_id}_${sketch_id}.sig") into sourmash_sketches
 
 	script:
   sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
-  molecule = molecule
   not_dna = molecule == 'dna' ? '' : '--no-dna'
   ksize = ksize
+  input_is_protein_flag = input_is_protein ? "--input-is-protein" : ""
   if ( params.one_signature_per_record ){
     """
     sourmash compute \\
       --num-hashes \$((2**$log2_sketch_size)) \\
       --ksizes $ksize \\
       --$molecule \\
+      $input_is_protein_flag \\
       $not_dna \\
+      --singleton \\
       --output ${sample_id}_${sketch_id}.sig \\
       $reads
     """
@@ -384,6 +345,7 @@ process sourmash_compute_sketch {
       --num-hashes \$((2**$log2_sketch_size)) \\
       --ksizes $ksize \\
       --$molecule \\
+      $input_is_protein_flag \\
       $not_dna \\
       --output ${sample_id}_${sketch_id}.sig \\
       --merge '$sample_id' $reads
@@ -392,8 +354,6 @@ process sourmash_compute_sketch {
 
 }
 
-// sourmash_sketches.println()
-// sourmash_sketches.groupTuple(by: [0,3]).println()
 
 process sourmash_compare_sketches {
 	tag "${sketch_id}"
@@ -403,7 +363,7 @@ process sourmash_compare_sketches {
   maxRetries 3
 
 	input:
-  set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file ("sketches/*.sig") \
+  set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file(sketches) \
     from sourmash_sketches.groupTuple(by: [0, 3])
 
 	output:
