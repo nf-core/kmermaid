@@ -225,8 +225,18 @@ if(workflow.profile == 'awsbatch'){
     if (!workflow.workDir.startsWith('s3') || !params.outdir.startsWith('s3')) exit 1, "Specify S3 URLs for workDir and outdir parameters on AWSBatch!"
 }
 
+if (params.splitKmer) {
+    params.ksizes = '24,21,15,9'
+} else {
+    params.ksizes = '21,27,33,51'
+}
+
+
+params.molecules =  'dna,protein'
+params.log2_sketch_sizes = '10,12,14,16'
 
 // Parse the parameters
+
 ksizes = params.ksizes?.toString().tokenize(',')
 molecules = params.molecules?.toString().tokenize(',')
 peptide_molecules = molecules.findAll { it != "dna" }
@@ -370,16 +380,18 @@ process ska_compute_sketch {
     maxRetries 3
 
 
-    input:
+	input:
+	each ksize from ksizes
     set id, file(reads) from reads_ch
 
     output:
-	set file("${sketch_id}.skf") into ska_sketches
+	set val(ksize) file("${sketch_id}.skf") into ska_sketches
 	
     script:
-    sketch_id = "${id}_k15"
+    sketch_id = "${id}_ksize_${ksize}"
     """
     ska fastq \\
+      -k $ksize \\
       -o ${sketch_id} \\
       ${reads}
     """
@@ -447,14 +459,14 @@ if (params.splitKmer){
 	maxRetries 3
 
   	input:
-	file (sketches) from ska_sketches.collect()
+	set val(ksize), file (sketches) from ska_sketches.groupTuple()
 
   	output:
-  	file "distances.distances.tsv"
+  	file "$ksize_distances.distances.tsv"
 
   	script:
   	"""
-        ska distance -s 25 -i 0.95 ${sketches}
+        ska distance -o $ksize -s 25 -i 0.95 ${sketches}
   	"""
 
   } 
