@@ -1,3 +1,6 @@
+# Mac stuff
+.DS_Store
+
 .git/
 .nextflow*
 .idea*
