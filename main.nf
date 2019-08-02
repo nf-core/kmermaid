@@ -40,11 +40,11 @@ def helpMessage() {
 
     Sample Arguments -- One or more of:
       --read_pairs                  Local or s3 directories containing *R{1,2}*.fastq.gz
-                                    files, separated by commas
+                                    files, multiple different directories separated by semicolons
       --read_singles                Local or s3 directories of single-end read files, separated by commas
       --csv_pairs                   CSV file with columns id, read1, read2 for each sample
       --csv_singles                 CSV file with columns id, read1, read2 for each sample
-      --fastas                      Path to FASTA sequence files
+      --fastas                      Path to FASTA sequence files. Can be semi-colon-separated
       --sra                         SRR, ERR, SRP IDs representing a project. Only compatible with
                                     Nextflow 19.03-edge or greater
 
@@ -176,6 +176,7 @@ if (params.read_paths) {
      fastas_ch = Channel
        .fromPath(params.fastas?.toString()?.tokenize(';'))
        .map{ f -> tuple(f.baseName, tuple(file(f))) }
+       .view{}
        .ifEmpty { exit 1, "params.fastas was empty - no input files supplied" }
    }
  }
@@ -233,10 +234,10 @@ if(params.sra)          summary['SRA']                             = params.sra
 if(params.fastas)       summary["FASTAs"]                          = params.fastas
 if(params.read_paths)   summary['Read paths (paired-end)']            = params.read_paths
 // Sketch parameters
-summary['K-mer sizes']            = params.ksizes
-summary['Molecule']               = params.molecules
-summary['Log2 Sketch Sizes']      = params.log2_sketch_sizes
-summary['One Sig per Record']         = params.one_signature_per_record
+summary['K-mer sizes']            = ksizes
+summary['Molecule']               = molecules
+summary['Log2 Sketch Sizes']      = log2_sketch_sizes
+summary['One Sig per Record']         = one_signature_per_record
 // Resource information
 summary['Max Resources']    = "$params.max_memory memory, $params.max_cpus cpus, $params.max_time time per job"
 if(workflow.containerEngine) summary['Container'] = "$workflow.containerEngine - $workflow.container"
@@ -357,6 +358,7 @@ process sourmash_compute_sketch {
 
 process sourmash_compare_sketches {
 	tag "${sketch_id}"
+  label "high_memory"
 
 	publishDir "${params.outdir}/", mode: 'copy'
 	errorStrategy 'retry'
