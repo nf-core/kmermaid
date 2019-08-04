@@ -368,7 +368,7 @@ if (params.splitKmer){
   	tag "${sketch_id}"
 
   	container 'phoenixajalogan/nf-ska'
-  	publishDir "${params.outdir}/comparisons/", mode: 'copy'
+  	publishDir "${params.outdir}/comparisons/ska/", mode: 'copy'
   	errorStrategy 'retry'
 	maxRetries 3
 
