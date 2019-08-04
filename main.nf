@@ -180,7 +180,6 @@ if (params.splitKmer) {
     params.ksizes = '21,27,33,51'
 }
 
-
 params.molecules =  'dna,protein'
 params.log2_sketch_sizes = '10,12,14,16'
 
@@ -295,20 +294,22 @@ process ska_compute_sketch {
 
 	input:
 	each ksize from ksizes
-    set id, file(reads) from reads_ch
+	set id, file(reads) from reads_ch
 
-    output:
-	set val(ksize) file("${sketch_id}.skf") into ska_sketches
+	output:
+	set val(ksize), file("${sketch_id}.skf") into ska_sketches
 	
-    script:
-    sketch_id = "${id}_ksize_${ksize}"
+	script:
+	sketch_id = "${id}_ksize_${ksize}"
+
     """
     ska fastq \\
       -k $ksize \\
       -o ${sketch_id} \\
       ${reads}
     """
-  }
+	
+    }
 } else {
   process sourmash_compute_sketch {
   	tag "${sample_id}_${sketch_id}"
@@ -372,15 +373,17 @@ if (params.splitKmer){
 	maxRetries 3
 
   	input:
-	set val(ksize), file (sketches) from ska_sketches.groupTuple()
+ 	set val(ksize), file (sketches) from ska_sketches.groupTuple()	
+	// file (sketches) from ska_sketches.collect()
 
   	output:
-  	file "$ksize_distances.distances.tsv"
+  	file "ksize_${ksize}.distances.tsv"
 
   	script:
   	"""
-        ska distance -o $ksize -s 25 -i 0.95 ${sketches}
+        ska distance -o ksize_${ksize} -s 25 -i 0.95 ${sketches}
   	"""
+	
 
   } 
 
@@ -441,7 +444,7 @@ workflow.onComplete {
     email_fields['summary']['Pipeline script hash ID'] = workflow.scriptId
     if(workflow.repository) email_fields['summary']['Pipeline repository Git URL'] = workflow.repository
     if(workflow.commitId) email_fields['summary']['Pipeline repository Git Commit'] = workflow.commitId
-    if(workflow.revision) email_fields['summary']['Pipeline Git branch/tag'] = workflow.revision
+    if(workflow.revision) email_fields['summary']['Pipeline Git branch/tag'] = workflow.revision //
     if(workflow.container) email_fields['summary']['Docker image'] = workflow.container
     email_fields['summary']['Nextflow Version'] = workflow.nextflow.version
     email_fields['summary']['Nextflow Build'] = workflow.nextflow.build
