@@ -25,6 +25,7 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends ${PACKAGES} && \
     apt-get clean
 
+ENV PATH /opt/conda/bin:$PATH
 RUN conda install --yes Cython bz2file pytest numpy matplotlib scipy sphinx alabaster
 
 RUN cd /home && \
