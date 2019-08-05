@@ -461,10 +461,10 @@ if (params.splitKmer){
 
   	input:
  	set val(ksize), file (sketches) from ska_sketches.groupTuple()	
-	// file (sketches) from ska_sketches.collect()
 
   	output:
-  	file "ksize_${ksize}.distances.tsv"
+	// uploaded distances, clusters, and graph connecting (dot) file
+  	file "ksize_${ksize}*"
 
   	script:
   	"""
