@@ -174,42 +174,18 @@ if (params.read_paths) {
        .set{bam_ch}
   }
 
-  // If barcodes is as expected, check if it exists and set channel
-  if (params.barcodes_file) {
-     Channel.fromPath(params.barcodes_file, checkIfExists: true)
-        .ifEmpty { exit 1, "Barcodes file not found: ${params.barcodes_file}" }
-        .set{barcodes_ch}
-  }
-  else {
-    Channel.from(false)
-        .set{barcodes_ch}
-  }
-
-  // If renamer barcode file is as expected, check if it exists and set channel
-  if (params.rename_10x_barcodes) {
-     Channel.fromPath(params.rename_10x_barcodes, checkIfExists: true)
-        .ifEmpty { exit 1, "Barcodes file not found: ${params.rename_10x_barcodes}" }
-        .set{rename_10x_barcodes_ch}
-  }
-  else {
-    Channel.from(false)
-        .set{rename_10x_barcodes_ch}
-  }
+if (params.truncate) {
+ sra_ch.concat(samples_ch, csv_singles_ch, read_pairs_ch,
+   read_singles_ch, fastas_ch, read_paths_ch)
+   .ifEmpty{ exit 1, "No reads provided! Check read input files"}
+   .set{ truncate_reads_ch }
+} else {
+ sra_ch.concat(samples_ch, csv_singles_ch, read_pairs_ch,
+   read_singles_ch, fastas_ch, read_paths_ch)
+   .ifEmpty{ exit 1, "No reads provided! Check read input files"}
+   .set{ reads_ch }
 }
 
-if (!params.bam) {
-sra_ch.concat(samples_ch, csv_singles_ch, read_pairs_ch,
- read_singles_ch, fastas_ch, read_paths_ch)
- .ifEmpty{ exit 1, "No reads provided! Check read input files"}
- .set{ reads_ch }
-}
-
-
-if (params.peptide_fasta) {
-Channel.fromPath(params.peptide_fasta, checkIfExists: true)
-     .ifEmpty { exit 1, "Peptide fasta file not found: ${params.peptide_fasta}" }
-     .set{ ch_peptide_fasta }
-}
 
 
 // Has the run name been specified by the user?
@@ -225,9 +201,9 @@ if(workflow.profile == 'awsbatch'){
     if (!workflow.workDir.startsWith('s3') || !params.outdir.startsWith('s3')) exit 1, "Specify S3 URLs for workDir and outdir parameters on AWSBatch!"
 }
 
-if (params.splitKmer) {
-    params.ksizes = '24,21,15,9'
-} else {
+if (params.splitKmer){
+    params.ksizes = '15,9'
+}else{
     params.ksizes = '21,27,33,51'
 }
 
@@ -362,6 +338,35 @@ process get_software_versions {
     """
 }
 
+if (params.truncate) {
+    process truncate_input {
+	tag "${id}_truncate"
+	container 'phoenixajalogan/nf-ska'
+	publishDir "${params.outdir}/truncated_fastqs/ska/", mode: 'copy'
+	errorStrategy 'retry'
+	maxRetries 3
+
+	input:
+	set id, file(reads) from truncate_reads_ch
+
+	output:
+	
+	set val(id), file("*_${params.truncate}.fastq.gz") into reads_ch
+		
+	script:
+	read1 = reads[0]
+	read2 = reads[1]
+	read1_prefix = read1.name.minus(".fastq.gz") // TODO: change to RE to match fasta as well?
+	read2_prefix = read2.name.minus(".fastq.gz")
+
+    """
+    gunzip -c $read1 | head -n ${params.truncate} | gzip -c - > ${read1_prefix}_${params.truncate}.fastq.gz
+    gunzip -c $read2 | head -n ${params.truncate} | gzip -c - > ${read2_prefix}_${params.truncate}.fastq.gz
+
+    """
+    }
+}
+
 if (params.splitKmer){
   ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -385,7 +390,7 @@ process ska_compute_sketch {
 
 	output:
 	set val(ksize), file("${sketch_id}.skf") into ska_sketches
-	
+	;	
 	script:
 	sketch_id = "${id}_ksize_${ksize}"
 
