@@ -344,11 +344,12 @@ if (params.truncate) {
 	set val(id), file("*_${params.truncate}.fastq.gz") into reads_ch
 		
 	script:
-  sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
   molecule = molecule
   not_dna = molecule == 'dna' ? '' : '--no-dna'
   ksize = ksize
   track_abundance = params.track_abundance ? '--track-abundance' : ''
+  sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}_trackabundance-${params.track_abundance}"
+
   if ( params.one_signature_per_record ){
     """
     sourmash compute \\
