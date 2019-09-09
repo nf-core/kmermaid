@@ -67,8 +67,8 @@ def helpMessage() {
                                     Useful for comparing e.g. assembled transcriptomes or metagenomes.
                                     (Not typically used for raw sequencing data as this would create
                                     a k-mer signature for each read!)
-      --splitKmer                   If provided, use SKA to compute split k-mer sketches instead of
-                                    sourmash to compute k-mer sketches
+
+      --track_abundance             tracking abundances
     """.stripIndent()
 }
 
@@ -259,18 +259,8 @@ if(params.read_paths)   summary['Read paths (paired-end)']         = params.read
 summary['K-mer sizes']            = params.ksizes
 summary['Molecule']               = params.molecules
 summary['Log2 Sketch Sizes']      = params.log2_sketch_sizes
-summary['One Sig per Record']         = params.one_signature_per_record
-// 10x parameters
-if(params.bam) summary["Bam chunk line count"] = params.line_count
-if(params.bam) summary['Count valid reads'] = params.min_umi_per_barcode
-if(params.bam) summary['Saved Fastas '] = params.save_fastas
-if(params.bam) summary['Barcode umi read metadata'] = params.write_barcode_meta_csv
-// Extract coding parameters
-if(params.peptide_fasta) summary['--- Extracting coding reads ---']  = ''
-if(params.peptide_fasta) summary["Peptide fasta"] = params.peptide_fasta
-if(params.peptide_fasta) summary['Peptide ksize'] = params.extract_coding_peptide_ksize
-if(params.peptide_fasta) summary['Peptide molecule'] = params.extract_coding_peptide_molecule
-if(params.peptide_fasta) summary['Bloom filter table size'] = params.bloomfilter_tablesize
+summary['One Sig per Record']     = params.one_signature_per_record
+summary['Track Abundance']        = params.track_abundance
 // Resource information
 summary['Max Resources']    = "$params.max_memory memory, $params.max_cpus cpus, $params.max_time time per job"
 if(workflow.containerEngine) summary['Container'] = "$workflow.containerEngine - $workflow.container"
@@ -354,11 +344,32 @@ if (params.truncate) {
 	set val(id), file("*_${params.truncate}.fastq.gz") into reads_ch
 		
 	script:
-	read1 = reads[0]
-	read2 = reads[1]
-	read1_prefix = read1.name.minus(".fastq.gz") // TODO: change to RE to match fasta as well?
-	read2_prefix = read2.name.minus(".fastq.gz")
-
+  sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
+  molecule = molecule
+  not_dna = molecule == 'dna' ? '' : '--no-dna'
+  ksize = ksize
+  track_abundance = params.track_abundance ? '--track-abundance' : ''
+  if ( params.one_signature_per_record ){
+    """
+    sourmash compute \\
+      --num-hashes \$((2**$log2_sketch_size)) \\
+      --ksizes $ksize \\
+      --$molecule \\
+      $not_dna \\
+      $track_abundance \\
+      --output ${sample_id}_${sketch_id}.sig \\
+      $reads
+    """
+  } else {
+    """
+    sourmash compute \\
+      --num-hashes \$((2**$log2_sketch_size)) \\
+      --ksizes $ksize \\
+      --$molecule \\
+      $not_dna \\
+      $track_abundance \\
+      --output ${sample_id}_${sketch_id}.sig \\
+      --merge '$sample_id' $reads
     """
     gunzip -c $read1 | head -n ${params.truncate} | gzip -c - > ${read1_prefix}_${params.truncate}.fastq.gz
     gunzip -c $read2 | head -n ${params.truncate} | gzip -c - > ${read2_prefix}_${params.truncate}.fastq.gz
