@@ -331,7 +331,7 @@ process get_software_versions {
 if (params.truncate) {
     process truncate_input {
 	tag "${id}_truncate"
-	container 'phoenixajalogan/nf-ska'
+	container 'phoenixajalogan/nf-ska:latest'
 	publishDir "${params.outdir}/truncated_fastqs/ska/", mode: 'copy'
 	errorStrategy 'retry'
 	maxRetries 3
@@ -372,6 +372,11 @@ if (params.truncate) {
       --output ${sample_id}_${sketch_id}.sig \\
       --merge '$sample_id' $reads
     """
+    echo ${params.truncate}
+    echo ${read1}
+    echo ${read2}
+    ls -l ${read1}
+    ls -l ${read2} 
     gunzip -c $read1 | head -n ${params.truncate} | gzip -c - > ${read1_prefix}_${params.truncate}.fastq.gz
     gunzip -c $read2 | head -n ${params.truncate} | gzip -c - > ${read2_prefix}_${params.truncate}.fastq.gz
 
@@ -390,7 +395,7 @@ if (params.splitKmer){
 
 process ska_compute_sketch {
     tag "${sketch_id}"
-    container 'phoenixajalogan/nf-ska'
+    container 'phoenixajalogan/nf-ska:latest'
     publishDir "${params.outdir}/sketches/ska/", mode: 'copy'
     errorStrategy 'retry'
     maxRetries 3
@@ -471,7 +476,7 @@ if (params.splitKmer){
      process ska_compare_sketches {
   	tag "${sketch_id}"
 
-  	container 'phoenixajalogan/nf-ska'
+  	container 'phoenixajalogan/nf-ska:latest'
   	publishDir "${params.outdir}/comparisons/ska/", mode: 'copy'
   	errorStrategy 'retry'
 	maxRetries 3
