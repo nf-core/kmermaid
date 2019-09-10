@@ -1,0 +1,7 @@
+FROM nfcore/base
+LABEL authors="Phoenix Logan" \
+      description="Docker image containing all requirements for ska portion of the nfcore/kmermaid pipeline"
+
+COPY environment.ska.yml /
+RUN conda env create -f environment.ska.yml && conda clean -a
+ENV PATH /opt/conda/envs/nf-core-splitkmeranalysis-1.0.0/bin:$PATH
