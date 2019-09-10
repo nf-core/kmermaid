@@ -66,6 +66,7 @@ def helpMessage() {
                                     a k-mer signature for each read!)
       --splitKmer                   If provided, use SKA to compute split k-mer sketches instead of
                                     sourmash to compute k-mer sketches
+      --truncate                    integer value to subsample reads from input fastq files 
     """.stripIndent()
 }
 
@@ -305,12 +306,6 @@ if (params.truncate) {
 	read2_prefix = read2.name.minus(".fastq.gz")
 
     """
-    echo ${params.truncate}
-    echo ${read1}
-    echo ${read2}
-    ls -l ${read1}
-    ls -l ${read2} 
-
     seqtk sample -s100 ${read1} ${params.truncate} > ${read1_prefix}_${params.truncate}.fastq.gz
     seqtk sample -s100 ${read2} ${params.truncate} > ${read2_prefix}_${params.truncate}.fastq.gz
 
