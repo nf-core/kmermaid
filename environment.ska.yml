@@ -1,0 +1,8 @@
+name: nf-core-splitkmeranalysis-1.0.0
+channels:
+  - bioconda
+  - defaults
+  - conda-forge
+dependencies:
+  - ska=1.0
+  - seqtk=1.3
