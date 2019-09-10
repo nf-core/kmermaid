@@ -31,3 +31,8 @@ nextflow run czbiohub/nf-kmer-similarity --outdir s3://olgabot-maca/nf-kmer-simi
 nextflow run czbiohub/nf-kmer-similarity --outdir s3://olgabot-maca/nf-kmer-similarity/ \
   --fastas '*.fasta'
 ```
+
+### With Split Kmer Analysis [SKA](https://github.com/simonrharris/SKA) and fastq subsampling with [seqtk](https://github.com/lh3/seqtk):
+```
+nextflow run czbiohub/nf-kmer-similarity --outdir s3://olgabot-maca/nf-kmer-similarity/ --samples samples.csv --splitKmer --truncate 1000 
+```
