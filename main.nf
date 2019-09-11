@@ -381,11 +381,13 @@ process sourmash_compare_sketches {
 	file "similarities_${sketch_id}.csv"
 
 	script:
+  processes = processes
 	"""
 	sourmash compare \\
         --ksize ${ksize[0]} \\
         --${molecule[0]} \\
         --csv similarities_${sketch_id}.csv \\
+        --processes $processes \\
         --traverse-directory .
 	"""
 

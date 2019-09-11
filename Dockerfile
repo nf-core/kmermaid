@@ -38,7 +38,7 @@ RUN trim-low-abund.py --version
 
 
 # Required for multiprocessing of 10x bam file
-# RUN pip install pathos bamnostic
+# RUN pip install pathos pysam
 
 # ENV SOURMASH_VERSION master
 RUN cd /home && \
