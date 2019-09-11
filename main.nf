@@ -70,9 +70,7 @@ def helpMessage() {
       --save_fastas                 Path to save unique barcodes to {CELL_BARCODE}.fasta          fastas to. Default is 'fastas' inside outdir
       --write_barcode_meta_csv      Write to a given path, number of reads and number of umis per barcode.                  Default is 'all_barcodes_meta.csv' inside outdir
       --count_valid_reads           A barcode is only considered a valid barcode read
-                                    and its signature is written if number of umis are greater than count-valid-reads. Default is 1000
-      --barcodes_file               Path to 10x barcode file
-      --rename_10x_barcodes         Path to a file that maps 10x barcodes to different names
+                                    and its signature is written if number of umis are greater than count_valid_reads. Default is 1000
     """.stripIndent()
 }
 
@@ -220,8 +218,6 @@ if(params.csv_singles)  summary['Single-end samples.csv']    = params.csv_single
 if(params.sra)          summary['SRA']                             = params.sra
 if(params.fastas)       summary["FASTAs"]                          = params.fastas
 if(params.bam)          summary["BAMs"]                            = params.bam
-if(params.barcodes_file) summary["10x barcodes barcodes.tsv"]            = params.barcode
-if(params.rename_10x_barcodes) summary["10x rename barcodes barcodes.tsv"]            = params.barcode
 if(params.read_paths)   summary['Read paths (paired-end)']         = params.read_paths
 // Sketch parameters
 summary['K-mer sizes']            = params.ksizes
@@ -320,6 +316,8 @@ process sourmash_compute_sketch {
 
 	script:
   sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
+  metadata = "all_barcode_meta.csv"
+  fastas = "fastas"
   molecule = molecule
   not_dna = molecule == 'dna' ? '' : '--no-dna'
   ksize = ksize
@@ -342,9 +340,10 @@ process sourmash_compute_sketch {
       --processes=$processes \\
       --ksize $ksize \\
       --$molecule
-      --save-fastas fastas \\
-      --count-valid-reads \\
-      --write-barcode-meta-csv all_barcode_meta.csv \\
+      --save-fastas $fastas \\
+      --num-hashes \$((2**$log2_sketch_size))
+      --count-valid-reads $count_valid_reads \\
+      --write-barcode-meta-csv $metadata \\
       --output ${sample_id}_${sketch_id}.sig \\
       $reads
     """
