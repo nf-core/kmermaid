@@ -66,7 +66,6 @@ def helpMessage() {
                                     Useful for comparing e.g. assembled transcriptomes or metagenomes.
                                     (Not typically used for raw sequencing data as this would create
                                     a k-mer signature for each read!)
-      --processes                   'Number of processes to use for reading 10x bam file.                         Default is '32'
       --save_fastas                 Path to save unique barcodes to {CELL_BARCODE}.fasta          fastas to. Default is 'fastas' inside outdir
       --write_barcode_meta_csv      Write to a given path, number of reads and number of umis per barcode.                  Default is 'all_barcodes_meta.csv' inside outdir
       --count_valid_reads           A barcode is only considered a valid barcode read
@@ -196,14 +195,12 @@ params.ksizes = '21,27,33,51'
 params.molecules =  'dna,protein'
 params.log2_sketch_sizes = '10,12,14,16'
 params.count_valid_reads = '1000'
-params.processes = '32'
 
 // Parse the parameters
 ksizes = params.ksizes?.toString().tokenize(',')
 molecules = params.molecules?.toString().tokenize(',')
 log2_sketch_sizes = params.log2_sketch_sizes?.toString().tokenize(',')
 count_valid_reads = params.count_valid_reads?.toString()
-processes = params.processes?.toString()
 
 // Header log info
 log.info nfcoreHeader()
@@ -316,11 +313,10 @@ process sourmash_compute_sketch {
 	script:
   sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
   metadata = "all_barcode_meta.csv"
-  fastas = "fastas"
+  save_fastas = "fastas"
   molecule = molecule
   not_dna = molecule == 'dna' ? '' : '--no-dna'
   ksize = ksize
-  processes = $params.max_cpus
   count_valid_reads = count_valid_reads
   if ( params.one_signature_per_record ){
     """
@@ -336,10 +332,9 @@ process sourmash_compute_sketch {
     """
     sourmash compute \\ 
       --input-is-10x \\
-      --processes=$processes \\
       --ksize $ksize \\
       --$molecule
-      --save-fastas $fastas \\
+      --save-fastas $save_fastas \\
       --num-hashes \$((2**$log2_sketch_size))
       --count-valid-reads $count_valid_reads \\
       --write-barcode-meta-csv $metadata \\
@@ -380,13 +375,11 @@ process sourmash_compare_sketches {
 	file "similarities_${sketch_id}.csv"
 
 	script:
-  processes = $params.max_cpus
 	"""
 	sourmash compare \\
         --ksize ${ksize[0]} \\
         --${molecule[0]} \\
         --csv similarities_${sketch_id}.csv \\
-        --processes $processes \\
         --traverse-directory .
 	"""
 
