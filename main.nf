@@ -194,7 +194,7 @@ if(workflow.profile == 'awsbatch'){
 params.ksizes = '21,27,33,51'
 params.molecules =  'dna,protein'
 params.log2_sketch_sizes = '10,12,14,16'
-params.count_valid_reads = '10'
+params.count_valid_reads = '1000'
 
 // Parse the parameters
 ksizes = params.ksizes?.toString().tokenize(',')
@@ -331,7 +331,7 @@ process sourmash_compute_sketch {
     """
   } else if ( params.bam) {
     """
-    sourmash compute \\ 
+    sourmash compute \\
       --ksize $ksize \\
       --$molecule \\
       --save-fastas $save_fastas \\
