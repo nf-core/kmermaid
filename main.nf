@@ -316,7 +316,7 @@ process sourmash_compute_sketch {
 	script:
   sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
   metadata = "all_barcode_meta.csv"
-  fastas = "fastas"
+  save_fastas = "fastas"
   molecule = molecule
   not_dna = molecule == 'dna' ? '' : '--no-dna'
   ksize = ksize
@@ -339,7 +339,7 @@ process sourmash_compute_sketch {
       --processes=$processes \\
       --ksize $ksize \\
       --$molecule
-      --save-fastas $fastas \\
+      --save-fastas $save_fastas \\
       --num-hashes \$((2**$log2_sketch_size))
       --count-valid-reads $count_valid_reads \\
       --write-barcode-meta-csv $metadata \\
