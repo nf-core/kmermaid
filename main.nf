@@ -194,7 +194,7 @@ if(workflow.profile == 'awsbatch'){
 params.ksizes = '21,27,33,51'
 params.molecules =  'dna,protein'
 params.log2_sketch_sizes = '10,12,14,16'
-params.count_valid_reads = '1000'
+params.count_valid_reads = '10'
 
 // Parse the parameters
 ksizes = params.ksizes?.toString().tokenize(',')
@@ -318,6 +318,8 @@ process sourmash_compute_sketch {
   not_dna = molecule == 'dna' ? '' : '--no-dna'
   ksize = ksize
   count_valid_reads = count_valid_reads
+  bam = params.bam
+  log.info "IN COMPUTE SKETCH ${bam}"
   if ( params.one_signature_per_record ){
     """
     sourmash compute \\
