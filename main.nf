@@ -226,7 +226,6 @@ summary['Log2 Sketch Sizes']      = params.log2_sketch_sizes
 summary['One Sig per Record']         = params.one_signature_per_record
 // 10x parameters
 summary['Count valid reads'] = params.count_valid_reads
-summary['Processes'] = params.processes
 // Resource information
 summary['Max Resources']    = "$params.max_memory memory, $params.max_cpus cpus, $params.max_time time per job"
 if(workflow.containerEngine) summary['Container'] = "$workflow.containerEngine - $workflow.container"
@@ -321,7 +320,7 @@ process sourmash_compute_sketch {
   molecule = molecule
   not_dna = molecule == 'dna' ? '' : '--no-dna'
   ksize = ksize
-  processes = processes
+  processes = $max_cpus
   count_valid_reads = count_valid_reads
   if ( params.one_signature_per_record ){
     """
@@ -381,7 +380,7 @@ process sourmash_compare_sketches {
 	file "similarities_${sketch_id}.csv"
 
 	script:
-  processes = processes
+  processes = $max_cpus
 	"""
 	sourmash compare \\
         --ksize ${ksize[0]} \\
