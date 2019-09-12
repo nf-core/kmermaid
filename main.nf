@@ -319,7 +319,6 @@ process sourmash_compute_sketch {
   ksize = ksize
   count_valid_reads = count_valid_reads
   bam = params.bam
-  log.info "IN COMPUTE SKETCH ${bam}"
   if ( params.one_signature_per_record ){
     """
     sourmash compute \\
@@ -334,7 +333,7 @@ process sourmash_compute_sketch {
     """
     sourmash compute \\ 
       --ksize $ksize \\
-      --$molecule
+      --$molecule \\
       --save-fastas $save_fastas \\
       --num-hashes \$((2**$log2_sketch_size))
       --count-valid-reads $count_valid_reads \\
