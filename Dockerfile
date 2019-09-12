@@ -42,7 +42,7 @@ RUN trim-low-abund.py --version
 
 # ENV SOURMASH_VERSION master
 RUN cd /home && \
-    git clone https://github.com/pranathivemuri/sourmash.git && \
+    git clone https://github.com/dib-lab/sourmash.git && \
     cd sourmash && \
     python3 setup.py install
 

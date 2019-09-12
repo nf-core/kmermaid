@@ -66,7 +66,6 @@ def helpMessage() {
                                     Useful for comparing e.g. assembled transcriptomes or metagenomes.
                                     (Not typically used for raw sequencing data as this would create
                                     a k-mer signature for each read!)
-      --processes                   'Number of processes to use for reading 10x bam file.                         Default is '32'
       --save_fastas                 Path to save unique barcodes to {CELL_BARCODE}.fasta          fastas to. Default is 'fastas' inside outdir
       --write_barcode_meta_csv      Write to a given path, number of reads and number of umis per barcode.                  Default is 'all_barcodes_meta.csv' inside outdir
       --count_valid_reads           A barcode is only considered a valid barcode read
@@ -319,7 +318,6 @@ process sourmash_compute_sketch {
   not_dna = molecule == 'dna' ? '' : '--no-dna'
   ksize = ksize
   count_valid_reads = count_valid_reads
-  max_cpus = params.max_cpus
   if ( params.one_signature_per_record ){
     """
     sourmash compute \\
@@ -334,7 +332,6 @@ process sourmash_compute_sketch {
     """
     sourmash compute \\ 
       --input-is-10x \\
-      --processes $max_cpus \\
       --ksize $ksize \\
       --$molecule
       --save-fastas $save_fastas \\
@@ -378,13 +375,11 @@ process sourmash_compare_sketches {
 	file "similarities_${sketch_id}.csv"
 
 	script:
-  max_cpus = params.max_cpus
 	"""
 	sourmash compare \\
         --ksize ${ksize[0]} \\
         --${molecule[0]} \\
         --csv similarities_${sketch_id}.csv \\
-        --processes $max_cpus \\
         --traverse-directory .
 	"""
 
