@@ -48,7 +48,8 @@ def helpMessage() {
       --read_singles                Local or s3 directories of single-end read files, separated by commas
       --csv_pairs                   CSV file with columns id, read1, read2 for each sample
       --csv_singles                 CSV file with columns id, read1, read2 for each sample
-      --fastas
+      --fastas                      Path to FASTA sequence files. Can be semi-colon-separated
+      --bam                         Path to 10x BAM file
       --sra                         SRR, ERR, SRP IDs representing a project. Only compatible with
                                     Nextflow 19.03-edge or greater
 
@@ -60,10 +61,16 @@ def helpMessage() {
                                     and protein, i.e. 'dna,protein'
       --log2_sketch_sizes           Which log2 sketch sizes to use. Multiple are separated
                                     by commas. Default is '10,12,14,16'
-      --one_signature_per_record    Make a k-mer signature for each record in the FASTQ/FASTA files.
+      --one_signature_per_record    Make a k-mer signature for each record in the FASTQ/FASTA
+                                    files.
                                     Useful for comparing e.g. assembled transcriptomes or metagenomes.
                                     (Not typically used for raw sequencing data as this would create
                                     a k-mer signature for each read!)
+      --processes                   'Number of processes to use for reading 10x bam file.                         Default is '32'
+      --save_fastas                 Path to save unique barcodes to {CELL_BARCODE}.fasta          fastas to. Default is 'fastas' inside outdir
+      --write_barcode_meta_csv      Write to a given path, number of reads and number of umis per barcode.                  Default is 'all_barcodes_meta.csv' inside outdir
+      --count_valid_reads           A barcode is only considered a valid barcode read
+                                    and its signature is written if number of umis are greater than count_valid_reads. Default is 1000
     """.stripIndent()
 }
 
@@ -99,6 +106,9 @@ read_singles_ch = Channel.empty()
 
 // vanilla fastas
 fastas_ch = Channel.empty()
+
+// 10x bam
+bam_ch = Channel.empty()
 
 // Parameters for testing
 if (params.read_paths) {
@@ -137,7 +147,7 @@ if (params.read_paths) {
        .fromFilePairs(params.read_pairs?.toString()?.tokenize(';'))
        .ifEmpty { exit 1, "params.read_pairs was empty - no input files supplied" }
    }
-   // Provided fastq gz read pairs
+   // Provided fastq gz read singles
    if (params.read_singles){
      read_singles_ch = Channel
        .fromFilePairs(params.read_singles?.toString()?.tokenize(';'), size: 1)
@@ -150,11 +160,20 @@ if (params.read_paths) {
        .map{ f -> tuple(f.baseName, tuple(file(f))) }
        .ifEmpty { exit 1, "params.fastas was empty - no input files supplied" }
    }
+
+   // Provided 10x bam .bam file
+   if (params.bam){
+     bam_ch = Channel
+       .fromPath(params.bam)
+       .map{ f -> tuple(f.baseName, tuple(file(f))) }
+       .ifEmpty { exit 1, "params.bam was empty - no input file supplied" }
+   }
+
  }
 
 
  sra_ch.concat(samples_ch, csv_singles_ch, read_pairs_ch,
-   read_singles_ch, fastas_ch, read_paths_ch)
+   read_singles_ch, fastas_ch, read_paths_ch, bam_ch)
    .ifEmpty{ exit 1, "No reads provided! Check read input files"}
    .set{ reads_ch }
 
@@ -176,12 +195,15 @@ if(workflow.profile == 'awsbatch'){
 params.ksizes = '21,27,33,51'
 params.molecules =  'dna,protein'
 params.log2_sketch_sizes = '10,12,14,16'
+params.count_valid_reads = '1000'
+params.processes = '32'
 
 // Parse the parameters
 ksizes = params.ksizes?.toString().tokenize(',')
 molecules = params.molecules?.toString().tokenize(',')
 log2_sketch_sizes = params.log2_sketch_sizes?.toString().tokenize(',')
-
+count_valid_reads = params.count_valid_reads?.toString()
+processes = params.processes?.toString()
 
 // Header log info
 log.info nfcoreHeader()
@@ -195,12 +217,15 @@ if(params.csv_pairs)    summary['Paired-end samples.csv']            = params.cs
 if(params.csv_singles)  summary['Single-end samples.csv']    = params.csv_singles
 if(params.sra)          summary['SRA']                             = params.sra
 if(params.fastas)       summary["FASTAs"]                          = params.fastas
-if(params.read_paths)   summary['Read paths (paired-end)']            = params.read_paths
+if(params.bam)          summary["BAMs"]                            = params.bam
+if(params.read_paths)   summary['Read paths (paired-end)']         = params.read_paths
 // Sketch parameters
 summary['K-mer sizes']            = params.ksizes
 summary['Molecule']               = params.molecules
 summary['Log2 Sketch Sizes']      = params.log2_sketch_sizes
 summary['One Sig per Record']         = params.one_signature_per_record
+// 10x parameters
+summary['Count valid reads'] = params.count_valid_reads
 // Resource information
 summary['Max Resources']    = "$params.max_memory memory, $params.max_cpus cpus, $params.max_time time per job"
 if(workflow.containerEngine) summary['Container'] = "$workflow.containerEngine - $workflow.container"
@@ -290,9 +315,13 @@ process sourmash_compute_sketch {
 
 	script:
   sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
+  metadata = "all_barcode_meta.csv"
+  fastas = "fastas"
   molecule = molecule
   not_dna = molecule == 'dna' ? '' : '--no-dna'
   ksize = ksize
+  processes = $max_cpus
+  count_valid_reads = count_valid_reads
   if ( params.one_signature_per_record ){
     """
     sourmash compute \\
@@ -303,7 +332,22 @@ process sourmash_compute_sketch {
       --output ${sample_id}_${sketch_id}.sig \\
       $reads
     """
-  } else {
+  } else if ( params.bam) {
+    """
+    sourmash compute \\ 
+      --input-is-10x \\
+      --processes=$processes \\
+      --ksize $ksize \\
+      --$molecule
+      --save-fastas $fastas \\
+      --num-hashes \$((2**$log2_sketch_size))
+      --count-valid-reads $count_valid_reads \\
+      --write-barcode-meta-csv $metadata \\
+      --output ${sample_id}_${sketch_id}.sig \\
+      $reads
+    """
+  }
+  else {
     """
     sourmash compute \\
       --num-hashes \$((2**$log2_sketch_size)) \\
@@ -336,11 +380,13 @@ process sourmash_compare_sketches {
 	file "similarities_${sketch_id}.csv"
 
 	script:
+  processes = $max_cpus
 	"""
 	sourmash compare \\
         --ksize ${ksize[0]} \\
         --${molecule[0]} \\
         --csv similarities_${sketch_id}.csv \\
+        --processes $processes \\
         --traverse-directory .
 	"""
 

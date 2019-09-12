@@ -38,11 +38,11 @@ RUN trim-low-abund.py --version
 
 
 # Required for multiprocessing of 10x bam file
-# RUN pip install pathos bamnostic
+# RUN pip install pathos pysam
 
 # ENV SOURMASH_VERSION master
 RUN cd /home && \
-    git clone https://github.com/dib-lab/sourmash.git && \
+    git clone https://github.com/pranathivemuri/sourmash.git && \
     cd sourmash && \
     python3 setup.py install
 
