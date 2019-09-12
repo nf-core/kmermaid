@@ -214,7 +214,7 @@ if(params.csv_pairs)    summary['Paired-end samples.csv']            = params.cs
 if(params.csv_singles)  summary['Single-end samples.csv']    = params.csv_singles
 if(params.sra)          summary['SRA']                             = params.sra
 if(params.fastas)       summary["FASTAs"]                          = params.fastas
-if(params.bam)          summary["BAMs"]                            = params.bam
+if(params.bam)          summary["BAM"]                             = params.bam
 if(params.read_paths)   summary['Read paths (paired-end)']         = params.read_paths
 // Sketch parameters
 summary['K-mer sizes']            = params.ksizes
