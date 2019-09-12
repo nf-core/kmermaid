@@ -335,7 +335,7 @@ process sourmash_compute_sketch {
       --ksize $ksize \\
       --$molecule \\
       --save-fastas $save_fastas \\
-      --num-hashes \$((2**$log2_sketch_size))
+      --num-hashes \$((2**$log2_sketch_size)) \\
       --count-valid-reads $count_valid_reads \\
       --write-barcode-meta-csv $metadata \\
       --output ${sample_id}_${sketch_id}.sig \\
