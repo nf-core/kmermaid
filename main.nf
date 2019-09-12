@@ -320,7 +320,7 @@ process sourmash_compute_sketch {
   molecule = molecule
   not_dna = molecule == 'dna' ? '' : '--no-dna'
   ksize = ksize
-  processes = $max_cpus
+  processes = $params.max_cpus
   count_valid_reads = count_valid_reads
   if ( params.one_signature_per_record ){
     """
@@ -380,7 +380,7 @@ process sourmash_compare_sketches {
 	file "similarities_${sketch_id}.csv"
 
 	script:
-  processes = $max_cpus
+  processes = $params.max_cpus
 	"""
 	sourmash compare \\
         --ksize ${ksize[0]} \\
