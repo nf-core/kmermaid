@@ -333,7 +333,6 @@ process sourmash_compute_sketch {
   } else if ( params.bam) {
     """
     sourmash compute \\ 
-      --input-is-10x \\
       --ksize $ksize \\
       --$molecule
       --save-fastas $save_fastas \\
@@ -341,7 +340,7 @@ process sourmash_compute_sketch {
       --count-valid-reads $count_valid_reads \\
       --write-barcode-meta-csv $metadata \\
       --output ${sample_id}_${sketch_id}.sig \\
-      $reads
+      --input-is-10x $reads
     """
   }
   else {
