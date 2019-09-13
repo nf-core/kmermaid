@@ -355,7 +355,7 @@ process sourmash_compute_sketch {
     """
   }
 
-  else if ( params.bam and params.barcodes_file) {
+  else if ( params.bam && params.barcodes_file) {
     """
     sourmash compute \\
       --ksize $ksize \\
@@ -371,7 +371,7 @@ process sourmash_compute_sketch {
     """
   }
 
-  else if ( params.bam and params.barcodes_file and params.rename_10x_barcodes) {
+  else if ( params.bam && params.barcodes_file && params.rename_10x_barcodes) {
     """
     sourmash compute \\
       --ksize $ksize \\
