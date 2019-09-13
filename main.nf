@@ -72,6 +72,9 @@ def helpMessage() {
                                     and its signature is written if number of umis are greater than count_valid_reads. Default is 1000
       --processes                   Number of processes to use to calculate similarity or to  
                                     compute signature for 10x bam file, Default is 32
+      --barcodes_file               Absolute path to a .tsv barcodes file if the input is                            unfiltered 10x bam file
+      --rename_10x_barcodes         Absolute path to a .tsv Tab-separated file mapping 10x                           barcode name
+                                    to new name, e.g. with channel or cell annotation label
     """.stripIndent()
 }
 
@@ -325,6 +328,8 @@ process sourmash_compute_sketch {
   processes = processes
   count_valid_reads = count_valid_reads
   bam = params.bam
+  barcodes_file = params.barcodes_file
+  rename_10x_barcodes = params.rename_10x_barcodes
   if ( params.one_signature_per_record ){
     """
     sourmash compute \\
@@ -345,6 +350,39 @@ process sourmash_compute_sketch {
       --num-hashes \$((2**$log2_sketch_size)) \\
       --count-valid-reads $count_valid_reads \\
       --write-barcode-meta-csv $metadata \\
+      --output ${sample_id}_${sketch_id}.sig \\
+      --input-is-10x $reads
+    """
+  }
+
+  else if ( params.bam and params.barcodes_file) {
+    """
+    sourmash compute \\
+      --ksize $ksize \\
+      --$molecule \\
+      --processes $processes \\
+      --save-fastas $save_fastas \\
+      --num-hashes \$((2**$log2_sketch_size)) \\
+      --count-valid-reads $count_valid_reads \\
+      --write-barcode-meta-csv $metadata \\
+      --barcodes-file ${barcodes_file} \\
+      --output ${sample_id}_${sketch_id}.sig \\
+      --input-is-10x $reads
+    """
+  }
+
+  else if ( params.bam and params.barcodes_file and params.rename_10x_barcodes) {
+    """
+    sourmash compute \\
+      --ksize $ksize \\
+      --$molecule \\
+      --processes $processes \\
+      --save-fastas $save_fastas \\
+      --num-hashes \$((2**$log2_sketch_size)) \\
+      --count-valid-reads $count_valid_reads \\
+      --write-barcode-meta-csv $metadata \\
+      --barcodes-file ${barcodes_file} \\
+      --rename-10x-barcodes ${rename_10x_barcodes} \\
       --output ${sample_id}_${sketch_id}.sig \\
       --input-is-10x $reads
     """
