@@ -330,6 +330,10 @@ process sourmash_compute_sketch {
   bam = params.bam
   barcodes_file = params.barcodes_file
   rename_10x_barcodes = params.rename_10x_barcodes
+  log.info "${barcodes_file}"
+  log.info "${rename_10x_barcodes}"
+  log.info "${bam}"
+
   if ( params.one_signature_per_record ){
     """
     sourmash compute \\
