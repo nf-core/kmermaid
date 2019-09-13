@@ -70,6 +70,8 @@ def helpMessage() {
       --write_barcode_meta_csv      Write to a given path, number of reads and number of umis per barcode.                  Default is 'all_barcodes_meta.csv' inside outdir
       --count_valid_reads           A barcode is only considered a valid barcode read
                                     and its signature is written if number of umis are greater than count_valid_reads. Default is 1000
+      --processes                   Number of processes to use to calculate similarity or to  
+                                    compute signature for 10x bam file, Default is 32
     """.stripIndent()
 }
 
@@ -195,12 +197,14 @@ params.ksizes = '21,27,33,51'
 params.molecules =  'dna,protein'
 params.log2_sketch_sizes = '10,12,14,16'
 params.count_valid_reads = '1000'
+params.processes = '32'
 
 // Parse the parameters
 ksizes = params.ksizes?.toString().tokenize(',')
 molecules = params.molecules?.toString().tokenize(',')
 log2_sketch_sizes = params.log2_sketch_sizes?.toString().tokenize(',')
 count_valid_reads = params.count_valid_reads?.toString()
+processes = params.processes?.toString()
 
 // Header log info
 log.info nfcoreHeader()
@@ -224,6 +228,7 @@ summary['One Sig per Record']         = params.one_signature_per_record
 // 10x parameters
 summary['Count valid reads'] = params.count_valid_reads
 // Resource information
+summary['Parallel processes sourmash functions'] = params.processes
 summary['Max Resources']    = "$params.max_memory memory, $params.max_cpus cpus, $params.max_time time per job"
 if(workflow.containerEngine) summary['Container'] = "$workflow.containerEngine - $workflow.container"
 summary['Output dir']       = params.outdir
@@ -317,6 +322,7 @@ process sourmash_compute_sketch {
   molecule = molecule
   not_dna = molecule == 'dna' ? '' : '--no-dna'
   ksize = ksize
+  processes = processes
   count_valid_reads = count_valid_reads
   bam = params.bam
   if ( params.one_signature_per_record ){
@@ -334,6 +340,7 @@ process sourmash_compute_sketch {
     sourmash compute \\
       --ksize $ksize \\
       --$molecule \\
+      --processes $processes \\
       --save-fastas $save_fastas \\
       --num-hashes \$((2**$log2_sketch_size)) \\
       --count-valid-reads $count_valid_reads \\
@@ -379,6 +386,7 @@ process sourmash_compare_sketches {
 	sourmash compare \\
         --ksize ${ksize[0]} \\
         --${molecule[0]} \\
+        --processes ${processes} \\
         --csv similarities_${sketch_id}.csv \\
         --traverse-directory .
 	"""
