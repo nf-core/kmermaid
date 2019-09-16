@@ -65,7 +65,7 @@ def helpMessage() {
                                     (Not typically used for raw sequencing data as this would create
                                     a k-mer signature for each read!)
 
-      --track_abundance             tracking abundances
+      --track_abundance             Track abundance of each hashed k-mer, could be useful for cancer RNA-seq or ATAC-seq analyses
     """.stripIndent()
 }
 
