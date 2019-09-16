@@ -341,7 +341,8 @@ process sourmash_compute_sketch {
       --output ${sample_id}_${sketch_id}.sig \\
       $reads
     """
-  } else if ( params.bam) {
+  }
+  else if ( params.bam && params.barcodes_file && params.rename_10x_barcodes) {
     """
     sourmash compute \\
       --ksize $ksize \\
@@ -351,17 +352,18 @@ process sourmash_compute_sketch {
       --num-hashes \$((2**$log2_sketch_size)) \\
       --count-valid-reads $count_valid_reads \\
       --write-barcode-meta-csv $metadata \\
+      --barcodes-file ${barcodes_file} \\
+      --rename-10x-barcodes ${rename_10x_barcodes} \\
       --output ${sample_id}_${sketch_id}.sig \\
       --input-is-10x $reads
     """
   }
-
   else if ( params.bam && params.barcodes_file) {
     """
     sourmash compute \\
       --ksize $ksize \\
       --$molecule \\
-      - $processes \\
+      --processes $processes \\
       --save-fastas $save_fastas \\
       --num-hashes \$((2**$log2_sketch_size)) \\
       --count-valid-reads $count_valid_reads \\
@@ -371,19 +373,16 @@ process sourmash_compute_sketch {
       --input-is-10x $reads
     """
   }
-
-  else if ( params.bam && params.barcodes_file && params.rename_10x_barcodes) {
+  else if ( params.bam) {
     """
     sourmash compute \\
       --ksize $ksize \\
       --$molecule \\
-      - $processes \\
+      --processes $processes \\
       --save-fastas $save_fastas \\
       --num-hashes \$((2**$log2_sketch_size)) \\
       --count-valid-reads $count_valid_reads \\
       --write-barcode-meta-csv $metadata \\
-      --barcodes-file ${barcodes_file} \\
-      --rename-10x-barcodes ${rename_10x_barcodes} \\
       --output ${sample_id}_${sketch_id}.sig \\
       --input-is-10x $reads
     """
