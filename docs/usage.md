@@ -262,6 +262,11 @@ The log2 sketch size specifies the number of k-mers to use for the sketch. We us
 * Only a log2 sketch size of 8 (2^8 = 256):
   * `--log2_sketch_size 8`
 
+**Example parameters**
+
+* Tracking abundance - add this parameter if we want to keep track of the number of times a kmer appears. 
+  * `--track_abundance`
+
 
 ## Reference Genomes
 
