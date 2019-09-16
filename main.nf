@@ -361,7 +361,7 @@ process sourmash_compute_sketch {
     sourmash compute \\
       --ksize $ksize \\
       --$molecule \\
-      --processes $processes \\
+      - $processes \\
       --save-fastas $save_fastas \\
       --num-hashes \$((2**$log2_sketch_size)) \\
       --count-valid-reads $count_valid_reads \\
@@ -377,7 +377,7 @@ process sourmash_compute_sketch {
     sourmash compute \\
       --ksize $ksize \\
       --$molecule \\
-      --processes $processes \\
+      - $processes \\
       --save-fastas $save_fastas \\
       --num-hashes \$((2**$log2_sketch_size)) \\
       --count-valid-reads $count_valid_reads \\
@@ -425,7 +425,7 @@ process sourmash_compare_sketches {
 	sourmash compare \\
         --ksize ${ksize[0]} \\
         --${molecule[0]} \\
-        --processes ${processes} \\
+        -p ${processes} \\
         --csv similarities_${sketch_id}.csv \\
         --traverse-directory .
 	"""
