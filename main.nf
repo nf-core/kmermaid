@@ -67,9 +67,8 @@ def helpMessage() {
                                     Useful for comparing e.g. assembled transcriptomes or metagenomes.
                                     (Not typically used for raw sequencing data as this would create
                                     a k-mer signature for each read!)
-      --splitKmer                   If provided, use SKA to compute split k-mer sketches instead of
-                                    sourmash to compute k-mer sketches
-      --truncate                    integer value to subsample reads from input fastq files 
+
+      --track_abundance             Track abundance of each hashed k-mer, could be useful for cancer RNA-seq or ATAC-seq analyses
     """.stripIndent()
 }
 
