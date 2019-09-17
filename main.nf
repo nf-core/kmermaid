@@ -383,7 +383,7 @@ if (params.bam) {
     ksize = ksize
     count_valid_reads = count_valid_reads
 
-    else if (params.barcodes_file && params.rename_10x_barcodes) {
+    if (params.barcodes_file && params.rename_10x_barcodes) {
       """
       sourmash compute \\
         --ksize $ksize \\
