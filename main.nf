@@ -194,7 +194,7 @@ if (params.sra){
 }
 
 if (params.bam) {
-  tenx_ch.concat(bam_ch, barcodes_ch, barcodes_renamer_ch)
+  tenx_ch.concat(bam_readable, barcodes_readable, barcodes_renamer_readable)
   .ifEmpty{ exit 1, "No bam files provided! Check read input files"}
 }
 
