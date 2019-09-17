@@ -70,8 +70,6 @@ def helpMessage() {
       --write_barcode_meta_csv      Write to a given path, number of reads and number of umis per barcode.                  Default is 'all_barcodes_meta.csv' inside outdir
       --count_valid_reads           A barcode is only considered a valid barcode read
                                     and its signature is written if number of umis are greater than count_valid_reads. Default is 1000
-      --processes                   Number of processes to use to calculate similarity or to  
-                                    compute signature for 10x bam file, Default is 32
       --barcodes_file               Absolute path to a .tsv barcodes file if the input is                            unfiltered 10x bam file
       --rename_10x_barcodes         Absolute path to a .tsv Tab-separated file mapping 10x                           barcode name
                                     to new name, e.g. with channel or cell annotation label
@@ -113,6 +111,13 @@ fastas_ch = Channel.empty()
 
 // 10x bam
 bam_ch = Channel.empty()
+
+// 10x bam barcodes fasta file
+barcodes_ch = Channel.empty()
+
+// 10x bam renamer barcodes fasta file
+renamer_barcodes_ch = Channel.empty()
+
 
 // Parameters for testing
 if (params.read_paths) {
@@ -165,22 +170,21 @@ if (params.read_paths) {
        .ifEmpty { exit 1, "params.fastas was empty - no input files supplied" }
    }
 
-   // Provided 10x bam .bam file
-   if (params.bam){
-     bam_ch = Channel
-       .fromPath(params.bam)
-       .map{ f -> tuple(f.baseName, tuple(file(f))) }
-       .ifEmpty { exit 1, "params.bam was empty - no input file supplied" }
-   }
+  bam_ch = Channel.fromPath(params.bam, checkIfExists: true)
+        .ifEmpty { exit 1, "Barcodes file not found: ${params.barcodes_file}" }
+
+  barcodes_ch = Channel.fromPath(params.barcodes_file, checkIfExists: true)
+        .ifEmpty { exit 1, "Barcodes file not found: ${params.barcodes_file}" }
+
+  barcodes_renamer_ch = Channel.fromPath(params.rename_10x_barcodes, checkIfExists: true)
+        .ifEmpty { exit 1, "Barcodes file not found: ${params.barcodes_file}" }
 
  }
 
-
  sra_ch.concat(samples_ch, csv_singles_ch, read_pairs_ch,
-   read_singles_ch, fastas_ch, read_paths_ch, bam_ch)
+   read_singles_ch, fastas_ch, read_paths_ch)
    .ifEmpty{ exit 1, "No reads provided! Check read input files"}
    .set{ reads_ch }
-
 
 // Has the run name been specified by the user?
 //  this has the bonus effect of catching both -name and --name
@@ -200,14 +204,12 @@ params.ksizes = '21,27,33,51'
 params.molecules =  'dna,protein'
 params.log2_sketch_sizes = '10,12,14,16'
 params.count_valid_reads = '1000'
-params.processes = '32'
 
 // Parse the parameters
 ksizes = params.ksizes?.toString().tokenize(',')
 molecules = params.molecules?.toString().tokenize(',')
 log2_sketch_sizes = params.log2_sketch_sizes?.toString().tokenize(',')
 count_valid_reads = params.count_valid_reads?.toString()
-processes = params.processes?.toString()
 
 // Header log info
 log.info nfcoreHeader()
@@ -231,7 +233,6 @@ summary['One Sig per Record']         = params.one_signature_per_record
 // 10x parameters
 summary['Count valid reads'] = params.count_valid_reads
 // Resource information
-summary['Parallel processes sourmash functions'] = params.processes
 summary['Max Resources']    = "$params.max_memory memory, $params.max_cpus cpus, $params.max_time time per job"
 if(workflow.containerEngine) summary['Container'] = "$workflow.containerEngine - $workflow.container"
 summary['Output dir']       = params.outdir
@@ -299,7 +300,7 @@ process get_software_versions {
 }
 
 
-process sourmash_compute_sketch {
+process sourmash_compute_sketch_fasta {
 	tag "${sample_id}_${sketch_id}"
 	publishDir "${params.outdir}/sketches", mode: 'copy'
 	container "$workflow.container"
@@ -321,15 +322,9 @@ process sourmash_compute_sketch {
 	script:
   sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
   metadata = "all_barcode_meta.csv"
-  save_fastas = "fastas"
   molecule = molecule
   not_dna = molecule == 'dna' ? '' : '--no-dna'
   ksize = ksize
-  processes = processes
-  count_valid_reads = count_valid_reads
-  bam = params.bam
-  barcodes_file = params.barcodes_file
-  rename_10x_barcodes = params.rename_10x_barcodes
 
   if ( params.one_signature_per_record ){
     """
@@ -340,51 +335,6 @@ process sourmash_compute_sketch {
       $not_dna \\
       --output ${sample_id}_${sketch_id}.sig \\
       $reads
-    """
-  }
-  else if ( params.bam && params.barcodes_file && params.rename_10x_barcodes) {
-    """
-    sourmash compute \\
-      --ksize $ksize \\
-      --$molecule \\
-      --processes $processes \\
-      --save-fastas $save_fastas \\
-      --num-hashes \$((2**$log2_sketch_size)) \\
-      --count-valid-reads $count_valid_reads \\
-      --write-barcode-meta-csv $metadata \\
-      --barcodes-file ${barcodes_file} \\
-      --rename-10x-barcodes ${rename_10x_barcodes} \\
-      --output ${sample_id}_${sketch_id}.sig \\
-      --input-is-10x $reads
-    """
-  }
-  else if ( params.bam && params.barcodes_file) {
-    """
-    sourmash compute \\
-      --ksize $ksize \\
-      --$molecule \\
-      --processes $processes \\
-      --save-fastas $save_fastas \\
-      --num-hashes \$((2**$log2_sketch_size)) \\
-      --count-valid-reads $count_valid_reads \\
-      --write-barcode-meta-csv $metadata \\
-      --barcodes-file ${barcodes_file} \\
-      --output ${sample_id}_${sketch_id}.sig \\
-      --input-is-10x $reads
-    """
-  }
-  else if ( params.bam) {
-    """
-    sourmash compute \\
-      --ksize $ksize \\
-      --$molecule \\
-      --processes $processes \\
-      --save-fastas $save_fastas \\
-      --num-hashes \$((2**$log2_sketch_size)) \\
-      --count-valid-reads $count_valid_reads \\
-      --write-barcode-meta-csv $metadata \\
-      --output ${sample_id}_${sketch_id}.sig \\
-      --input-is-10x $reads
     """
   }
   else {
@@ -401,8 +351,84 @@ process sourmash_compute_sketch {
 
 }
 
-// sourmash_sketches.println()
-// sourmash_sketches.groupTuple(by: [0,3]).println()
+if (params.bam) {
+  process sourmash_compute_sketch_bam {
+    tag "${sample_id}_${sketch_id}"
+    publishDir "${params.outdir}/sketches", mode: 'copy'
+    container "$workflow.container"
+
+    // If job fails, try again with more memory
+    // memory { 8.GB * task.attempt }
+    errorStrategy 'retry'
+    maxRetries 3
+
+    input:
+    bam from bam_ch
+    barcodes from barcodes_ch
+    rename_10x_barcodes from barcodes_renamer_ch
+    each ksize from ksizes
+    each molecule from molecules
+    each log2_sketch_size from log2_sketch_sizes
+    set sample_id, file(reads) from reads_ch
+
+    output:
+    set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches
+
+    script:
+    sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
+    metadata = "all_barcode_meta.csv"
+    save_fastas = "fastas"
+    molecule = molecule
+    not_dna = molecule == 'dna' ? '' : '--no-dna'
+    ksize = ksize
+    count_valid_reads = count_valid_reads
+
+    else if (params.barcodes_file && params.rename_10x_barcodes) {
+      """
+      sourmash compute \\
+        --ksize $ksize \\
+        --$molecule \\
+        --processes ${task.cpus} \\
+        --save-fastas $save_fastas \\
+        --num-hashes \$((2**$log2_sketch_size)) \\
+        --count-valid-reads $count_valid_reads \\
+        --write-barcode-meta-csv $metadata \\
+        --barcodes-file ${barcodes} \\
+        --rename-10x-barcodes ${rename_10x_barcodes} \\
+        --output ${sample_id}_${sketch_id}.sig \\
+        --input-is-10x ${bam}
+      """
+    }
+    else if (params.barcodes_file) {
+      """
+      sourmash compute \\
+        --ksize $ksize \\
+        --$molecule \\
+        --processes ${task.cpus} \\
+        --save-fastas $save_fastas \\
+        --num-hashes \$((2**$log2_sketch_size)) \\
+        --count-valid-reads $count_valid_reads \\
+        --write-barcode-meta-csv $metadata \\
+        --barcodes-file ${barcodes} \\
+        --output ${sample_id}_${sketch_id}.sig \\
+        --input-is-10x ${bam}
+      """
+    }
+    else {
+      """
+      sourmash compute \\
+        --ksize $ksize \\
+        --$molecule \\
+        --processes ${task.cpus} \\
+        --save-fastas $save_fastas \\
+        --num-hashes \$((2**$log2_sketch_size)) \\
+        --count-valid-reads $count_valid_reads \\
+        --write-barcode-meta-csv $metadata \\
+        --output ${sample_id}_${sketch_id}.sig \\
+        --input-is-10x ${bam}
+      """
+    }
+}
 
 process sourmash_compare_sketches {
 	tag "${sketch_id}"
@@ -424,7 +450,7 @@ process sourmash_compare_sketches {
 	sourmash compare \\
         --ksize ${ksize[0]} \\
         --${molecule[0]} \\
-        -p ${processes} \\
+        --processes ${task.cpus} \\
         --csv similarities_${sketch_id}.csv \\
         --traverse-directory .
 	"""
