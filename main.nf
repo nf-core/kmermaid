@@ -320,9 +320,9 @@ if (params.bam) {
     maxRetries 3
 
     input:
-    each bam from bam_ch
-    each barcodes from barcodes_ch
-    each rename_10x_barcodes from barcodes_renamer_ch
+    file bam from bam_ch
+    file barcodes from barcodes_ch
+    file rename_10x_barcodes from barcodes_renamer_ch
     each ksize from ksizes
     each molecule from molecules
     each log2_sketch_size from log2_sketch_sizes
