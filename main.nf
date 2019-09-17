@@ -320,7 +320,6 @@ if (params.bam) {
     maxRetries 3
 
     input:
-    file bam from bam_ch
     file barcodes from barcodes_ch
     file rename_10x_barcodes from barcodes_renamer_ch
     each ksize from ksizes
@@ -353,7 +352,7 @@ if (params.bam) {
         --barcodes-file ${barcodes} \\
         --rename-10x-barcodes ${rename_10x_barcodes} \\
         --output ${sample_id}_${sketch_id}.sig \\
-        --input-is-10x ${bam}
+        --input-is-10x ${bam_ch}
       """
     }
     else if (params.barcodes_file) {
@@ -368,7 +367,7 @@ if (params.bam) {
         --write-barcode-meta-csv $metadata \\
         --barcodes-file ${barcodes} \\
         --output ${sample_id}_${sketch_id}.sig \\
-        --input-is-10x ${bam}
+        --input-is-10x ${bam_ch}
       """
     }
     else {
@@ -382,7 +381,7 @@ if (params.bam) {
         --count-valid-reads $count_valid_reads \\
         --write-barcode-meta-csv $metadata \\
         --output ${sample_id}_${sketch_id}.sig \\
-        --input-is-10x ${bam}
+        --input-is-10x ${bam_ch}
       """
     }
 }
