@@ -188,6 +188,13 @@ if (params.sra){
    .set{ reads_ch }
 }
 
+if (params.bam) {
+  tenx_ch = Channel.empty()
+  tenx_ch.concat(bam_ch, barcodes_ch, barcodes_renamer_ch)
+  .ifEmpty{ exit 1, "No reads provided! Check read input files"}
+  .set{ reads_ch }
+}
+
 // Has the run name been specified by the user?
 //  this has the bonus effect of catching both -name and --name
 custom_runName = params.name
@@ -371,7 +378,7 @@ if (params.bam) {
     each ksize from ksizes
     each molecule from molecules
     each log2_sketch_size from log2_sketch_sizes
-    set sample_id, file(reads) from reads_ch
+    set sample_id, file(reads) from tenx_ch
 
     output:
     set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches
