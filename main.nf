@@ -429,6 +429,7 @@ if (params.bam) {
       """
     }
 }
+}
 
 process sourmash_compare_sketches {
 	tag "${sketch_id}"
