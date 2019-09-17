@@ -320,9 +320,6 @@ if (params.bam) {
     maxRetries 3
 
     input:
-    file bam_file from bam_ch
-    file barcodes_file from barcodes_ch
-    file rename_10x_barcodes_file from barcodes_renamer_ch
     each ksize from ksizes
     each molecule from molecules
     each log2_sketch_size from log2_sketch_sizes
@@ -350,10 +347,10 @@ if (params.bam) {
         --num-hashes \$((2**$log2_sketch_size)) \\
         --count-valid-reads $count_valid_reads \\
         --write-barcode-meta-csv $metadata \\
-        --barcodes-file ${barcodes_file} \\
-        --rename-10x-barcodes ${rename_10x_barcodes_file} \\
+        --barcodes-file ${barcodes_ch} \\
+        --rename-10x-barcodes ${rename_10x_barcodes_ch} \\
         --output ${sample_id}_${sketch_id}.sig \\
-        --input-is-10x ${bam_file}
+        --input-is-10x ${bam_ch}
       """
     }
     else if (params.barcodes_file) {
@@ -366,9 +363,9 @@ if (params.bam) {
         --num-hashes \$((2**$log2_sketch_size)) \\
         --count-valid-reads $count_valid_reads \\
         --write-barcode-meta-csv $metadata \\
-        --barcodes-file ${barcodes_file} \\
+        --barcodes-file ${barcodes_ch} \\
         --output ${sample_id}_${sketch_id}.sig \\
-        --input-is-10x ${bam_ch_file}
+        --input-is-10x ${bam_ch}
       """
     }
     else {
@@ -382,7 +379,7 @@ if (params.bam) {
         --count-valid-reads $count_valid_reads \\
         --write-barcode-meta-csv $metadata \\
         --output ${sample_id}_${sketch_id}.sig \\
-        --input-is-10x ${bam_ch_file}
+        --input-is-10x ${bam_ch}
       """
     }
 }
