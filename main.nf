@@ -174,15 +174,15 @@ if (params.read_paths) {
 
   bam_ch = Channel.fromPath(params.bam, checkIfExists: true)
         .ifEmpty { exit 1, "Barcodes file not found: ${params.barcodes_file}" }
-        .into{bam_readable}
+        .set{bam_readable}
 
   barcodes_ch = Channel.fromPath(params.barcodes_file, checkIfExists: true)
         .ifEmpty { exit 1, "Barcodes file not found: ${params.barcodes_file}" }
-        .into{barcodes_readable}
+        .set{barcodes_readable}
 
   barcodes_renamer_ch = Channel.fromPath(params.rename_10x_barcodes, checkIfExists: true)
         .ifEmpty { exit 1, "Barcodes file not found: ${params.barcodes_file}" }
-        .into{barcodes_renamer_readable}
+        .set{barcodes_renamer_readable}
 
  }
 
@@ -195,7 +195,7 @@ if (params.sra){
 
 if (params.bam) {
   tenx_ch.concat(bam_ch, barcodes_ch, barcodes_renamer_ch)
-  .ifEmpty{ exit 1, "No reads provided! Check read input files"}
+  .ifEmpty{ exit 1, "No bam files provided! Check read input files"}
 }
 
 // Has the run name been specified by the user?
