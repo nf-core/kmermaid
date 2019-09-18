@@ -344,9 +344,10 @@ if (params.bam) {
     not_dna = molecule == 'dna' ? '' : '--no-dna'
     ksize = ksize
     count_valid_reads = count_valid_reads
-    log.info "Script vars set"
+    "echo Script vars set"
     if (params.barcodes_file && params.rename_10x_barcodes && save_fastas && metadata) {
       """
+      echo 1st conditions \\n
       sourmash compute \\
         --ksize $ksize \\
         --$molecule \\
@@ -364,6 +365,7 @@ if (params.bam) {
     }
     else if (params.barcodes_file && save_fastas && metadata) {
       """
+      echo 2nd conditions \\n
       sourmash compute \\
         --ksize $ksize \\
         --$molecule \\
@@ -380,6 +382,7 @@ if (params.bam) {
     }
     else if (params.barcodes_file && save_fastas) {
       """
+      echo 3rd conditions \\n
       sourmash compute \\
         --ksize $ksize \\
         --$molecule \\
@@ -395,6 +398,7 @@ if (params.bam) {
     }
     else if (params.barcodes_file && metadata) {
       """
+      echo 4th conditions \\n
       sourmash compute \\
         --ksize $ksize \\
         --$molecule \\
@@ -410,6 +414,7 @@ if (params.bam) {
     }
     else if (save_fastas && metadata) {
       """
+      echo 5th conditions \\n
       sourmash compute \\
         --ksize $ksize \\
         --$molecule \\
@@ -425,6 +430,7 @@ if (params.bam) {
     }
     else if (params.barcodes_file && params.rename_10x_barcodes) {
       """
+      echo 6th conditions \\n
       sourmash compute \\
         --ksize $ksize \\
         --$molecule \\
@@ -440,6 +446,7 @@ if (params.bam) {
     }
     else if (params.barcodes_file) {
       """
+      echo 7th conditions \\n
       sourmash compute \\
         --ksize $ksize \\
         --$molecule \\
@@ -454,6 +461,7 @@ if (params.bam) {
     }
     else {
       """
+      echo 8th conditions \\n
       sourmash compute \\
         --ksize $ksize \\
         --$molecule \\
