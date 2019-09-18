@@ -336,6 +336,7 @@ if (!params.bam.isEmpty()) {
       sourmash compute \\
         --ksize $ksize \\
         --$molecule \\
+        $not_dna \\
         --num-hashes \$((2**$log2_sketch_size)) \\
         --processes ${task.cpus} \\
         --count-valid-reads $count_valid_reads \\
@@ -352,6 +353,7 @@ if (!params.bam.isEmpty()) {
       sourmash compute \\
         --ksize $ksize \\
         --$molecule \\
+        $not_dna \\
         --num-hashes \$((2**$log2_sketch_size)) \\
         --processes ${task.cpus} \\
         --count-valid-reads $count_valid_reads \\
@@ -367,6 +369,7 @@ if (!params.bam.isEmpty()) {
       sourmash compute \\
         --ksize $ksize \\
         --$molecule \\
+        $not_dna \\
         --num-hashes \$((2**$log2_sketch_size)) \\
         --processes ${task.cpus} \\
         --count-valid-reads $count_valid_reads \\
@@ -381,6 +384,7 @@ if (!params.bam.isEmpty()) {
       sourmash compute \\
         --ksize $ksize \\
         --$molecule \\
+        $not_dna \\
         --num-hashes \$((2**$log2_sketch_size)) \\
         --processes ${task.cpus} \\
         --count-valid-reads $count_valid_reads \\
@@ -395,6 +399,7 @@ if (!params.bam.isEmpty()) {
       sourmash compute \\
         --ksize $ksize \\
         --$molecule \\
+        $not_dna \\
         --num-hashes \$((2**$log2_sketch_size)) \\
         --processes ${task.cpus} \\
         --count-valid-reads $count_valid_reads \\
@@ -404,11 +409,27 @@ if (!params.bam.isEmpty()) {
         --input-is-10x $bam
       """
     }
+    else if (params.barcodes_file && params.rename_10x_barcodes) {
+      """
+      sourmash compute \\
+        --ksize $ksize \\
+        --$molecule \\
+        $not_dna \\
+        --num-hashes \$((2**$log2_sketch_size)) \\
+        --processes ${task.cpus} \\
+        --count-valid-reads $count_valid_reads \\
+        --rename-10x-barcodes $rename_10x_barcodes \\
+        --barcodes-file $barcodes \\
+        --output ${sample_id}_${sketch_id}.sig \\
+        --input-is-10x $bam
+      """
+    }
     else {
       """
       sourmash compute \\
         --ksize $ksize \\
         --$molecule \\
+        $not_dna \\
         --num-hashes \$((2**$log2_sketch_size)) \\
         --processes ${task.cpus} \\
         --count-valid-reads $count_valid_reads \\
