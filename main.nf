@@ -319,8 +319,8 @@ if (!params.bam.isEmpty()) {
     each molecule from molecules
     each log2_sketch_size from log2_sketch_sizes
     set sample_id, file(bam) from bam_ch_process
-    if (params.barcodes_file) {file(barcodes) from barcodes_ch_process}
-    if (params.rename_10x_barcodes) {file(rename_10x_barcodes) from barcodes_renamer_ch_process}
+    file(barcodes) from barcodes_ch_process
+    file(rename_10x_barcodes) from barcodes_renamer_ch_process
 
     output:
     set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches
