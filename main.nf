@@ -174,12 +174,14 @@ if (params.read_paths) {
     if (params.barcodes_file) {
     Channel.fromPath(params.barcodes_file, checkIfExists: true)
           .ifEmpty { exit 1, "Barcodes file not found: ${params.barcodes_file}" }
+          .map{ f -> tuple(f.baseName, tuple(file(f))) }
           .into{barcodes_ch_operator; barcodes_ch_process}
     }
 
     if (params.rename_10x_barcodes) {
     Channel.fromPath(params.rename_10x_barcodes, checkIfExists: true)
           .ifEmpty { exit 1, "Barcodes renamer file not found: ${params.rename_10x_barcodes}" }
+          .map{ f -> tuple(f.baseName, tuple(file(f))) }
           .into{barcodes_renamer_ch_operator; barcodes_renamer_ch_process}
           }
      }
@@ -320,10 +322,10 @@ if (!params.bam.isEmpty()) {
     each log2_sketch_size from log2_sketch_sizes
     set sample_id, file(bam) from bam_ch_process
     if (params.barcodes_file) {
-      file barcodes from barcodes_ch_process
+      set sample_id, file(bam) from barcodes_ch_process
       }
     if (params.rename_10x_barcodes) {
-      file rename_10x_barcodes from barcodes_renamer_ch_process
+      set sample_id, file(bam) from barcodes_renamer_ch_process
     }
 
     output:
@@ -538,9 +540,9 @@ process sourmash_compare_sketches {
 workflow.onComplete {
 
     // Set up the e-mail variables
-    def subject = "[nf-core/rnaseq] Successful: $workflow.runName"
+    def subject = "[nf-core/kmermaid] Successful: $workflow.runName"
     if(!workflow.success){
-      subject = "[nf-core/rnaseq] FAILED: $workflow.runName"
+      subject = "[nf-core/kmermaid] FAILED: $workflow.runName"
     }
     def email_fields = [:]
     email_fields['version'] = workflow.manifest.version
@@ -589,11 +591,11 @@ workflow.onComplete {
           if( params.plaintext_email ){ throw GroovyException('Send plaintext e-mail, not HTML') }
           // Try to send HTML e-mail using sendmail
           [ 'sendmail', '-t' ].execute() << sendmail_html
-          log.info "[nf-core/rnaseq] Sent summary e-mail to $params.email (sendmail)"
+          log.info "[nf-core/kmermaid] Sent summary e-mail to $params.email (sendmail)"
         } catch (all) {
           // Catch failures and try with plaintext
           [ 'mail', '-s', subject, params.email ].execute() << email_txt
-          log.info "[nf-core/rnaseq] Sent summary e-mail to $params.email (mail)"
+          log.info "[nf-core/kmermaid] Sent summary e-mail to $params.email (mail)"
         }
     }
 
@@ -619,10 +621,10 @@ workflow.onComplete {
     }
 
     if(workflow.success){
-        log.info "${c_purple}[nf-core/rnaseq]${c_green} Pipeline completed successfully${c_reset}"
+        log.info "${c_purple}[nf-core/kmermaid]${c_green} Pipeline completed successfully${c_reset}"
     } else {
         checkHostname()
-        log.info "${c_purple}[nf-core/rnaseq]${c_red} Pipeline completed with errors${c_reset}"
+        log.info "${c_purple}[nf-core/kmermaid]${c_red} Pipeline completed with errors${c_reset}"
     }
 
 }
