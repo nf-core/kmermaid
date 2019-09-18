@@ -229,7 +229,10 @@ summary['Molecule']               = params.molecules
 summary['Log2 Sketch Sizes']      = params.log2_sketch_sizes
 summary['One Sig per Record']         = params.one_signature_per_record
 // 10x parameters
-summary['Count valid reads'] = params.count_valid_reads
+if(params.count_valid_reads.isEmpty()) summary['Count valid reads'] = params.count_valid_reads
+if(params.save_fastas.isEmpty()) summary['Count valid reads'] = params.save_fastas
+if(params.write_barcode_meta_csv.isEmpty()) summary['Count valid reads'] = params.write_barcode_meta_csv
+
 // Resource information
 summary['Max Resources']    = "$params.max_memory memory, $params.max_cpus cpus, $params.max_time time per job"
 if(workflow.containerEngine) summary['Container'] = "$workflow.containerEngine - $workflow.container"
@@ -297,7 +300,7 @@ process get_software_versions {
     """
 }
 
-if (params.bam) {
+if (params.bam.isEmpty()) {
   process sourmash_compute_sketch_bam {
     tag "${sample_id}_${sketch_id}"
     publishDir "${params.outdir}/sketches", mode: 'copy'
