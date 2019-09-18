@@ -340,7 +340,6 @@ if (params.bam) {
     not_dna = molecule != 'dna' ? '--no-dna' : ''
     count_valid_reads = count_valid_reads
     ksize = ksize
-    "echo Script vars set"
     """
     echo 8th conditions \\n
     sourmash compute \\
