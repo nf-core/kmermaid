@@ -167,19 +167,23 @@ if (params.read_paths) {
      // Added to avoid this error Channel `bam_ch` has been used twice 
       // as an input by process `sourmash_compute_sketch_bam` and another operator
      Channel.fromPath(params.bam, checkIfExists: true)
-          .ifEmpty { exit 1, "Barcodes file not found: ${params.barcodes_file}" }
+          .ifEmpty { exit 1, "Bam file not found: ${params.bam}" }
           .map{ f -> tuple(f.baseName, tuple(file(f))) }
           .into{ bam_ch_operator; bam_ch_process }
 
+    if (params.barcodes_file) {
     Channel.fromPath(params.barcodes_file, checkIfExists: true)
           .ifEmpty { exit 1, "Barcodes file not found: ${params.barcodes_file}" }
           .into{barcodes_ch_operator; barcodes_ch_process}
+    }
 
+    if (params.rename_10x_barcodes) {
     Channel.fromPath(params.rename_10x_barcodes, checkIfExists: true)
-          .ifEmpty { exit 1, "Barcodes file not found: ${params.barcodes_file}" }
+          .ifEmpty { exit 1, "Barcodes renamer file not found: ${params.rename_10x_barcodes}" }
           .into{barcodes_renamer_ch_operator; barcodes_renamer_ch_process}
           }
      }
+   }  
 
 if (!params.bam) {
     sra_ch.concat(samples_ch, csv_singles_ch, read_pairs_ch,
@@ -315,9 +319,8 @@ if (!params.bam.isEmpty()) {
     each molecule from molecules
     each log2_sketch_size from log2_sketch_sizes
     set sample_id, file(bam) from bam_ch_process
-    if (params.ba)
-    file(barcodes) from barcodes_ch_process
-    file(rename_10x_barcodes) from barcodes_renamer_ch_process
+    if (params.barcodes_file) {file(barcodes) from barcodes_ch_process}
+    if (params.rename_10x_barcodes) {file(rename_10x_barcodes) from barcodes_renamer_ch_process}
 
     output:
     set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches
