@@ -189,7 +189,7 @@ if (params.read_paths) {
      }
 
 sra_ch.concat(samples_ch, csv_singles_ch, read_pairs_ch,
- read_singles_ch, fastas_ch, read_paths_ch, bam_ch_operator)
+ read_singles_ch, fastas_ch, read_paths_ch)
  .ifEmpty{ exit 1, "No reads provided! Check read input files"}
  .set{ reads_ch }
 
@@ -372,7 +372,7 @@ if (params.bam) {
 }
 
 else {
-  process sourmash_compute_sketch_fasta {
+  process sourmash_compute_sketch_fastx {
     tag "${sample_id}_${sketch_id}"
     publishDir "${params.outdir}/sketches", mode: 'copy'
     container "$workflow.container"
