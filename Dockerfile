@@ -1,14 +1,14 @@
 FROM nfcore/base
-LABEL description="Docker image containing all requirements for czbiohub/nf-kmer-similarity pipeline"
+LABEL description="Docker image containing all requirements for nf-core/kmermaid pipeline"
 
 COPY environment.yml /
 RUN conda env create -f /environment.yml && conda clean -a
-ENV PATH /opt/conda/envs/czbiohub-nf-kmer-similarity-0.1dev/bin:$PATH
+ENV PATH /opt/conda/envs/nfcore-kmermaid-0.1dev/bin:$PATH
 
 # Suggested tags from https://microbadger.com/labels
 ARG VCS_REF
 LABEL org.label-schema.vcs-ref=$VCS_REF \
-org.label-schema.vcs-url="e.g. https://github.com/czbiohub/nf-kmer-similarity"
+org.label-schema.vcs-url="e.g. https://github.com/nf-core/kmermaid"
 
 WORKDIR /home
 
