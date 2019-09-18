@@ -230,8 +230,8 @@ summary['Log2 Sketch Sizes']      = params.log2_sketch_sizes
 summary['One Sig per Record']         = params.one_signature_per_record
 // 10x parameters
 if(count_valid_reads) summary['Count valid reads'] = params.count_valid_reads
-if(!params.save_fastas.isEmpty()) summary['Count valid reads'] = params.save_fastas
-if(!params.write_barcode_meta_csv.isEmpty()) summary['Count valid reads'] = params.write_barcode_meta_csv
+if(params.save_fastas) summary['Count valid reads'] = params.save_fastas
+if(params.write_barcode_meta_csv) summary['Count valid reads'] = params.write_barcode_meta_csv
 
 // Resource information
 summary['Max Resources']    = "$params.max_memory memory, $params.max_cpus cpus, $params.max_time time per job"
