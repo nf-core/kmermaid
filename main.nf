@@ -336,10 +336,8 @@ if (params.bam) {
     not_dna = molecule != 'dna' ? '--no-dna' : ''
     count_valid_reads = count_valid_reads
     ksize = ksize
-
     if( params.barcodes_file && params.rename_10x_barcodes && params.save_fastas && params.write_barcode_meta_csv )
       """
-      echo 1st conditions \\n
       sourmash compute \\
         --ksize $ksize \\
         --$molecule \\
@@ -351,96 +349,6 @@ if (params.bam) {
         --barcodes-file $barcodes \\
         --save-fastas $save_fastas \\
         --write-barcode-meta-csv $metadata \\
-        --output ${sample_id}_${sketch_id}.sig \\
-        --input-is-10x $bam
-      """
-    else if( params.barcodes_file && params.save_fastas && params.write_barcode_meta_csv )
-      """
-      echo 2nd conditions \\n
-      sourmash compute \\
-        --ksize $ksize \\
-        --$molecule \\
-        $not_dna \\
-        --num-hashes \$((2**$log2_sketch_size)) \\
-        --processes ${task.cpus} \\
-        --count-valid-reads $count_valid_reads \\
-        --barcodes-file $barcodes \\
-        --save-fastas $save_fastas \\
-        --write-barcode-meta-csv $metadata \\
-        --output ${sample_id}_${sketch_id}.sig \\
-        --input-is-10x $bam
-      """
-    else if( params.barcodes_file && params.save_fastas )
-      """
-      echo 3rd conditions \\n
-      sourmash compute \\
-        --ksize $ksize \\
-        --$molecule \\
-        $not_dna \\
-        --num-hashes \$((2**$log2_sketch_size)) \\
-        --processes ${task.cpus} \\
-        --count-valid-reads $count_valid_reads \\
-        --barcodes-file $barcodes \\
-        --save-fastas $save_fastas \\
-        --output ${sample_id}_${sketch_id}.sig \\
-        --input-is-10x $bam
-      """
-    else if( params.barcodes_file && params.write_barcode_meta_csv )
-      """
-      echo 4th conditions \\n
-      sourmash compute \\
-        --ksize $ksize \\
-        --$molecule \\
-        $not_dna \\
-        --num-hashes \$((2**$log2_sketch_size)) \\
-        --processes ${task.cpus} \\
-        --count-valid-reads $count_valid_reads \\
-        --barcodes-file $barcodes \\
-        --write-barcode-meta-csv $metadata \\
-        --output ${sample_id}_${sketch_id}.sig \\
-        --input-is-10x $bam
-      """
-    else if( params.save_fastas && params.write_barcode_meta_csv )
-      """
-      echo 5th conditions \\n
-      sourmash compute \\
-        --ksize $ksize \\
-        --$molecule \\
-        $not_dna \\
-        --num-hashes \$((2**$log2_sketch_size)) \\
-        --processes ${task.cpus} \\
-        --count-valid-reads $count_valid_reads \\
-        --save-fastas $save_fastas \\
-        --write-barcode-meta-csv $metadata \\
-        --output ${sample_id}_${sketch_id}.sig \\
-        --input-is-10x $bam
-      """
-    else if( params.barcodes_file && params.rename_10x_barcodes )
-      """
-      echo 6th conditions \\n
-      sourmash compute \\
-        --ksize $ksize \\
-        --$molecule \\
-        $not_dna \\
-        --num-hashes \$((2**$log2_sketch_size)) \\
-        --processes ${task.cpus} \\
-        --count-valid-reads $count_valid_reads \\
-        --rename-10x-barcodes $rename_10x_barcodes \\
-        --barcodes-file $barcodes \\
-        --output ${sample_id}_${sketch_id}.sig \\
-        --input-is-10x $bam
-      """
-    else if( params.barcodes_file )
-      """
-      echo 7th conditions \\n
-      sourmash compute \\
-        --ksize $ksize \\
-        --$molecule \\
-        $not_dna \\
-        --num-hashes \$((2**$log2_sketch_size)) \\
-        --processes ${task.cpus} \\
-        --count-valid-reads $count_valid_reads \\
-        --barcodes-file $barcodes \\
         --output ${sample_id}_${sketch_id}.sig \\
         --input-is-10x $bam
       """
@@ -457,7 +365,6 @@ if (params.bam) {
         --output ${sample_id}_${sketch_id}.sig \\
         --input-is-10x $bam
     """
-
   }
 }
 
@@ -489,7 +396,7 @@ else {
     not_dna = molecule == 'dna' ? '' : '--no-dna'
     ksize = ksize
 
-    if ( params.one_signature_per_record )
+    if ( params.one_signature_per_record ) {
       """
       sourmash compute \\
         --num-hashes \$((2**$log2_sketch_size)) \\
@@ -499,7 +406,8 @@ else {
         --output ${sample_id}_${sketch_id}.sig \\
         $reads
       """
-    else
+    }
+    else {
       """
       sourmash compute \\
         --num-hashes \$((2**$log2_sketch_size)) \\
@@ -509,7 +417,7 @@ else {
         --output ${sample_id}_${sketch_id}.sig \\
         --merge '$sample_id' $reads
       """
-
+    }
   }
 }
 
