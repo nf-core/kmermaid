@@ -305,7 +305,6 @@ if (!params.bam.isEmpty()) {
     tag "${sample_id}_${sketch_id}"
     publishDir "${params.outdir}/sketches", mode: 'copy'
 
-    .ifEmpty{ exit 1, "No bam files provided! Check read input files"}
     // If job fails, try again with more memory
     // memory { 8.GB * task.attempt }
     errorStrategy 'retry'
