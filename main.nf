@@ -168,20 +168,20 @@ if (params.read_paths) {
   Channel.fromPath(params.bam, checkIfExists: true)
         .ifEmpty { exit 1, "Barcodes file not found: ${params.barcodes_file}" }
         .map{ f -> tuple(f.baseName, tuple(file(f))) }
-        .into{bam_ch_process, bam_ch_operator}
+        .into{bam_ch_process; bam_ch_operator}
   }
 
   if (params.barcodes_file) {
     Channel.fromPath(params.barcodes_file, checkIfExists: true)
           .ifEmpty { exit 1, "Barcodes file not found: ${params.barcodes_file}" }
-          .into{barcodes_ch_process, barcodes_ch_operator}
+          .into{barcodes_ch_process; barcodes_ch_operator}
         }
 
 
   if (params.rename_10x_barcodes) {
     Channel.fromPath(params.rename_10x_barcodes, checkIfExists: true)
           .ifEmpty { exit 1, "Barcodes renamer file not found: ${params.rename_10x_barcodes}" }
-          .into{barcodes_renamer_ch_process, barcodes_renamer_ch_operator}
+          .into{barcodes_renamer_ch_process; barcodes_renamer_ch_operator}
           }
      }
 
