@@ -110,8 +110,6 @@ read_singles_ch = Channel.empty()
 // vanilla fastas
 fastas_ch = Channel.empty()
 
-// 10x
-tenx_ch = Channel.empty()
 
 // Parameters for testing
 if (params.read_paths) {
@@ -185,12 +183,10 @@ if (params.read_paths) {
           }
      }
 
-if (!params.bam) {
 sra_ch.concat(samples_ch, csv_singles_ch, read_pairs_ch,
- read_singles_ch, fastas_ch, read_paths_ch)
+ read_singles_ch, fastas_ch, read_paths_ch, bam_ch_operator)
  .ifEmpty{ exit 1, "No reads provided! Check read input files"}
  .set{ reads_ch }
- }
 
 
 // Has the run name been specified by the user?
@@ -311,8 +307,6 @@ if (params.bam) {
     publishDir "${params.outdir}/sketches", mode: 'copy'
     container "$workflow.container"
 
-    tenx_ch.concat(bam_ch_operator, barcodes_ch_operator, barcodes_renamer_ch_operator)
-    .ifEmpty{ exit 1, "No bam files provided! Check read input files"}
     // If job fails, try again with more memory
     // memory { 8.GB * task.attempt }
     errorStrategy 'retry'
