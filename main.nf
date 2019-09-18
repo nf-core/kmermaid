@@ -111,7 +111,6 @@ read_singles_ch = Channel.empty()
 fastas_ch = Channel.empty()
 
 // 10x
-tenx_ch = Channel.empty()
 
 // Parameters for testing
 if (params.read_paths) {
