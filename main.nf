@@ -185,6 +185,8 @@ if (params.read_paths) {
         .ifEmpty { exit 1, "Barcodes file not found: ${params.barcodes_file}" }
         .set{barcodes_renamer_ch}
 
+  // Added to avoid this error Channel `bam_ch` has been used twice 
+  // as an input by process `sourmash_compute_sketch_bam` and another operator
   bam_ch.into{bam_ch_operator; bam_ch_process}
   barcodes_ch.into{barcodes_ch_operator; barcodes_ch_process}
   barcodes_renamer_ch.into{barcodes_renamer_ch_operator; barcodes_renamer_ch_process}
