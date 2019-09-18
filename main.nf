@@ -341,7 +341,7 @@ if (params.bam) {
     metadata = params.write_barcode_meta_csv
     save_fastas = params.save_fastas
     molecule = molecule
-    not_dna = molecule == 'dna' ? '' : '--no-dna'
+    // not_dna = molecule != 'dna' ? '--no-dna' : ''
     ksize = ksize
     count_valid_reads = count_valid_reads
     "echo Script vars set"
