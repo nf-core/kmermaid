@@ -215,12 +215,6 @@ if(workflow.profile == 'awsbatch'){
     if (!workflow.workDir.startsWith('s3') || !params.outdir.startsWith('s3')) exit 1, "Specify S3 URLs for workDir and outdir parameters on AWSBatch!"
 }
 
-
-params.ksizes = '21,27,33,51'
-params.molecules =  'dna,protein'
-params.log2_sketch_sizes = '10,12,14,16'
-params.count_valid_reads = '1000'
-
 // Parse the parameters
 ksizes = params.ksizes?.toString().tokenize(',')
 molecules = params.molecules?.toString().tokenize(',')
