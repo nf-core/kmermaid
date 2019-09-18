@@ -229,7 +229,7 @@ summary['Molecule']               = params.molecules
 summary['Log2 Sketch Sizes']      = params.log2_sketch_sizes
 summary['One Sig per Record']         = params.one_signature_per_record
 // 10x parameters
-if(params.count_valid_reads.isEmpty()) summary['Count valid reads'] = params.count_valid_reads
+if(params.count_valid_reads) summary['Count valid reads'] = params.count_valid_reads
 if(params.save_fastas.isEmpty()) summary['Count valid reads'] = params.save_fastas
 if(params.write_barcode_meta_csv.isEmpty()) summary['Count valid reads'] = params.write_barcode_meta_csv
 
