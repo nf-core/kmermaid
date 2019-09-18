@@ -329,8 +329,19 @@ if (!params.bam.isEmpty()) {
     not_dna = molecule == 'dna' ? '' : '--no-dna'
     ksize = ksize
     count_valid_reads = count_valid_reads
+    default_command =
+      """
+      sourmash compute \\
+        --ksize $ksize \\
+        --$molecule \\
+        --num-hashes \$((2**$log2_sketch_size)) \\
+        --processes ${task.cpus} \\
+        --count-valid-reads $count_valid_reads \\
+        --output ${sample_id}_${sketch_id}.sig \\
+        --input-is-10x $bam
+      """
 
-    if (params.barcodes_file && params.rename_10x_barcodes) {
+    if (params.barcodes_file && params.rename_10x_barcodes && save_fastas && metadata) {
       """
       sourmash compute \\
         --ksize $ksize \\
@@ -346,7 +357,7 @@ if (!params.bam.isEmpty()) {
         --input-is-10x $bam
       """
     }
-    else if (params.barcodes_file) {
+    else if (params.barcodes_file && save_fastas && metadata) {
       """
       sourmash compute \\
         --ksize $ksize \\
@@ -361,19 +372,13 @@ if (!params.bam.isEmpty()) {
         --input-is-10x $bam
       """
     }
+    else if (save_fastas && metadata) {
+      default_command = default_command + """--save-fastas $save_fastas \\
+        --write-barcode-meta-csv $metadata"""
+      """$default_command"""
+    }
     else {
-      """
-      sourmash compute \\
-        --ksize $ksize \\
-        --$molecule \\
-        --num-hashes \$((2**$log2_sketch_size)) \\
-        --processes ${task.cpus} \\
-        --save-fastas $save_fastas \\
-        --count-valid-reads $count_valid_reads \\
-        --write-barcode-meta-csv $metadata \\
-        --output ${sample_id}_${sketch_id}.sig \\
-        --input-is-10x $bam
-      """
+      """$default_command"""
     }
 }
 }
