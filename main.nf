@@ -66,12 +66,13 @@ def helpMessage() {
                                     Useful for comparing e.g. assembled transcriptomes or metagenomes.
                                     (Not typically used for raw sequencing data as this would create
                                     a k-mer signature for each read!)
-      --save_fastas                 Path to save unique barcodes to {CELL_BARCODE}.fasta          fastas to. Default is 'fastas' inside outdir
-      --write_barcode_meta_csv      Write to a given path, number of reads and number of umis per barcode.                  Default is 'all_barcodes_meta.csv' inside outdir
+      --save_fastas                 For bam files, Path to save unique barcodes to {CELL_BARCODE}.fasta Default is 'fastas' inside outdir
+      --write_barcode_meta_csv      For bam files, Write to a given path, number of reads and number of umis per barcode.
+                                    Default is 'all_barcodes_meta.csv' inside outdir
       --count_valid_reads           A barcode is only considered a valid barcode read
                                     and its signature is written if number of umis are greater than count_valid_reads. Default is 1000
-      --barcodes_file               Absolute path to a .tsv barcodes file if the input is                            unfiltered 10x bam file
-      --rename_10x_barcodes         Absolute path to a .tsv Tab-separated file mapping 10x                           barcode name
+      --barcodes_file               For bam files, Optional absolute path to a .tsv barcodes file if the input is unfiltered 10x bam file
+      --rename_10x_barcodes         For bam files, Optional absolute path to a .tsv Tab-separated file mapping 10x barcode name
                                     to new name, e.g. with channel or cell annotation label
     """.stripIndent()
 }
