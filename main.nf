@@ -338,38 +338,18 @@ if (params.bam) {
     not_dna = molecule != 'dna' ? '--no-dna' : ''
     count_valid_reads = count_valid_reads
     ksize = ksize
-    if( params.barcodes_file && params.rename_10x_barcodes && params.save_fastas && params.write_barcode_meta_csv ) {
-      """
-      echo 1st condition
-      sourmash compute \\
-        --ksize $ksize \\
-        --$molecule \\
-        $not_dna \\
-        --num-hashes \$((2**$log2_sketch_size)) \\
-        --processes ${task.cpus} \\
-        --count-valid-reads $count_valid_reads \\
-        --rename-10x-barcodes $rename_10x_barcodes \\
-        --barcodes-file $barcodes \\
-        --save-fastas $save_fastas \\
-        --write-barcode-meta-csv $metadata \\
-        --output ${sample_id}_${sketch_id}.sig \\
-        --input-is-10x $bam
-      """
-    }
-    else {
-      """
-      echo 8th conditions \\n
-      sourmash compute \\
-        --ksize $ksize \\
-        --$molecule \\
-        $not_dna \\
-        --num-hashes \$((2**$log2_sketch_size)) \\
-        --processes ${task.cpus} \\
-        --count-valid-reads $count_valid_reads \\
-        --output ${sample_id}_${sketch_id}.sig \\
-        --input-is-10x $bam
-      """
-   }
+    """
+    echo 8th conditions \\n
+    sourmash compute \\
+      --ksize $ksize \\
+      --$molecule \\
+      $not_dna \\
+      --num-hashes \$((2**$log2_sketch_size)) \\
+      --processes ${task.cpus} \\
+      --count-valid-reads $count_valid_reads \\
+      --output ${sample_id}_${sketch_id}.sig \\
+      --input-is-10x $bam
+    """
  }
 }
 
