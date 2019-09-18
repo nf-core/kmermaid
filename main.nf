@@ -193,17 +193,11 @@ if (params.read_paths) {
 
  }
 
-if (params.sra){
- sra_ch.concat(samples_ch, csv_singles_ch, read_pairs_ch,
-   read_singles_ch, fastas_ch, read_paths_ch)
-   .ifEmpty{ exit 1, "No reads provided! Check read input files"}
-   .set{ reads_ch }
-}
+sra_ch.concat(samples_ch, csv_singles_ch, read_pairs_ch,
+ read_singles_ch, fastas_ch, read_paths_ch)
+ .ifEmpty{ exit 1, "No reads provided! Check read input files"}
+ .set{ reads_ch }
 
-if (params.bam) {
-  tenx_ch.concat(bam_ch_operator, barcodes_ch_operator, barcodes_renamer_ch_operator)
-  .ifEmpty{ exit 1, "No bam files provided! Check read input files"}
-}
 
 // Has the run name been specified by the user?
 //  this has the bonus effect of catching both -name and --name
@@ -326,6 +320,8 @@ if (params.bam) {
     publishDir "${params.outdir}/sketches", mode: 'copy'
     container "$workflow.container"
 
+    tenx_ch.concat(bam_ch_operator, barcodes_ch_operator, barcodes_renamer_ch_operator)
+    .ifEmpty{ exit 1, "No bam files provided! Check read input files"}
     // If job fails, try again with more memory
     // memory { 8.GB * task.attempt }
     errorStrategy 'retry'
