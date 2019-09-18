@@ -185,8 +185,6 @@ if (params.read_paths) {
           }
      }
 
- }
-
 if (!params.bam) {
 sra_ch.concat(samples_ch, csv_singles_ch, read_pairs_ch,
  read_singles_ch, fastas_ch, read_paths_ch)
