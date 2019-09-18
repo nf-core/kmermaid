@@ -356,8 +356,8 @@ if (params.bam) {
     }
     else {
       """
-    echo 8th conditions \\n
-    sourmash compute \\
+      echo 8th conditions \\n
+      sourmash compute \\
         --ksize $ksize \\
         --$molecule \\
         $not_dna \\
