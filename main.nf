@@ -172,8 +172,9 @@ if (params.read_paths) {
        .ifEmpty { exit 1, "params.fastas was empty - no input files supplied" }
    }
 
-    Channel.fromPath(params.bam, checkIfExists: true)
+  Channel.fromPath(params.bam, checkIfExists: true)
         .ifEmpty { exit 1, "Barcodes file not found: ${params.barcodes_file}" }
+        .map{ f -> tuple(f.baseName, tuple(file(f))) 
         .set{bam_ch}
 
   Channel.fromPath(params.barcodes_file, checkIfExists: true)
@@ -196,7 +197,6 @@ if (params.sra){
 if (params.bam) {
   tenx_ch.concat(bam_ch, barcodes_ch, barcodes_renamer_ch)
   .ifEmpty{ exit 1, "No bam files provided! Check read input files"}
-  .set{bam_reads_ch}
 }
 
 // Has the run name been specified by the user?
@@ -329,7 +329,10 @@ if (params.bam) {
     each ksize from ksizes
     each molecule from molecules
     each log2_sketch_size from log2_sketch_sizes
-    set sample_id, file(bam), file(barcodes), file(rename_10x_barcodes) from bam_reads_ch
+    set sample_id, file(bam) from bam_ch
+    file(barcodes) from barcodes_ch
+    file(rename_10x_barcodes) from barcodes_renamer_ch
+
 
     output:
     set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches
