@@ -109,8 +109,6 @@ read_singles_ch = Channel.empty()
 // vanilla fastas
 fastas_ch = Channel.empty()
 
-// 10x
-
 // Parameters for testing
 if (params.read_paths) {
      read_paths_ch = Channel
@@ -164,30 +162,31 @@ if (params.read_paths) {
        .ifEmpty { exit 1, "params.fastas (${params.fastas}) was empty - no input files supplied" }
    }
 
-if (params.bam) {
-  // Added to avoid this error Channel `bam_ch` has been used twice 
-  // as an input by process `sourmash_compute_sketch_bam` and another operator
-  Channel.fromPath(params.bam, checkIfExists: true)
-        .ifEmpty { exit 1, "Barcodes file not found: ${params.barcodes_file}" }
-        .map{ f -> tuple(f.baseName, tuple(file(f))) }
-        .into{ bam_ch_operator; bam_ch_process }
+   // Provided bam files
+   if (params.bam) {
+     // Added to avoid this error Channel `bam_ch` has been used twice 
+      // as an input by process `sourmash_compute_sketch_bam` and another operator
+     Channel.fromPath(params.bam, checkIfExists: true)
+          .ifEmpty { exit 1, "Barcodes file not found: ${params.barcodes_file}" }
+          .map{ f -> tuple(f.baseName, tuple(file(f))) }
+          .into{ bam_ch_operator; bam_ch_process }
 
-  Channel.fromPath(params.barcodes_file, checkIfExists: true)
-        .ifEmpty { exit 1, "Barcodes file not found: ${params.barcodes_file}" }
-        .into{barcodes_ch_operator; barcodes_ch_process}
+    Channel.fromPath(params.barcodes_file, checkIfExists: true)
+          .ifEmpty { exit 1, "Barcodes file not found: ${params.barcodes_file}" }
+          .into{barcodes_ch_operator; barcodes_ch_process}
 
-  Channel.fromPath(params.rename_10x_barcodes, checkIfExists: true)
-        .ifEmpty { exit 1, "Barcodes file not found: ${params.barcodes_file}" }
-        .into{barcodes_renamer_ch_operator; barcodes_renamer_ch_process}
-        }
+    Channel.fromPath(params.rename_10x_barcodes, checkIfExists: true)
+          .ifEmpty { exit 1, "Barcodes file not found: ${params.barcodes_file}" }
+          .into{barcodes_renamer_ch_operator; barcodes_renamer_ch_process}
+          }
+     }
 
-else {
-sra_ch.concat(samples_ch, csv_singles_ch, read_pairs_ch,
- read_singles_ch, fastas_ch, read_paths_ch)
- .ifEmpty{ exit 1, "No reads provided! Check read input files"}
- .set{ reads_ch }
- }
-
+if (!params.bam) {
+    sra_ch.concat(samples_ch, csv_singles_ch, read_pairs_ch,
+     read_singles_ch, fastas_ch, read_paths_ch)
+     .ifEmpty{ exit 1, "No reads provided! Check read input files"}
+     .set{ reads_ch }
+}
 
 // Has the run name been specified by the user?
 //  this has the bonus effect of catching both -name and --name
