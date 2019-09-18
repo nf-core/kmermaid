@@ -432,6 +432,21 @@ if (!params.bam.isEmpty()) {
         --input-is-10x $bam
       """
     }
+    else if (params.barcodes_file) {
+      file(barcodes) from barcodes_ch_process
+      """
+      sourmash compute \\
+        --ksize $ksize \\
+        --$molecule \\
+        $not_dna \\
+        --num-hashes \$((2**$log2_sketch_size)) \\
+        --processes ${task.cpus} \\
+        --count-valid-reads $count_valid_reads \\
+        --barcodes-file $barcodes \\
+        --output ${sample_id}_${sketch_id}.sig \\
+        --input-is-10x $bam
+      """
+    }
     else {
       """
       sourmash compute \\
