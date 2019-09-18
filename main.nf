@@ -310,13 +310,18 @@ process get_software_versions {
 
 if (params.bam) {
   process sourmash_compute_sketch_bam {
+    log.info "process started"
     tag "${sample_id}_${sketch_id}"
+    log.info "tag created"
     publishDir "${params.outdir}/sketches", mode: 'copy'
+    log.info "outdir created"
+
 
     // If job fails, try again with more memory
     // memory { 8.GB * task.attempt }
     errorStrategy 'retry'
     maxRetries 3
+    log.info "Strategy set"
 
     input:
     each ksize from ksizes
@@ -325,9 +330,11 @@ if (params.bam) {
     set sample_id, file(bam) from bam_ch_process
     file(barcodes) from barcodes_ch_process
     file(rename_10x_barcodes) from barcodes_renamer_ch_process
+    log.info "Inputs set"
 
     output:
     set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches
+    log.info "Outputs set"
 
     script:
     sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
@@ -337,7 +344,7 @@ if (params.bam) {
     not_dna = molecule == 'dna' ? '' : '--no-dna'
     ksize = ksize
     count_valid_reads = count_valid_reads
-
+    log.info "Script vars set"
     if (params.barcodes_file && params.rename_10x_barcodes && save_fastas && metadata) {
       """
       sourmash compute \\
