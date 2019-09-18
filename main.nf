@@ -442,9 +442,9 @@ process sourmash_compare_sketches {
 workflow.onComplete {
 
     // Set up the e-mail variables
-    def subject = "[nf-core/rnaseq] Successful: $workflow.runName"
+    def subject = "[nf-core/kmermaid] Successful: $workflow.runName"
     if(!workflow.success){
-      subject = "[nf-core/rnaseq] FAILED: $workflow.runName"
+      subject = "[nf-core/kmermaid] FAILED: $workflow.runName"
     }
     def email_fields = [:]
     email_fields['version'] = workflow.manifest.version
@@ -493,11 +493,11 @@ workflow.onComplete {
           if( params.plaintext_email ){ throw GroovyException('Send plaintext e-mail, not HTML') }
           // Try to send HTML e-mail using sendmail
           [ 'sendmail', '-t' ].execute() << sendmail_html
-          log.info "[nf-core/rnaseq] Sent summary e-mail to $params.email (sendmail)"
+          log.info "[nf-core/kmermaid] Sent summary e-mail to $params.email (sendmail)"
         } catch (all) {
           // Catch failures and try with plaintext
           [ 'mail', '-s', subject, params.email ].execute() << email_txt
-          log.info "[nf-core/rnaseq] Sent summary e-mail to $params.email (mail)"
+          log.info "[nf-core/kmermaid] Sent summary e-mail to $params.email (mail)"
         }
     }
 
@@ -523,10 +523,10 @@ workflow.onComplete {
     }
 
     if(workflow.success){
-        log.info "${c_purple}[nf-core/rnaseq]${c_green} Pipeline completed successfully${c_reset}"
+        log.info "${c_purple}[nf-core/kmermaid]${c_green} Pipeline completed successfully${c_reset}"
     } else {
         checkHostname()
-        log.info "${c_purple}[nf-core/rnaseq]${c_red} Pipeline completed with errors${c_reset}"
+        log.info "${c_purple}[nf-core/kmermaid]${c_red} Pipeline completed with errors${c_reset}"
     }
 
 }
