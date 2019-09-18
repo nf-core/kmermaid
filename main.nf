@@ -322,10 +322,10 @@ if (!params.bam.isEmpty()) {
     each log2_sketch_size from log2_sketch_sizes
     set sample_id, file(bam) from bam_ch_process
     if (params.barcodes_file) {
-      set sample_id, file(bam) from barcodes_ch_process
+      set barcode_id, file(barcodes) from barcodes_ch_process
       }
     if (params.rename_10x_barcodes) {
-      set sample_id, file(bam) from barcodes_renamer_ch_process
+      set renamer_id, file(rename_10x_barcodes) from barcodes_renamer_ch_process
     }
 
     output:
