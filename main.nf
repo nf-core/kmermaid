@@ -327,10 +327,7 @@ if (params.bam) {
     each ksize from ksizes
     each molecule from molecules
     each log2_sketch_size from log2_sketch_sizes
-    set sample_id, file(reads) from bam_reads_ch
-    file bam from bam_ch
-    file barcodes from barcodes_ch
-    file rename_10x_barcodes from barcodes_renamer_ch
+    set sample_id, file(bam), file(barcodes), file(rename_10x_barcodes) from bam_reads_ch
 
     output:
     set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches
