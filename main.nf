@@ -419,6 +419,7 @@ process sourmash_compute_sketch_fastx {
       --merge '$sample_id' $reads
     """
   }
+  }
 }
 
 process sourmash_compare_sketches {
