@@ -174,15 +174,15 @@ if (params.read_paths) {
 
     Channel.fromPath(params.bam, checkIfExists: true)
         .ifEmpty { exit 1, "Barcodes file not found: ${params.barcodes_file}" }
-        .set(bam_ch)
+        .set{bam_ch}
 
   Channel.fromPath(params.barcodes_file, checkIfExists: true)
         .ifEmpty { exit 1, "Barcodes file not found: ${params.barcodes_file}" }
-        .set(barcodes_ch)
+        .set{barcodes_ch}
 
   Channel.fromPath(params.rename_10x_barcodes, checkIfExists: true)
         .ifEmpty { exit 1, "Barcodes file not found: ${params.barcodes_file}" }
-        .set(barcodes_renamer_ch)
+        .set{barcodes_renamer_ch}
 
  }
 
