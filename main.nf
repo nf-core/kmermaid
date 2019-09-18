@@ -109,6 +109,9 @@ read_singles_ch = Channel.empty()
 // vanilla fastas
 fastas_ch = Channel.empty()
 
+barcodes_renamer_ch_process = Channel.empty()
+barcodes_ch_process = Channel.empty()
+
 // Parameters for testing
 if (params.read_paths) {
      read_paths_ch = Channel
@@ -171,10 +174,14 @@ if (params.read_paths) {
           .map{ f -> tuple(f.baseName, tuple(file(f))) }
           .into{ bam_ch_operator; bam_ch_process }
 
+    if (params.barcodes_file) {
     Channel.fromPath(params.barcodes_file, checkIfExists: true)
           .ifEmpty { exit 1, "Barcodes file not found: ${params.barcodes_file}" }
           .into{barcodes_ch_operator; barcodes_ch_process}
+        }
 
+
+    if (params.rename_10x_barcodes) {
     Channel.fromPath(params.rename_10x_barcodes, checkIfExists: true)
           .ifEmpty { exit 1, "Barcodes renamer file not found: ${params.rename_10x_barcodes}" }
           .into{barcodes_renamer_ch_operator; barcodes_renamer_ch_process}
