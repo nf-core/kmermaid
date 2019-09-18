@@ -174,7 +174,7 @@ if (params.read_paths) {
 
   Channel.fromPath(params.bam, checkIfExists: true)
         .ifEmpty { exit 1, "Barcodes file not found: ${params.barcodes_file}" }
-        .map{ f -> tuple(f.baseName, tuple(file(f))) 
+        .map{ f -> tuple(f.baseName, tuple(file(f))) }
         .set{bam_ch}
 
   Channel.fromPath(params.barcodes_file, checkIfExists: true)
