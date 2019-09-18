@@ -335,9 +335,9 @@ if (!params.bam.isEmpty()) {
       sourmash compute \\
         --ksize $ksize \\
         --$molecule \\
+        --num-hashes \$((2**$log2_sketch_size)) \\
         --processes ${task.cpus} \\
         --save-fastas $save_fastas \\
-        --num-hashes \$((2**$log2_sketch_size)) \\
         --count-valid-reads $count_valid_reads \\
         --write-barcode-meta-csv $metadata \\
         --barcodes-file $barcodes \\
@@ -351,9 +351,9 @@ if (!params.bam.isEmpty()) {
       sourmash compute \\
         --ksize $ksize \\
         --$molecule \\
+        --num-hashes \$((2**$log2_sketch_size)) \\
         --processes ${task.cpus} \\
         --save-fastas $save_fastas \\
-        --num-hashes \$((2**$log2_sketch_size)) \\
         --count-valid-reads $count_valid_reads \\
         --write-barcode-meta-csv $metadata \\
         --barcodes-file $barcodes \\
@@ -366,9 +366,9 @@ if (!params.bam.isEmpty()) {
       sourmash compute \\
         --ksize $ksize \\
         --$molecule \\
+        --num-hashes \$((2**$log2_sketch_size)) \\
         --processes ${task.cpus} \\
         --save-fastas $save_fastas \\
-        --num-hashes \$((2**$log2_sketch_size)) \\
         --count-valid-reads $count_valid_reads \\
         --write-barcode-meta-csv $metadata \\
         --output ${sample_id}_${sketch_id}.sig \\
