@@ -109,6 +109,12 @@ read_singles_ch = Channel.empty()
 // vanilla fastas
 fastas_ch = Channel.empty()
 
+// 10x bam file
+bam_ch = Channel.empty()
+
+// 10x barcodes file
+barcodes_ch = Channel.empty()
+
 // 10x bam renamer barcodes fasta file
 renamer_barcodes_ch = Channel.empty()
 
