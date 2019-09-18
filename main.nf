@@ -110,6 +110,11 @@ read_singles_ch = Channel.empty()
 // vanilla fastas
 fastas_ch = Channel.empty()
 
+// For bam Create empty channels to 
+// allow access of variable and file
+// if they params exist
+barcodes_renamer_ch_process = Channel.empty()
+barcodes_ch_process = Channel.empty()
 
 // Parameters for testing
 if (params.read_paths) {
