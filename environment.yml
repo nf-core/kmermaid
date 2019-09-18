@@ -1,0 +1,21 @@
+# You can use this file to create a conda environment for this pipeline:
+#   conda env create -f environment.yml
+name: nfcore-kmermaid-0.1dev
+channels:
+  - bioconda
+  - conda-forge
+  - defaults
+dependencies:
+  - conda-forge::r-data.table=1.11.4
+  - conda-forge::r-gplots=3.0.1
+  - bioconda::bioconductor-edger=3.22.5
+  - conda-forge::r-markdown=0.8
+  - bioconda::khmer=2.1.2
+  - bioconda::sourmash=2.0.1
+  - pytest
+  - sphinx
+  - matplotlib
+  - alabaster
+  - conda-forge::gxx_linux-64
+  # - conda-forge::gcc_linux-64
+  # - gcc
