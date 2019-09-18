@@ -174,15 +174,12 @@ if (params.read_paths) {
 
   bam_ch = Channel.fromPath(params.bam, checkIfExists: true)
         .ifEmpty { exit 1, "Barcodes file not found: ${params.barcodes_file}" }
-        .set{bam_readable}
 
   barcodes_ch = Channel.fromPath(params.barcodes_file, checkIfExists: true)
         .ifEmpty { exit 1, "Barcodes file not found: ${params.barcodes_file}" }
-        .set{barcodes_readable}
 
   barcodes_renamer_ch = Channel.fromPath(params.rename_10x_barcodes, checkIfExists: true)
         .ifEmpty { exit 1, "Barcodes file not found: ${params.barcodes_file}" }
-        .set{barcodes_renamer_readable}
 
  }
 
@@ -194,7 +191,7 @@ if (params.sra){
 }
 
 if (params.bam) {
-  tenx_ch.concat(bam_readable, barcodes_readable, barcodes_renamer_readable)
+  tenx_ch.concat(bam_ch, barcodes_ch, barcodes_renamer_ch)
   .ifEmpty{ exit 1, "No bam files provided! Check read input files"}
 }
 
@@ -326,9 +323,9 @@ if (params.bam) {
     each ksize from ksizes
     each molecule from molecules
     each log2_sketch_size from log2_sketch_sizes
-    set sample_id, file(bam) from bam_readable
-    set barcodes_id, file(barcodes) from barcodes_readable
-    set barcodes_renamer_id, file(rename_10x_barcodes) from barcodes_renamer_readable
+    set sample_id, file(bam) from bam_ch.view()
+    set barcodes_id, file(barcodes) from barcodes_ch.view()
+    set barcodes_renamer_id, file(rename_10x_barcodes) from barcodes_renamer_ch.view()
 
     output:
     set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches
