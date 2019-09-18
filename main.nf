@@ -457,8 +457,9 @@ if (params.bam) {
         --input-is-10x $bam
       """
     }
+  }
 }
-}
+
 else {
 process sourmash_compute_sketch_fastx {
 	tag "${sample_id}_${sketch_id}"
