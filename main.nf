@@ -109,6 +109,9 @@ read_singles_ch = Channel.empty()
 // vanilla fastas
 fastas_ch = Channel.empty()
 
+barcodes_ch_process = Channel.empty()
+barcodes_renamer_ch_process = Channel.empty()
+
 // Parameters for testing
 if (params.read_paths) {
      read_paths_ch = Channel
@@ -171,8 +174,6 @@ if (params.read_paths) {
           .map{ f -> tuple(f.baseName, tuple(file(f))) }
           .into{ bam_ch_operator; bam_ch_process }
 
-    barcodes_ch_process = Channel.empty()
-    barcodes_renamer_ch_process = Channel.empty()
     if (params.barcodes_file) {
     Channel.fromPath(params.barcodes_file, checkIfExists: true)
           .ifEmpty { exit 1, "Barcodes file not found: ${params.barcodes_file}" }
@@ -306,7 +307,7 @@ process get_software_versions {
     """
 }
 
-if (!params.bam.isEmpty()) {
+if (params.bam) {
   process sourmash_compute_sketch_bam {
     tag "${sample_id}_${sketch_id}"
     publishDir "${params.outdir}/sketches", mode: 'copy'
