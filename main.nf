@@ -389,55 +389,57 @@ if (params.bam) {
 }
 }
 
-process sourmash_compute_sketch_fasta {
-  tag "${sample_id}_${sketch_id}"
-  publishDir "${params.outdir}/sketches", mode: 'copy'
-  container "$workflow.container"
+else {
+  process sourmash_compute_sketch_fasta {
+    tag "${sample_id}_${sketch_id}"
+    publishDir "${params.outdir}/sketches", mode: 'copy'
+    container "$workflow.container"
 
-  // If job fails, try again with more memory
-  // memory { 8.GB * task.attempt }
-  errorStrategy 'retry'
-  maxRetries 3
+    // If job fails, try again with more memory
+    // memory { 8.GB * task.attempt }
+    errorStrategy 'retry'
+    maxRetries 3
 
-  input:
-  each ksize from ksizes
-  each molecule from molecules
-  each log2_sketch_size from log2_sketch_sizes
-  set sample_id, file(reads) from reads_ch
+    input:
+    each ksize from ksizes
+    each molecule from molecules
+    each log2_sketch_size from log2_sketch_sizes
+    set sample_id, file(reads) from reads_ch
 
-  output:
-  set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches
+    output:
+    set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches
 
-  script:
-  sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
-  metadata = "all_barcode_meta.csv"
-  molecule = molecule
-  not_dna = molecule == 'dna' ? '' : '--no-dna'
-  ksize = ksize
+    script:
+    sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
+    metadata = "all_barcode_meta.csv"
+    molecule = molecule
+    not_dna = molecule == 'dna' ? '' : '--no-dna'
+    ksize = ksize
 
-  if ( params.one_signature_per_record ){
-    """
-    sourmash compute \\
-      --num-hashes \$((2**$log2_sketch_size)) \\
-      --ksizes $ksize \\
-      --$molecule \\
-      $not_dna \\
-      --output ${sample_id}_${sketch_id}.sig \\
-      $reads
-    """
+    if ( params.one_signature_per_record ){
+      """
+      sourmash compute \\
+        --num-hashes \$((2**$log2_sketch_size)) \\
+        --ksizes $ksize \\
+        --$molecule \\
+        $not_dna \\
+        --output ${sample_id}_${sketch_id}.sig \\
+        $reads
+      """
+    }
+    else {
+      """
+      sourmash compute \\
+        --num-hashes \$((2**$log2_sketch_size)) \\
+        --ksizes $ksize \\
+        --$molecule \\
+        $not_dna \\
+        --output ${sample_id}_${sketch_id}.sig \\
+        --merge '$sample_id' $reads
+      """
+    }
+
   }
-  else {
-    """
-    sourmash compute \\
-      --num-hashes \$((2**$log2_sketch_size)) \\
-      --ksizes $ksize \\
-      --$molecule \\
-      $not_dna \\
-      --output ${sample_id}_${sketch_id}.sig \\
-      --merge '$sample_id' $reads
-    """
-  }
-
 }
 
 process sourmash_compare_sketches {
