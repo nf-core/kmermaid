@@ -311,21 +311,11 @@ if (!params.bam.isEmpty()) {
     maxRetries 3
 
     input:
-    default_command =
-      """
-      sourmash compute \\
-        --ksize $ksize \\
-        --$molecule \\
-        --num-hashes \$((2**$log2_sketch_size)) \\
-        --processes ${task.cpus} \\
-        --count-valid-reads $count_valid_reads \\
-        --output ${sample_id}_${sketch_id}.sig \\
-        --input-is-10x $bam
-      """
     each ksize from ksizes
     each molecule from molecules
     each log2_sketch_size from log2_sketch_sizes
     set sample_id, file(bam) from bam_ch_process
+    if (params.ba)
     file(barcodes) from barcodes_ch_process
     file(rename_10x_barcodes) from barcodes_renamer_ch_process
 
@@ -342,19 +332,89 @@ if (!params.bam.isEmpty()) {
     count_valid_reads = count_valid_reads
 
     if (params.barcodes_file && params.rename_10x_barcodes && save_fastas && metadata) {
-      default_command = default_command + """ --rename-10x-barcodes $rename_10x_barcodes --barcodes-file $barcodes --save-fastas $save_fastas --write-barcode-meta-csv $metadata"""
-      """eval $default_command"""
+      """
+      sourmash compute \\
+        --ksize $ksize \\
+        --$molecule \\
+        --num-hashes \$((2**$log2_sketch_size)) \\
+        --processes ${task.cpus} \\
+        --count-valid-reads $count_valid_reads \\
+        --rename-10x-barcodes $rename_10x_barcodes \\
+        --barcodes-file $barcodes \\
+        --save-fastas $save_fastas \\
+        --write-barcode-meta-csv $metadata \\
+        --output ${sample_id}_${sketch_id}.sig \\
+        --input-is-10x $bam
+      """
     }
     else if (params.barcodes_file && save_fastas && metadata) {
-      default_command = default_command + """ --barcodes-file $barcodes --save-fastas $save_fastas --write-barcode-meta-csv $metadata"""
-      """eval $default_command"""
+      """
+      sourmash compute \\
+        --ksize $ksize \\
+        --$molecule \\
+        --num-hashes \$((2**$log2_sketch_size)) \\
+        --processes ${task.cpus} \\
+        --count-valid-reads $count_valid_reads \\
+        --barcodes-file $barcodes \\
+        --save-fastas $save_fastas \\
+        --write-barcode-meta-csv $metadata \\
+        --output ${sample_id}_${sketch_id}.sig \\
+        --input-is-10x $bam
+      """
+    }
+    else if (params.barcodes_file && save_fastas) {
+      """
+      sourmash compute \\
+        --ksize $ksize \\
+        --$molecule \\
+        --num-hashes \$((2**$log2_sketch_size)) \\
+        --processes ${task.cpus} \\
+        --count-valid-reads $count_valid_reads \\
+        --barcodes-file $barcodes \\
+        --save-fastas $save_fastas \\
+        --output ${sample_id}_${sketch_id}.sig \\
+        --input-is-10x $bam
+      """
+    }
+    else if (params.barcodes_file && metadata) {
+      """
+      sourmash compute \\
+        --ksize $ksize \\
+        --$molecule \\
+        --num-hashes \$((2**$log2_sketch_size)) \\
+        --processes ${task.cpus} \\
+        --count-valid-reads $count_valid_reads \\
+        --barcodes-file $barcodes \\
+        --write-barcode-meta-csv $metadata \\
+        --output ${sample_id}_${sketch_id}.sig \\
+        --input-is-10x $bam
+      """
     }
     else if (save_fastas && metadata) {
-      default_command = default_command + """ --save-fastas $save_fastas --write-barcode-meta-csv $metadata"""
-      """eval $default_command"""
+      """
+      sourmash compute \\
+        --ksize $ksize \\
+        --$molecule \\
+        --num-hashes \$((2**$log2_sketch_size)) \\
+        --processes ${task.cpus} \\
+        --count-valid-reads $count_valid_reads \\
+        --save-fastas $save_fastas \\
+        --write-barcode-meta-csv $metadata \\
+        --output ${sample_id}_${sketch_id}.sig \\
+        --input-is-10x $bam
+      """
     }
     else {
-      """eval $default_command"""
+      """
+      sourmash compute \\
+        --ksize $ksize \\
+        --$molecule \\
+        --num-hashes \$((2**$log2_sketch_size)) \\
+        --processes ${task.cpus} \\
+        --count-valid-reads $count_valid_reads \\
+        --output ${sample_id}_${sketch_id}.sig \\
+        --input-is-10x $bam
+      """
     }
 }
 }
