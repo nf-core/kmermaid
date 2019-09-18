@@ -237,6 +237,8 @@ if(params.csv_singles)  summary['Single-end samples.csv']    = params.csv_single
 if(params.sra)          summary['SRA']                             = params.sra
 if(params.fastas)       summary["FASTAs"]                          = params.fastas
 if(params.bam)          summary["BAM"]                             = params.bam
+if(params.barcodes_file)          summary["Barcodes"]              = params.barcodes_file
+if(params.rename_10x_barcodes)    summary["Renamer barcodes"]      = params.rename_10x_barcodes
 if(params.read_paths)   summary['Read paths (paired-end)']         = params.read_paths
 // Sketch parameters
 summary['K-mer sizes']            = params.ksizes
