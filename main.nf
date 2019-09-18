@@ -321,7 +321,7 @@ if (!params.bam.isEmpty()) {
     set sample_id, file(bam) from bam_ch_process
     if (params.barcodes_file) {
     file(barcodes) from barcodes_ch_process}
-    if params.rename_10x_barcodes {
+    if (params.rename_10x_barcodes) {
     file(rename_10x_barcodes) from barcodes_renamer_ch_process}
 
     output:
