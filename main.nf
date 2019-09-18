@@ -336,8 +336,9 @@ if (params.bam) {
     not_dna = molecule != 'dna' ? '--no-dna' : ''
     count_valid_reads = count_valid_reads
     ksize = ksize
-    if( params.barcodes_file && params.rename_10x_barcodes && params.save_fastas && params.write_barcode_meta_csv )
+    if( params.barcodes_file && params.rename_10x_barcodes && params.save_fastas && params.write_barcode_meta_csv ) {
       """
+      echo 1st condition
       sourmash compute \\
         --ksize $ksize \\
         --$molecule \\
@@ -352,8 +353,9 @@ if (params.bam) {
         --output ${sample_id}_${sketch_id}.sig \\
         --input-is-10x $bam
       """
-    else
-    """
+    }
+    else {
+      """
     echo 8th conditions \\n
     sourmash compute \\
         --ksize $ksize \\
@@ -364,10 +366,10 @@ if (params.bam) {
         --count-valid-reads $count_valid_reads \\
         --output ${sample_id}_${sketch_id}.sig \\
         --input-is-10x $bam
-    """
-  }
+      """
+   }
+ }
 }
-
 
 else {
   process sourmash_compute_sketch_fasta {
