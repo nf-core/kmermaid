@@ -185,6 +185,10 @@ if (params.read_paths) {
         .ifEmpty { exit 1, "Barcodes file not found: ${params.barcodes_file}" }
         .set{barcodes_renamer_ch}
 
+  bam_ch.into{bam_ch_operator; bam_ch_process}
+  barcodes_ch.into{barcodes_ch_operator; barcodes_ch_process}
+  barcodes_renamer_ch.into{barcodes_renamer_ch_operator; barcodes_renamer_ch_process}
+
  }
 
 if (params.sra){
@@ -195,7 +199,7 @@ if (params.sra){
 }
 
 if (params.bam) {
-  tenx_ch.concat(bam_ch, barcodes_ch, barcodes_renamer_ch)
+  tenx_ch.concat(bam_ch_operator, barcodes_ch_operator, barcodes_renamer_ch_operator)
   .ifEmpty{ exit 1, "No bam files provided! Check read input files"}
 }
 
@@ -329,10 +333,9 @@ if (params.bam) {
     each ksize from ksizes
     each molecule from molecules
     each log2_sketch_size from log2_sketch_sizes
-    set sample_id, file(bam) from bam_ch
-    file(barcodes) from barcodes_ch
-    file(rename_10x_barcodes) from barcodes_renamer_ch
-
+    set sample_id, file(bam) from bam_ch_process
+    file(barcodes) from barcodes_ch_process
+    file(rename_10x_barcodes) from barcodes_renamer_ch_process
 
     output:
     set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches
