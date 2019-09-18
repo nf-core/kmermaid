@@ -177,16 +177,17 @@ if (params.read_paths) {
     if (params.barcodes_file) {
     Channel.fromPath(params.barcodes_file, checkIfExists: true)
           .ifEmpty { exit 1, "Barcodes file not found: ${params.barcodes_file}" }
-          .into{barcodes_ch_operator; barcodes_ch_process}
+          .set{barcodes_ch_process}
         }
 
 
     if (params.rename_10x_barcodes) {
     Channel.fromPath(params.rename_10x_barcodes, checkIfExists: true)
           .ifEmpty { exit 1, "Barcodes renamer file not found: ${params.rename_10x_barcodes}" }
-          .into{barcodes_renamer_ch_operator; barcodes_renamer_ch_process}
+          .set{barcodes_renamer_ch_process}
           }
      }
+  }
 
 if (!params.bam) {
     sra_ch.concat(samples_ch, csv_singles_ch, read_pairs_ch,
