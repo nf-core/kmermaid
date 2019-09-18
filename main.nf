@@ -58,7 +58,7 @@ def helpMessage() {
       --ksizes                      Which nucleotide k-mer sizes to use. Multiple are
                                     separated by commas. Default is '21,27,33,51'
       --molecules                   Which molecule to compare on. Default is both DNA
-                                    and protein, i.e. 'dna,protein'
+                                    and protein, i.e. 'dna,protein,dayhoff'
       --log2_sketch_sizes           Which log2 sketch sizes to use. Multiple are separated
                                     by commas. Default is '10,12,14,16'
       --one_signature_per_record    Make a k-mer signature for each record in the FASTQ/FASTA
@@ -110,30 +110,21 @@ read_singles_ch = Channel.empty()
 // vanilla fastas
 fastas_ch = Channel.empty()
 
-// 10x bam file
-bam_ch = Channel.empty()
-
-// 10x barcodes file
-barcodes_ch = Channel.empty()
-
-// 10x bam renamer barcodes fasta file
-renamer_barcodes_ch = Channel.empty()
-
 // 10x
-tenx_ch = Channel.empty()
 
 // Parameters for testing
 if (params.read_paths) {
      read_paths_ch = Channel
          .from(params.read_paths)
          .map { row -> [ row[0], [file(row[1][0]), file(row[1][1])]] }
-         .ifEmpty { exit 1, "params.read_paths was empty - no input files supplied" }
+         .ifEmpty { exit 1, "params.read_paths (${params.read_paths}) was empty - no input files supplied" }
+
  } else {
    // Provided SRA ids
    if (params.sra){
      sra_ch = Channel
          .fromSRA( params.sra?.toString()?.tokenize(';') )
-         .ifEmpty { exit 1, "params.sra ${params.sra} was not found - no input files supplied" }
+         .ifEmpty { exit 1, "params.sra (${params.sra}) was not found - no input files supplied" }
    }
    // Provided a samples.csv file of read pairs
    if (params.csv_pairs){
@@ -141,7 +132,7 @@ if (params.read_paths) {
       .fromPath(params.csv_pairs)
       .splitCsv(header:true)
       .map{ row -> tuple(row[0], tuple(file(row[1]), file(row[2])))}
-      .ifEmpty { exit 1, "params.csv_pairs was empty - no input files supplied" }
+      .ifEmpty { exit 1, "params.csv_pairs (${params.csv_pairs}) was empty - no input files supplied" }
   }
 
    // Provided a samples.csv file of single-ended reads
@@ -150,51 +141,48 @@ if (params.read_paths) {
       .fromPath(params.csv_singles)
       .splitCsv(header:true)
       .map{ row -> tuple(row[0], tuple(file(row[1])))}
-      .ifEmpty { exit 1, "params.csv_singles was empty - no input files supplied" }
+      .ifEmpty { exit 1, "params.csv_singles (${params.csv_singles}) was empty - no input files supplied" }
   }
 
    // Provided fastq gz read pairs
    if (params.read_pairs){
      read_pairs_ch = Channel
        .fromFilePairs(params.read_pairs?.toString()?.tokenize(';'))
-       .ifEmpty { exit 1, "params.read_pairs was empty - no input files supplied" }
+       .ifEmpty { exit 1, "params.read_pairs (${params.read_pairs}) was empty - no input files supplied" }
    }
-   // Provided fastq gz read singles
+
+   // Provided fastq gz single-end reads
    if (params.read_singles){
      read_singles_ch = Channel
        .fromFilePairs(params.read_singles?.toString()?.tokenize(';'), size: 1)
-       .ifEmpty { exit 1, "params.read_singles was empty - no input files supplied" }
+       .ifEmpty { exit 1, "params.read_singles (${params.read_singles}) was empty - no input files supplied" }
   }
    // Provided vanilla fastas
    if (params.fastas){
      fastas_ch = Channel
        .fromPath(params.fastas?.toString()?.tokenize(';'))
        .map{ f -> tuple(f.baseName, tuple(file(f))) }
-       .ifEmpty { exit 1, "params.fastas was empty - no input files supplied" }
+       .ifEmpty { exit 1, "params.fastas (${params.fastas}) was empty - no input files supplied" }
    }
 
+if (params.bam) {
+  // Added to avoid this error Channel `bam_ch` has been used twice 
+  // as an input by process `sourmash_compute_sketch_bam` and another operator
   Channel.fromPath(params.bam, checkIfExists: true)
         .ifEmpty { exit 1, "Barcodes file not found: ${params.barcodes_file}" }
         .map{ f -> tuple(f.baseName, tuple(file(f))) }
-        .set{bam_ch}
+        .into{ bam_ch_operator; bam_ch_process }
 
   Channel.fromPath(params.barcodes_file, checkIfExists: true)
         .ifEmpty { exit 1, "Barcodes file not found: ${params.barcodes_file}" }
-        .set{barcodes_ch}
+        .into{barcodes_ch_operator; barcodes_ch_process}
 
   Channel.fromPath(params.rename_10x_barcodes, checkIfExists: true)
         .ifEmpty { exit 1, "Barcodes file not found: ${params.barcodes_file}" }
-        .set{barcodes_renamer_ch}
+        .into{barcodes_renamer_ch_operator; barcodes_renamer_ch_process}
+        }
 
-  // Added to avoid this error Channel `bam_ch` has been used twice 
-  // as an input by process `sourmash_compute_sketch_bam` and another operator
-  bam_ch.into{bam_ch_operator; bam_ch_process}
-  barcodes_ch.into{barcodes_ch_operator; barcodes_ch_process}
-  barcodes_renamer_ch.into{barcodes_renamer_ch_operator; barcodes_renamer_ch_process}
-
- }
-
-if (!params.bam) {
+else {
 sra_ch.concat(samples_ch, csv_singles_ch, read_pairs_ch,
  read_singles_ch, fastas_ch, read_paths_ch)
  .ifEmpty{ exit 1, "No reads provided! Check read input files"}
@@ -315,9 +303,7 @@ if (params.bam) {
   process sourmash_compute_sketch_bam {
     tag "${sample_id}_${sketch_id}"
     publishDir "${params.outdir}/sketches", mode: 'copy'
-    container "$workflow.container"
 
-    tenx_ch.concat(bam_ch_operator, barcodes_ch_operator, barcodes_renamer_ch_operator)
     .ifEmpty{ exit 1, "No bam files provided! Check read input files"}
     // If job fails, try again with more memory
     // memory { 8.GB * task.attempt }
@@ -391,67 +377,56 @@ if (params.bam) {
     }
 }
 }
-
 else {
-  process sourmash_compute_sketch_fasta {
-    tag "${sample_id}_${sketch_id}"
-    publishDir "${params.outdir}/sketches", mode: 'copy'
-    container "$workflow.container"
+process sourmash_compute_sketch_fastx {
+	tag "${sample_id}_${sketch_id}"
+	publishDir "${params.outdir}/sketches", mode: 'copy'
+  label 'low_memory'
 
-    // If job fails, try again with more memory
-    // memory { 8.GB * task.attempt }
-    errorStrategy 'retry'
-    maxRetries 3
+	input:
+	each ksize from ksizes
+	each molecule from molecules
+	each log2_sketch_size from log2_sketch_sizes
+	set sample_id, file(reads) from reads_ch
 
-    input:
-    each ksize from ksizes
-    each molecule from molecules
-    each log2_sketch_size from log2_sketch_sizes
-    set sample_id, file(reads) from reads_ch
+	output:
+  set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches
 
-    output:
-    set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches
-
-    script:
-    sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
-    metadata = "all_barcode_meta.csv"
-    molecule = molecule
-    not_dna = molecule == 'dna' ? '' : '--no-dna'
-    ksize = ksize
-
-    if ( params.one_signature_per_record ){
-      """
-      sourmash compute \\
-        --num-hashes \$((2**$log2_sketch_size)) \\
-        --ksizes $ksize \\
-        --$molecule \\
-        $not_dna \\
-        --output ${sample_id}_${sketch_id}.sig \\
-        $reads
-      """
-    }
-    else {
-      """
-      sourmash compute \\
-        --num-hashes \$((2**$log2_sketch_size)) \\
-        --ksizes $ksize \\
-        --$molecule \\
-        $not_dna \\
-        --output ${sample_id}_${sketch_id}.sig \\
-        --merge '$sample_id' $reads
-      """
-    }
-
+	script:
+  sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
+  molecule = molecule
+  // Don't calculate DNA signature if this is protein, to minimize disk,
+  // memory and IO requirements in the future
+  not_dna = molecule != 'dna' ? '--no-dna' : ''
+  ksize = ksize
+  if ( params.one_signature_per_record ){
+    """
+    sourmash compute \\
+      --num-hashes \$((2**$log2_sketch_size)) \\
+      --ksizes $ksize \\
+      --$molecule \\
+      $not_dna \\
+      --output ${sample_id}_${sketch_id}.sig \\
+      $reads
+    """
+  } else {
+    """
+    sourmash compute \\
+      --num-hashes \$((2**$log2_sketch_size)) \\
+      --ksizes $ksize \\
+      --$molecule \\
+      $not_dna \\
+      --output ${sample_id}_${sketch_id}.sig \\
+      --merge '$sample_id' $reads
+    """
   }
 }
 
 process sourmash_compare_sketches {
 	tag "${sketch_id}"
 
-	container "$workflow.container"
 	publishDir "${params.outdir}/", mode: 'copy'
-	errorStrategy 'retry'
-  maxRetries 3
+  label 'mid_memory'
 
 	input:
   set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file ("sketches/*.sig") \
