@@ -185,18 +185,20 @@ if(workflow.profile == 'awsbatch'){
 
 if (params.splitKmer){
     params.ksizes = '15,9'
-}else{
+    params.molecules = 'dna'
+} else {
     params.ksizes = '21,27,33,51'
 }
-
-params.molecules =  'dna,protein'
-params.log2_sketch_sizes = '10,12,14,16'
 
 // Parse the parameters
 
 ksizes = params.ksizes?.toString().tokenize(',')
 molecules = params.molecules?.toString().tokenize(',')
 log2_sketch_sizes = params.log2_sketch_sizes?.toString().tokenize(',')
+
+if (params.splitKmer && 'protein' in molecules){
+  exit 1, "Cannot specify 'protein' in `--molecules` if --splitKmer is set"
+}
 
 
 // Header log info
