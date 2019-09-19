@@ -188,7 +188,6 @@ if (params.read_paths) {
 
 if (params.bam) {
  tsv_ch.concat(barcodes_ch, rename_10x_barcodes_ch)
- .set(reads_ch)
 }
 else { 
 sra_ch.concat(samples_ch, csv_singles_ch, read_pairs_ch,
