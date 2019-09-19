@@ -170,14 +170,14 @@ if (params.read_paths) {
 
   if (params.barcodes_file) {
 
-    barcodes_ch = 
+    barcodes_file = 
        Channel.fromPath(params.barcodes_file, checkIfExists: true)
           .ifEmpty { exit 1, "Barcodes file not found: ${params.barcodes_file}" }
         }
 
 
   if (params.rename_10x_barcodes) {
-    rename_10x_barcodes_ch = Channel.fromPath(params.rename_10x_barcodes, checkIfExists: true)
+    rename_10x_barcodes = Channel.fromPath(params.rename_10x_barcodes, checkIfExists: true)
           .ifEmpty { exit 1, "Barcodes renamer file not found: ${params.rename_10x_barcodes}" }
           }
      }
@@ -318,12 +318,8 @@ if (params.bam) {
     each molecule from molecules
     each log2_sketch_size from log2_sketch_sizes
     set sample_id, bam from bam_ch_process
-    if (params.barcodes_file) {
-      file barcodes_file from barcodes_ch
-    }
-    if (params.rename_10x_barcodes) {
-      file rename_10x_barcodes from rename_10x_barcodes_ch
-    }
+    file barcodes_file
+    file rename_10x_barcodes
     log.info "Inputs set"
 
     output:
