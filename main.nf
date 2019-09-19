@@ -112,6 +112,8 @@ fastas_ch = Channel.empty()
 
 // tsv barcode file
 tsv_ch = Channel.empty() 
+barcodes_ch = Channel.empty()
+rename_10x_barcodes_ch = Channel.empty()
 
 // Parameters for testing
 if (params.read_paths) {
@@ -184,11 +186,11 @@ if (params.read_paths) {
           }
      }
 
-// if (params.bam) {
-//  tsv_ch.concat(barcodes_ch, rename_10x_barcodes_ch)
-// }
-// else { 
-if (!params.bam) {
+if (params.bam) {
+ tsv_ch.concat(barcodes_ch, rename_10x_barcodes_ch)
+ .set(reads_ch)
+}
+else { 
 sra_ch.concat(samples_ch, csv_singles_ch, read_pairs_ch,
  read_singles_ch, fastas_ch, read_paths_ch)
  .ifEmpty{ exit 1, "No reads provided! Check read input files"}
@@ -324,9 +326,8 @@ if (params.bam) {
     each molecule from molecules
     each log2_sketch_size from log2_sketch_sizes
     set sample_id, bam from bam_ch
-    file '?.tsv' from params.bam.dirName
-    file barcodes_file
-    file rename_10x_barcodes
+    set barcodes_file, rename_10x_barcodes from tsv_ch
+
     log.info "Inputs set"
 
     output:
