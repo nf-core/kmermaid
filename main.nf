@@ -67,8 +67,9 @@ def helpMessage() {
                                     Useful for comparing e.g. assembled transcriptomes or metagenomes.
                                     (Not typically used for raw sequencing data as this would create
                                     a k-mer signature for each read!)
-
-      --track_abundance             Track abundance of each hashed k-mer, could be useful for cancer RNA-seq or ATAC-seq analyses
+      --splitKmer                   If provided, use SKA to compute split k-mer sketches instead of
+                                    sourmash to compute k-mer sketches
+      --subsample                    integer value to subsample reads from input fastq files
     """.stripIndent()
 }
 
@@ -174,11 +175,11 @@ if (params.read_paths) {
        .set{bam_ch}
   }
 
-if (params.truncate) {
+if (params.subsample) {
  sra_ch.concat(samples_ch, csv_singles_ch, read_pairs_ch,
    read_singles_ch, fastas_ch, read_paths_ch)
    .ifEmpty{ exit 1, "No reads provided! Check read input files"}
-   .set{ truncate_reads_ch }
+   .set{ subsample_reads_ch }
 } else {
  sra_ch.concat(samples_ch, csv_singles_ch, read_pairs_ch,
    read_singles_ch, fastas_ch, read_paths_ch)
@@ -328,21 +329,21 @@ process get_software_versions {
     """
 }
 
-if (params.truncate) {
-    process truncate_input {
-	tag "${id}_truncate"
+if (params.subsample) {
+    process subsample_input {
+	tag "${id}_subsample"
 	container 'czbiohub/nf-kmer-ska-similarity:latest'
-	publishDir "${params.outdir}/truncated_fastqs/ska/", mode: 'copy'
+	publishDir "${params.outdir}/subsampled_fastqs/ska/", mode: 'copy'
 	errorStrategy 'retry'
 	maxRetries 3
 
 	input:
-	set id, file(reads) from truncate_reads_ch
+	set id, file(reads) from subsample_reads_ch
 
 	output:
-	
-	set val(id), file("*_${params.truncate}.fastq.gz") into reads_ch
-		
+
+	set val(id), file("*_${params.subsample}.fastq.gz") into reads_ch
+
 	script:
   molecule = molecule
   not_dna = molecule == 'dna' ? '' : '--no-dna'
@@ -372,8 +373,8 @@ if (params.truncate) {
       --output ${sample_id}_${sketch_id}.sig \\
       --merge '$sample_id' $reads
     """
-    seqtk sample -s100 ${read1} ${params.truncate} > ${read1_prefix}_${params.truncate}.fastq.gz
-    seqtk sample -s100 ${read2} ${params.truncate} > ${read2_prefix}_${params.truncate}.fastq.gz
+    seqtk sample -s100 ${read1} ${params.subsample} > ${read1_prefix}_${params.subsample}.fastq.gz
+    seqtk sample -s100 ${read2} ${params.subsample} > ${read2_prefix}_${params.subsample}.fastq.gz
 
     """
     }
@@ -402,7 +403,7 @@ process ska_compute_sketch {
 
 	output:
 	set val(ksize), file("${sketch_id}.skf") into ska_sketches
-	;	
+	;
 	script:
 	sketch_id = "${id}_ksize_${ksize}"
 
@@ -412,7 +413,7 @@ process ska_compute_sketch {
       -o ${sketch_id} \\
       ${reads}
     """
-	
+
     }
 } else {
   process sourmash_compute_sketch {
@@ -477,7 +478,7 @@ if (params.splitKmer){
 	maxRetries 3
 
   	input:
- 	set val(ksize), file (sketches) from ska_sketches.groupTuple()	
+ 	set val(ksize), file (sketches) from ska_sketches.groupTuple()
 
   	output:
 	// uploaded distances, clusters, and graph connecting (dot) file
@@ -487,9 +488,9 @@ if (params.splitKmer){
   	"""
         ska distance -o ksize_${ksize} -s 25 -i 0.95 ${sketches}
   	"""
-	
 
-  } 
+
+  }
 
 } else {
   process sourmash_compare_sketches {
