@@ -204,12 +204,10 @@ if(workflow.profile == 'awsbatch'){
 
 if (params.splitKmer){
     params.ksizes = '15,9'
-}else{
+    params.molecules = 'dna'
+} else {
     params.ksizes = '21,27,33,51'
 }
-
-params.molecules =  'dna,protein'
-params.log2_sketch_sizes = '10,12,14,16'
 
 // Parse the parameters
 
@@ -218,27 +216,10 @@ molecules = params.molecules?.toString().tokenize(',')
 peptide_molecules = molecules.findAll { it != "dna" }
 log2_sketch_sizes = params.log2_sketch_sizes?.toString().tokenize(',')
 
-int bloomfilter_tablesize = Math.round(Float.valueOf(params.bloomfilter_tablesize))
-
-peptide_ksize = params.extract_coding_peptide_ksize
-peptide_molecule = params.extract_coding_peptide_molecule
-jaccard_threshold = params.extract_coding_jaccard_threshold
-
-if (params.bam){
-  // Extract the fasta just once using sourmash
-  single_ksize = ksizes[0]
-  single_molecule = molecules[0]
-  single_log2_sketch_size = log2_sketch_sizes[0]
+if (params.splitKmer && 'protein' in molecules){
+  exit 1, "Cannot specify 'protein' in `--molecules` if --splitKmer is set"
 }
 
-
-// For bam files, set a folder name to save the optional barcode metadata csv
-if (!params.write_barcode_meta_csv) {
-  barcode_metadata_folder = ""
-}
-else {
-  barcode_metadata_folder = "barcode_metadata"
-}
 
 // Header log info
 log.info nfcoreHeader()
