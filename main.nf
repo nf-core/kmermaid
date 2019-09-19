@@ -315,7 +315,7 @@ if (params.subsample) {
 }
 
 if (params.splitKmer){
-  ///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 /* --                                                                     -- */
 /* --                     CREATE SKA SKETCH                               -- */
@@ -323,29 +323,29 @@ if (params.splitKmer){
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-process ska_compute_sketch {
-    tag "${sketch_id}"
-    publishDir "${params.outdir}/sketches/ska/", mode: 'copy'
-    errorStrategy 'retry'
-    maxRetries 3
+  process ska_compute_sketch {
+      tag "${sketch_id}"
+      publishDir "${params.outdir}/sketches/ska/", mode: 'copy'
+      errorStrategy 'retry'
+      maxRetries 3
 
 
-	input:
-	each ksize from ksizes
-	set id, file(reads) from reads_ch
+  	input:
+  	each ksize from ksizes
+  	set id, file(reads) from reads_ch
 
-	output:
-	set val(ksize), file("${sketch_id}.skf") into ska_sketches
-	;
-	script:
-	sketch_id = "${id}_ksize_${ksize}"
+  	output:
+  	set val(ksize), file("${sketch_id}.skf") into ska_sketches
+    
+  	script:
+  	sketch_id = "${id}_ksize_${ksize}"
 
-    """
-    ska fastq \\
-      -k $ksize \\
-      -o ${sketch_id} \\
-      ${reads}
-    """
+      """
+      ska fastq \\
+        -k $ksize \\
+        -o ${sketch_id} \\
+        ${reads}
+      """
 
     }
 } else {
