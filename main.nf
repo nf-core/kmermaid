@@ -324,6 +324,8 @@ if (params.bam) {
     each molecule from molecules
     each log2_sketch_size from log2_sketch_sizes
     set sample_id, file(bam) from bam_ch_process
+    barcodes = ""
+    rename_10x_barcodes = ""
     if (params.barcodes_file) {
       file(barcodes) from barcodes_ch_process
     }
