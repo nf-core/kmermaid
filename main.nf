@@ -324,8 +324,8 @@ if (params.bam) {
     each molecule from molecules
     each log2_sketch_size from log2_sketch_sizes
     set sample_id, file(bam) from bam_ch_process
-    file(barcodes) from barcodes_ch_process
-    file(rename_10x_barcodes) from barcodes_renamer_ch_process
+    // file(barcodes) from barcodes_ch_process
+    // file(rename_10x_barcodes) from barcodes_renamer_ch_process
     log.info "Inputs set"
 
     output:
