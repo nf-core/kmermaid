@@ -442,8 +442,6 @@ process ska_compute_sketch {
 }
 
 
-// sourmash_sketches.println()
-// sourmash_sketches.groupTuple(by: [0,3]).println()
 if (params.splitKmer){
      process ska_compare_sketches {
   	tag "${sketch_id}"
