@@ -341,8 +341,15 @@ if (params.bam) {
     count_valid_reads = count_valid_reads
     ksize = ksize
     """
-    echo pipeline isn't working
-    echo I am not sure what to do
+    sourmash compute \\
+      --ksize $ksize \\
+      --$molecule \\
+      $not_dna \\
+      --num-hashes \$((2**$log2_sketch_size)) \\
+      --processes ${task.cpus} \\
+      --count-valid-reads $count_valid_reads \\
+      --output ${sample_id}_${sketch_id}.sig \\
+      --input-is-10x $bam
     """
  }
 }
