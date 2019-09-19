@@ -110,11 +110,6 @@ read_singles_ch = Channel.empty()
 // vanilla fastas
 fastas_ch = Channel.empty()
 
-// tsv barcode file
-tsv_ch = Channel.empty() 
-barcodes_ch = Channel.empty()
-rename_10x_barcodes_ch = Channel.empty()
-
 // Parameters for testing
 if (params.read_paths) {
      read_paths_ch = Channel
@@ -186,12 +181,7 @@ if (params.read_paths) {
           }
      }
 
-if (params.bam) {
-  reads_ch = Channel.empty()
- tsv_ch.concat(barcodes_ch, rename_10x_barcodes_ch)
- .set{reads_ch}
-}
-else { 
+if (!params.bam) { 
 sra_ch.concat(samples_ch, csv_singles_ch, read_pairs_ch,
  read_singles_ch, fastas_ch, read_paths_ch)
  .ifEmpty{ exit 1, "No reads provided! Check read input files"}
@@ -326,14 +316,10 @@ if (params.bam) {
     each ksize from ksizes
     each molecule from molecules
     each log2_sketch_size from log2_sketch_sizes
-    set sample_id, bam from bam_ch
-    set barcodes_file, rename_10x_barcodes from reads_ch
-
-    log.info "Inputs set"
+    set sample_id, file(bam) from bam_ch
 
     output:
     set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches
-    log.info "Outputs set"
 
     script:
     sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
@@ -344,8 +330,9 @@ if (params.bam) {
     count_valid_reads = count_valid_reads
     ksize = ksize
     if (params.barcodes_file && params.rename_10x_barcodes && save_fastas && metadata) {
+     def barcodes_file = file(barcodes_ch)
+     def rename_10x_barcodes = file(rename_10x_barcodes_ch)
       """
-      echo 1st conditions \\n
       sourmash compute \\
         --ksize $ksize \\
         --$molecule \\
@@ -354,7 +341,7 @@ if (params.bam) {
         --processes ${task.cpus} \\
         --count-valid-reads $count_valid_reads \\
         --rename-10x-barcodes $rename_10x_barcodes \\
-        --barcodes-file $barcodes \\
+        --barcodes-file $barcodes_file \\
         --save-fastas $save_fastas \\
         --write-barcode-meta-csv $metadata \\
         --output ${sample_id}_${sketch_id}.sig \\
@@ -362,8 +349,8 @@ if (params.bam) {
       """
     }
     else if (params.barcodes_file && save_fastas && metadata) {
+      def barcodes_file = file(barcodes_ch)
       """
-      echo 2nd conditions \\n
       sourmash compute \\
         --ksize $ksize \\
         --$molecule \\
@@ -371,7 +358,7 @@ if (params.bam) {
         --num-hashes \$((2**$log2_sketch_size)) \\
         --processes ${task.cpus} \\
         --count-valid-reads $count_valid_reads \\
-        --barcodes-file $barcodes \\
+        --barcodes-file $barcodes_file \\
         --save-fastas $save_fastas \\
         --write-barcode-meta-csv $metadata \\
         --output ${sample_id}_${sketch_id}.sig \\
@@ -379,8 +366,8 @@ if (params.bam) {
       """
     }
     else if (params.barcodes_file && save_fastas) {
+      def barcodes_file = file(barcodes_ch)
       """
-      echo 3rd conditions \\n
       sourmash compute \\
         --ksize $ksize \\
         --$molecule \\
@@ -388,15 +375,15 @@ if (params.bam) {
         --num-hashes \$((2**$log2_sketch_size)) \\
         --processes ${task.cpus} \\
         --count-valid-reads $count_valid_reads \\
-        --barcodes-file $barcodes \\
+        --barcodes-file $barcodes_file \\
         --save-fastas $save_fastas \\
         --output ${sample_id}_${sketch_id}.sig \\
         --input-is-10x $bam
       """
     }
     else if (params.barcodes_file && metadata) {
+      def barcodes_file = file(barcodes_ch)
       """
-      echo 4th conditions \\n
       sourmash compute \\
         --ksize $ksize \\
         --$molecule \\
@@ -404,7 +391,7 @@ if (params.bam) {
         --num-hashes \$((2**$log2_sketch_size)) \\
         --processes ${task.cpus} \\
         --count-valid-reads $count_valid_reads \\
-        --barcodes-file $barcodes \\
+        --barcodes-file $barcodes_file \\
         --write-barcode-meta-csv $metadata \\
         --output ${sample_id}_${sketch_id}.sig \\
         --input-is-10x $bam
@@ -412,7 +399,6 @@ if (params.bam) {
     }
     else if (save_fastas && metadata) {
       """
-      echo 5th conditions \\n
       sourmash compute \\
         --ksize $ksize \\
         --$molecule \\
@@ -427,8 +413,9 @@ if (params.bam) {
       """
     }
     else if (params.barcodes_file && params.rename_10x_barcodes) {
+      def rename_10x_barcodes = file(rename_10x_barcodes_ch)
+      def barcodes_file = file(barcodes_ch)
       """
-      echo 6th conditions \\n
       sourmash compute \\
         --ksize $ksize \\
         --$molecule \\
@@ -437,14 +424,14 @@ if (params.bam) {
         --processes ${task.cpus} \\
         --count-valid-reads $count_valid_reads \\
         --rename-10x-barcodes $rename_10x_barcodes \\
-        --barcodes-file $barcodes \\
+        --barcodes-file $barcodes_file \\
         --output ${sample_id}_${sketch_id}.sig \\
         --input-is-10x $bam
       """
     }
     else if (params.barcodes_file) {
+      def barcodes_file = file(params.barcodes_file)
       """
-      echo 7th conditions \\n
       sourmash compute \\
         --ksize $ksize \\
         --$molecule \\
@@ -452,14 +439,13 @@ if (params.bam) {
         --num-hashes \$((2**$log2_sketch_size)) \\
         --processes ${task.cpus} \\
         --count-valid-reads $count_valid_reads \\
-        --barcodes-file $barcodes \\
+        --barcodes-file $barcodes_file \\
         --output ${sample_id}_${sketch_id}.sig \\
         --input-is-10x $bam
       """
     }
     else {
       """
-      echo 8th conditions \\n
       sourmash compute \\
         --ksize $ksize \\
         --$molecule \\
