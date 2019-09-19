@@ -167,6 +167,30 @@ if (params.read_paths) {
         .map{ f -> tuple(f.baseName, tuple(file(f))) }
         .set{bam_ch}
   }
+
+  // If barcodes is a file ends with ".tsv" as expected, check if it exists and set channel
+  if (params.barcodes_file.endsWith(".tsv")) {
+     Channel.fromPath(params.barcodes_file, checkIfExists: true)
+        .ifEmpty { exit 1, "Barcodes file not found: ${params.barcodes_file}" }
+        .set{barcodes_ch}
+  }
+  // If it is default "NO_BARCODES_FILE", don't check existence, set string to channel
+  else {
+    Channel.fromPath(params.barcodes_file)
+        .set{barcodes_ch}
+  }
+
+  // If renamer barcode file ends with ".tsv" as expected, check if it exists and set channel
+  if (params.rename_10x_barcodes.endsWith(".tsv")) {
+     Channel.fromPath(params.rename_10x_barcodes, checkIfExists: true)
+        .ifEmpty { exit 1, "Barcodes file not found: ${params.rename_10x_barcodes}" }
+        .set{rename_10x_barcodes_ch}
+  }
+  // If it is default "NO_BARCODE_RENAMER_FILE", don't check existence, set string to channel
+  else {
+    Channel.fromPath(params.rename_10x_barcodes)
+        .set{rename_10x_barcodes_ch}
+  }
 }
 
 if (!params.bam) { 
@@ -195,19 +219,6 @@ if(workflow.profile == 'awsbatch'){
 ksizes = params.ksizes?.toString().tokenize(',')
 molecules = params.molecules?.toString().tokenize(',')
 log2_sketch_sizes = params.log2_sketch_sizes?.toString().tokenize(',')
-
-// Parse and set 10x params
-count_valid_reads_param = params.count_valid_reads
-metadata_param = params.write_barcode_meta_csv
-save_fastas_param = params.save_fastas
-barcodes_file_param = params.barcodes_file
-rename_10x_barcodes_param = params.rename_10x_barcodes
-
-count_valid_reads = 'count_valid_reads' in params ? '--count-valid-reads ${count_valid_reads_param}' : ''
-metadata = 'write_barcode_meta_csv' in params ? '--write-barcode-meta-csv ${metadata_param}': ''
-save_fastas = 'save_fastas' in params ? '--save_fastas ${save_fastas_param}': ''
-barcodes_file = 'barcodes_file' in params ? '--barcodes-file ${barcodes_file_param.baseName}': ''
-rename_10x_barcodes = 'rename_10x_barcodes' in params ? '--rename-10x-barcodes ${rename_10x_barcodes_param.baseName}': ''
 
 // Header log info
 log.info nfcoreHeader()
@@ -317,11 +328,8 @@ if (params.bam) {
     each molecule from molecules
     each log2_sketch_size from log2_sketch_sizes
     set sample_id, file(bam) from bam_ch
-    count_valid_reads_param
-    rename_10x_barcodes_param
-    save_fastas_param
-    metadata_param
-    barcodes_file_param
+    file(barcodes_file) from barcodes_ch
+    file(rename_10x_barcodes) from rename_10x_barcodes_ch
 
     output:
     set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches
@@ -331,6 +339,13 @@ if (params.bam) {
     molecule = molecule
     not_dna = molecule != 'dna' ? '--no-dna' : ''
     ksize = ksize
+
+    count_valid_reads = 'count_valid_reads' in params ? "--count-valid-reads ${params.count_valid_reads}" : ''
+    metadata = 'write_barcode_meta_csv' in params ? "--write-barcode-meta-csv ${params.write_barcode_meta_csv}": ''
+    save_fastas = 'save_fastas' in params ? "--save_fastas ${params.save_fastas}": ''
+
+    def barcodes_file = barcodes_file.name != 'NO_BARCODES_FILE' ? "--barcodes-file ${barcodes_file.baseName}.tsv": ''
+    def rename_10x_barcodes = rename_10x_barcodes.name != 'NO_BARCODE_RENAMER_FILE' ? "--rename-10x-barcodes ${rename_10x_barcodes.baseName}.tsv": ''
     """
       sourmash compute \\
         --ksize $ksize \\
