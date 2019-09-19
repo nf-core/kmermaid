@@ -327,10 +327,10 @@ if (params.bam) {
     each log2_sketch_size from log2_sketch_sizes
     set sample_id, bam from bam_ch_process
     if (params.barcodes_file) {
-       barcodes_file from barcodes_ch_process
+      set barcodes_file from barcodes_ch_process
     }
     if (params.rename_10x_barcodes) {
-      rename_10x_barcodes from barcodes_renamer_ch_process
+      set rename_10x_barcodes from barcodes_renamer_ch_process
     }
     log.info "Inputs set"
 
