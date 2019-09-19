@@ -324,7 +324,7 @@ if (params.bam) {
     each molecule from molecules
     each log2_sketch_size from log2_sketch_sizes
     set sample_id, bam from bam_ch
-    file '?.tsv' from bam.dirName
+    file '?.tsv' from params.bam.dirName
     file barcodes_file
     file rename_10x_barcodes
     log.info "Inputs set"
