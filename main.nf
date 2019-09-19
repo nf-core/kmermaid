@@ -110,6 +110,9 @@ read_singles_ch = Channel.empty()
 // vanilla fastas
 fastas_ch = Channel.empty()
 
+// tsv barcode file
+tsv_ch = Channel.empty() 
+
 // Parameters for testing
 if (params.read_paths) {
      read_paths_ch = Channel
@@ -163,26 +166,28 @@ if (params.read_paths) {
 
   if (params.bam) {
   Channel.fromPath(params.bam, checkIfExists: true)
-        .ifEmpty { exit 1, "Barcodes file not found: ${params.barcodes_file}" }
+        .ifEmpty { exit 1, "Bam file not found: ${params.bam_file}" }
         .map{ f -> tuple(f.baseName, tuple(file(f))) }
-        .into{bam_ch_process; bam_ch_operator}
+        .set{bam_ch}
   }
 
   if (params.barcodes_file) {
-
-    barcodes_file = 
        Channel.fromPath(params.barcodes_file, checkIfExists: true)
           .ifEmpty { exit 1, "Barcodes file not found: ${params.barcodes_file}" }
+        .set{barcodes_ch}
         }
 
-
   if (params.rename_10x_barcodes) {
-    rename_10x_barcodes = Channel.fromPath(params.rename_10x_barcodes, checkIfExists: true)
+    Channel.fromPath(params.rename_10x_barcodes, checkIfExists: true)
           .ifEmpty { exit 1, "Barcodes renamer file not found: ${params.rename_10x_barcodes}" }
+          .set{rename_10x_barcodes_ch}
           }
      }
 
-if (!params.bam) {
+// if (params.bam) {
+//  tsv_ch.concat(barcodes_ch, rename_10x_barcodes_ch)
+// }
+else { 
 sra_ch.concat(samples_ch, csv_singles_ch, read_pairs_ch,
  read_singles_ch, fastas_ch, read_paths_ch)
  .ifEmpty{ exit 1, "No reads provided! Check read input files"}
@@ -317,7 +322,8 @@ if (params.bam) {
     each ksize from ksizes
     each molecule from molecules
     each log2_sketch_size from log2_sketch_sizes
-    set sample_id, bam from bam_ch_process
+    set sample_id, bam from bam_ch
+    file '?.tsv' from bam.dirName
     file barcodes_file
     file rename_10x_barcodes
     log.info "Inputs set"
@@ -370,7 +376,6 @@ else {
 
     script:
     sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
-    metadata = "all_barcode_meta.csv"
     molecule = molecule
     not_dna = molecule == 'dna' ? '' : '--no-dna'
     ksize = ksize
