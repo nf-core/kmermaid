@@ -187,12 +187,12 @@ if (params.read_paths) {
 // if (params.bam) {
 //  tsv_ch.concat(barcodes_ch, rename_10x_barcodes_ch)
 // }
-else { 
+// else { 
 sra_ch.concat(samples_ch, csv_singles_ch, read_pairs_ch,
  read_singles_ch, fastas_ch, read_paths_ch)
  .ifEmpty{ exit 1, "No reads provided! Check read input files"}
  .set{ reads_ch }
-}
+// }å
 
 
 // Has the run name been specified by the user?
