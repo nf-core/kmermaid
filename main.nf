@@ -188,7 +188,7 @@ if (params.read_paths) {
 //  tsv_ch.concat(barcodes_ch, rename_10x_barcodes_ch)
 // }
 // else { 
-if (!params.bam)
+if (!params.bam) {
 sra_ch.concat(samples_ch, csv_singles_ch, read_pairs_ch,
  read_singles_ch, fastas_ch, read_paths_ch)
  .ifEmpty{ exit 1, "No reads provided! Check read input files"}
