@@ -313,7 +313,6 @@ process get_software_versions {
 if (params.subsample) {
     process subsample_input {
 	tag "${id}_subsample"
-	container 'czbiohub/nf-kmer-ska-similarity:latest'
 	publishDir "${params.outdir}/subsampled_fastqs/ska/", mode: 'copy'
 	errorStrategy 'retry'
 	maxRetries 3
@@ -372,7 +371,6 @@ if (params.splitKmer){
 
 process ska_compute_sketch {
     tag "${sketch_id}"
-    container 'czbiohub/nf-kmer-ska-similarity:latest'
     publishDir "${params.outdir}/sketches/ska/", mode: 'copy'
     errorStrategy 'retry'
     maxRetries 3
@@ -400,7 +398,6 @@ process ska_compute_sketch {
   process sourmash_compute_sketch {
   	tag "${sample_id}_${sketch_id}"
   	publishDir "${params.outdir}/sketches/sourmash/", mode: 'copy'
-  	container 'czbiohub/nf-kmer-similarity'
 
   	// similarity job fails, try again with more memory
   	// memory { 8.GB * task.attempt }
