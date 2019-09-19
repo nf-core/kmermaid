@@ -399,8 +399,6 @@ process ska_compute_sketch {
   	tag "${sample_id}_${sketch_id}"
   	publishDir "${params.outdir}/sketches/sourmash/", mode: 'copy'
 
-  	// similarity job fails, try again with more memory
-  	// memory { 8.GB * task.attempt }
   	errorStrategy 'retry'
     maxRetries 3
 
