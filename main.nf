@@ -471,7 +471,7 @@ if (params.bam) {
         --input-is-10x $bam
       """
     }
-
+  }
 }
 
 else {
