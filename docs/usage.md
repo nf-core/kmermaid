@@ -19,10 +19,17 @@
         * [`--csv_singles`](#--csv_singles)
         * [`--fastas`](#--fastas)
         * [`--sra`](#--sra)
+        * [`--bam`](#--bam)
+        * [`--barcodes_file`](#--barcodes_file)
+        * [`--rename_10x_barcodes`](#--rename_10x_barcodes)
     * [Sketch parameters](#sketch-parameters)
         * [`--molecule`](#--molecule)
         * [`--ksize`](#--ksize)
         * [`--log2_sketch_size`](#--log2_sketch_size)
+    * [Bam optional parameters](#bam-optional-parameters)
+        * [`--count_valid_reads`](#--count_valid_reads)
+        * [`--write_barcode_meta_csv`](#--write_barcode_meta_csv)
+        * [`--save_fastas`](#--save_fastas)
 * [Job Resources](#job-resources)
 * [Automatic resubmission](#automatic-resubmission)
 * [Custom resource requests](#custom-resource-requests)
@@ -205,6 +212,31 @@ Please note the following requirements:
 
 If left unspecified, no samples are used.
 
+### `--bam`
+For bam/10x files, Use this to specify the location of the bam file. For example:
+
+```bash
+--bam /path/to/data/10x-example/possorted_genome_bam
+```
+
+### `--barcodes_file`
+For bam/10x files, Use this to specify the location of tsv (tab separated file) containing cell barcodes. For example:
+
+```bash
+--barcodes_file /path/to/data/10x-example/barcodes.tsv
+```
+
+If left unspecified, barcodes are derived from bam are used.
+
+### `--rename_10x_barcodes`
+For bam/10x files, Use this to specify the location of your tsv (tab separated file) containing map of cell barcodes and their corresponding new names(e.g row in the tsv file: AAATGCCCAAACTGCT-1    lung_epithelial_cell|AAATGCCCAAACTGCT-1). 
+For example:
+
+```bash
+--rename_10x_barcodes /path/to/data/10x-example/barcodes_renamer.tsv
+```
+If left unspecified, barcodes in bam as given in barcodes_file are not renamed.
+
 ## Sketch parameters
 
 [K-mer](https://en.wikipedia.org/wiki/K-mer) [MinHash](https://en.wikipedia.org/wiki/MinHash) sketches are defined by three parameters:
@@ -261,6 +293,39 @@ The log2 sketch size specifies the number of k-mers to use for the sketch. We us
   * `--log2_sketch_size 10,12,14,16`
 * Only a log2 sketch size of 8 (2^8 = 256):
   * `--log2_sketch_size 8`
+
+
+## Bam optional parameters
+
+1. The [save_fastas ](#--save_fastas ) used to save the sequences of each barcode in the bam file. It is a path relative to outdir to save unique barcodes to files namely {CELL_BARCODE}.fasta
+1. The [write_barcode_meta_csv](#--write_barcode_meta_csv) For bam files, Csv file name relative to outdir/barcode_metadata to write number of reads and number of umis per barcode. This csv file is empty with just header when the count_valid_reads is zero i.e reads and umis per barcode are calculated only when the barcodes are filtered based on count_valid_reads
+1. A barcode is only considered a valid barcode read and its sketch is written if number of umis are greater than count_valid_reads[count_valid_reads](#--count_valid_reads)
+       
+### `--save_fastas`
+
+**Example parameters**
+
+* Default: fastas are not saved 
+* Save fastas in a directory called fastsas inside outdir:
+  * `--save_fastas "fastas"`
+
+
+### `--write_barcode_meta_csv`
+
+**Example parameters**
+
+* Default: barcode metadata is not saved 
+* Save fastas in a file cinside outdir/barcode/metadata:
+  * `--write_barcode_meta_csv "barcodes_counts.csv"`
+
+
+### `--count_valid_reads`
+
+**Example parameters**
+
+* Default: count_valid_reads is 0
+* Save fastas in a directory called fastsas inside outdir:
+  * `--count_valid_reads 10`
 
 
 ## Reference Genomes
@@ -356,7 +421,7 @@ process.$multiqc.module = []
 
 ### `--max_memory`
 Use to set a top-limit for the default memory requirement for each process.
-Should be a string in the format integer-unit. eg. `--max_memory '8.GB'``
+Should be a string in the format integer-unit. eg. `--max_memory '8.GB'`
 
 ### `--max_time`
 Use to set a top-limit for the default time requirement for each process.

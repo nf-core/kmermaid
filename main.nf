@@ -39,6 +39,12 @@ def helpMessage() {
         --outdir s3://olgabot-maca/nf-kmer-similarity/ --sra SRP016501
 
 
+    With BAM file:
+
+      nextflow run main.nf -profile standard \
+      --outdir /Users/pranathivemuri/nf_output_test_3/ \
+      --bam /Users/pranathivemuri/kmermaid/tests/test-data/possorted_genome_bam.bam
+
     Mandatory Arguments:
       --outdir                      Local or S3 directory to output the comparison matrix to
 
