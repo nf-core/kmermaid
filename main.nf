@@ -65,11 +65,13 @@ def helpMessage() {
                                     Useful for comparing e.g. assembled transcriptomes or metagenomes.
                                     (Not typically used for raw sequencing data as this would create
                                     a k-mer signature for each read!)
-      --save_fastas                 For bam files, Path to save unique barcodes to {CELL_BARCODE}.fasta Default is 'fastas' inside outdir
-      --write_barcode_meta_csv      For bam files, Write to a given path, number of reads and number of umis per barcode.
-                                    Default is 'all_barcodes_meta.csv' inside outdir
+      --save_fastas                 For bam files, Path relative to outdir to save unique barcodes to {CELL_BARCODE}.fasta
+      --write_barcode_meta_csv      For bam files, Csv file name relative to outdir/barcode_metadata to write number of reads and number of umis per barcode.
+                                    This csv file is empty with just header when the count_valid_reads is zero i.e
+                                    Reads and umis per barcode are calculated only when the barcodes are filtered
+                                    based on count_valid_reads
       --count_valid_reads           A barcode is only considered a valid barcode read
-                                    and its signature is written if number of umis are greater than count_valid_reads. Default is 1000
+                                    and its signature is written if number of umis are greater than count_valid_reads
       --barcodes_file               For bam files, Optional absolute path to a .tsv barcodes file if the input is unfiltered 10x bam file
       --rename_10x_barcodes         For bam files, Optional absolute path to a .tsv Tab-separated file mapping 10x barcode name
                                     to new name, e.g. with channel or cell annotation label
@@ -314,7 +316,10 @@ process get_software_versions {
 if (params.bam) {
   process sourmash_compute_sketch_bam {
     tag "${sample_id}_${sketch_id}"
-    publishDir "${params.outdir}/sketches", mode: 'copy'
+    publishDir "${params.outdir}/sketches", pattern: '*.sig', mode: 'copy'
+    publishDir "${params.outdir}/${params.save_fastas}", pattern: '*.fasta', mode: 'copy'
+    publishDir "${params.outdir}/barcode_metadata", pattern: '*.csv', mode: 'copy'
+
     container "$workflow.container"
 
     // If job fails, try again with more memory
@@ -331,6 +336,8 @@ if (params.bam) {
     file(rename_10x_barcodes) from rename_10x_barcodes_ch
 
     output:
+    file("*.fasta")
+    file("${params.write_barcode_meta_csv}")
     set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches
 
     script:
@@ -341,7 +348,7 @@ if (params.bam) {
 
     count_valid_reads = 'count_valid_reads' in params ? "--count-valid-reads ${params.count_valid_reads}" : ''
     metadata = 'write_barcode_meta_csv' in params ? "--write-barcode-meta-csv ${params.write_barcode_meta_csv}": ''
-    save_fastas = 'save_fastas' in params ? "--save_fastas ${params.save_fastas}": ''
+    save_fastas = 'save_fastas' in params ? "--save-fastas ${params.save_fastas}": ''
 
     def barcodes_file = barcodes_file.name != 'NO_BARCODES_FILE' ? "--barcodes-file ${barcodes_file.baseName}.tsv": ''
     def rename_10x_barcodes = rename_10x_barcodes.name != 'NO_BARCODE_RENAMER_FILE' ? "--rename-10x-barcodes ${rename_10x_barcodes.baseName}.tsv": ''
