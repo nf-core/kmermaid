@@ -221,6 +221,14 @@ ksizes = params.ksizes?.toString().tokenize(',')
 molecules = params.molecules?.toString().tokenize(',')
 log2_sketch_sizes = params.log2_sketch_sizes?.toString().tokenize(',')
 
+// For bam files, set a folder name to save the optional barcode metadata csv
+if (params.write_barcode_meta_csv == "") {
+  barcode_metadata_folder = ""
+}
+else {
+  barcode_metadata_folder = "barcode_metadata"
+}
+
 // Header log info
 log.info nfcoreHeader()
 def summary = [:]
@@ -318,7 +326,7 @@ if (params.bam) {
     tag "${sample_id}_${sketch_id}"
     publishDir "${params.outdir}/sketches", pattern: '*.sig', mode: 'copy'
     publishDir "${params.outdir}/${params.save_fastas}", pattern: '*.fasta', mode: 'copy'
-    publishDir "${params.outdir}/barcode_metadata", pattern: '*.csv', mode: 'copy'
+    publishDir "${params.outdir}/${barcode_metadata_folder}", pattern: '*.csv', mode: 'copy'
 
     container "$workflow.container"
 
@@ -336,8 +344,9 @@ if (params.bam) {
     file(rename_10x_barcodes) from rename_10x_barcodes_ch
 
     output:
-    file("*.fasta")
-    file("${params.write_barcode_meta_csv}")
+    // https://github.com/nextflow-io/patterns/blob/master/docs/optional-output.adoc
+    file("*.fasta") optional true
+    file("${params.write_barcode_meta_csv}") optional true
     set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches
 
     script:
