@@ -7,12 +7,14 @@ ENV PATH /opt/conda/envs/nfcore-kmermaid-0.1dev/bin:$PATH
 
 # Suggested tags from https://microbadger.com/labels
 ARG VCS_REF
+ARG BUILD_DATE
 LABEL org.label-schema.vcs-ref=$VCS_REF \
 org.label-schema.vcs-url="e.g. https://github.com/nf-core/kmermaid"
 
 WORKDIR /home
 
 ENV PACKAGES zlib1g git g++ make ca-certificates gcc zlib1g-dev libc6-dev procps
+libbz2-dev libcurl4-openssl-dev libssl-dev # Pysam dependencies
 
 ### don't modify things below here for version updates etc.
 
@@ -22,6 +24,8 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends ${PACKAGES} && \
     apt-get clean
 
+# Required for multiprocessing of 10x bam file
+RUN pip install pathos pysam
 
 RUN which -a pip
 RUN which -a python
