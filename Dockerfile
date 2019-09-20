@@ -13,8 +13,8 @@ org.label-schema.vcs-url="e.g. https://github.com/nf-core/kmermaid"
 
 WORKDIR /home
 
-ENV PACKAGES zlib1g git g++ make ca-certificates gcc zlib1g-dev libc6-dev procps
-libbz2-dev libcurl4-openssl-dev libssl-dev # Pysam dependencies
+ENV PACKAGES zlib1g git g++ make ca-certificates gcc zlib1g-dev libc6-dev procps libbz2-dev libcurl4-openssl-dev libssl-dev
+# libbz2-dev libcurl4-openssl-dev libssl-dev are Pysam dependencies
 
 ### don't modify things below here for version updates etc.
 
