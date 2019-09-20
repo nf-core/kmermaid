@@ -58,11 +58,10 @@ def helpMessage() {
       --ksizes                      Which nucleotide k-mer sizes to use. Multiple are
                                     separated by commas. Default is '21,27,33,51'
       --molecules                   Which molecule to compare on. Default is both DNA
-                                    and protein, i.e. 'dna,protein'
+                                    and protein, i.e. 'dna,protein,dayhoff'
       --log2_sketch_sizes           Which log2 sketch sizes to use. Multiple are separated
                                     by commas. Default is '10,12,14,16'
-      --one_signature_per_record    Make a k-mer signature for each record in the FASTQ/FASTA
-                                    files.
+      --one_signature_per_record    Make a k-mer signature for each record in the FASTQ/FASTA files.
                                     Useful for comparing e.g. assembled transcriptomes or metagenomes.
                                     (Not typically used for raw sequencing data as this would create
                                     a k-mer signature for each read!)
