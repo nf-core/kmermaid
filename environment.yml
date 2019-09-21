@@ -17,6 +17,3 @@ dependencies:
   - alabaster
   - conda-forge::gxx_linux-64
   - pip
-  - pip:
-    - pathos==0.2.4
-    - pysam==0.15.3
