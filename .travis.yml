@@ -6,6 +6,23 @@ python: '3.6'
 cache: pip
 matrix:
   fast_finish: true
+  include:
+  - name: "Test nextflow kmermaid, with BAM"
+    env: NXF_VER='' SUITE=test_bam FLAGS='--barcodes_file false --rename_10x_barcodes false --save_fastas false --write_barcodes_meta_csv false'
+  - name: "Test nextflow kmermaid, with BAM, Barcodes"
+    env: NXF_VER='' SUITE=test_bam FLAGS='--rename_10x_barcodes false --save_fastas false --write_barcodes_meta_csv false'
+  - name: "Test nextflow kmermaid, with BAM, Barcodes, Renamer"
+    env: NXF_VER='' SUITE=test_bam FLAGS='--save_fastas false --write_barcodes_meta_csv false'
+  - name: "Test nextflow kmermaid, with BAM, save_fastas, write_barcodes_meta_csv"
+    env: NXF_VER='' SUITE=test_bam FLAGS='--barcodes_file false --rename_10x_barcodes false'
+  - name: "Test nextflow kmermaid, with BAM, Barcodes, save_fastas, write_barcodes_meta_csv"
+    env: NXF_VER='' SUITE=test_bam FLAGS='--rename_10x_barcodes false'
+  - name: "Test nextflow kmermaid, with BAM, Barcodes, Renamer, save_fastas"
+    env: NXF_VER='' SUITE=test_bam FLAGS='--write_barcodes_meta_csv false'
+  - name: "Test nextflow kmermaid, with BAM, Barcodes, Renamer, write_barcodes_meta_csv"
+    env: NXF_VER='' SUITE=test_bam FLAGS='--write_barcodes_meta_csv false'
+  - name: "Test nextflow kmermaid, with BAM, Barcodes, Renamer, save_fastas, write_barcodes_meta_csv"
+    env: NXF_VER='' SUITE=test_bam FLAGS=
 
 before_install:
   # PRs to master are only ok if coming from dev branch

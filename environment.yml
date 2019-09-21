@@ -17,5 +17,7 @@ dependencies:
   - matplotlib
   - alabaster
   - conda-forge::gxx_linux-64
-  # - conda-forge::gcc_linux-64
-  # - gcc
+  - pip
+  - pip:
+    - pathos==0.2.4
+    - pysam==0.15.3

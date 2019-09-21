@@ -27,7 +27,7 @@
         * [`--ksize`](#--ksize)
         * [`--log2_sketch_size`](#--log2_sketch_size)
     * [Bam optional parameters](#bam-optional-parameters)
-        * [`--count_valid_reads`](#--count_valid_reads)
+        * [`--min_umi_per_barcode`](#--min_umi_per_barcode)
         * [`--write_barcode_meta_csv`](#--write_barcode_meta_csv)
         * [`--save_fastas`](#--save_fastas)
 * [Job Resources](#job-resources)
@@ -298,8 +298,8 @@ The log2 sketch size specifies the number of k-mers to use for the sketch. We us
 ## Bam optional parameters
 
 1. The [save_fastas ](#--save_fastas ) used to save the sequences of each barcode in the bam file. It is a path relative to outdir to save unique barcodes to files namely {CELL_BARCODE}.fasta
-1. The [write_barcode_meta_csv](#--write_barcode_meta_csv) For bam files, Csv file name relative to outdir/barcode_metadata to write number of reads and number of umis per barcode. This csv file is empty with just header when the count_valid_reads is zero i.e reads and umis per barcode are calculated only when the barcodes are filtered based on count_valid_reads
-1. A barcode is only considered a valid barcode read and its sketch is written if number of umis are greater than count_valid_reads[count_valid_reads](#--count_valid_reads)
+1. The [write_barcode_meta_csv](#--write_barcode_meta_csv) For bam files, Csv file name relative to outdir/barcode_metadata to write number of reads and number of umis per barcode. This csv file is empty with just header when the min_umi_per_barcode is zero i.e reads and umis per barcode are calculated only when the barcodes are filtered based on min_umi_per_barcode
+1. A barcode is only considered a valid barcode read and its sketch is written if number of umis are greater than min_umi_per_barcode[min_umi_per_barcode](#--min_umi_per_barcode)
        
 ### `--save_fastas`
 
@@ -319,13 +319,13 @@ The log2 sketch size specifies the number of k-mers to use for the sketch. We us
   * `--write_barcode_meta_csv "barcodes_counts.csv"`
 
 
-### `--count_valid_reads`
+### `--min_umi_per_barcode`
 
 **Example parameters**
 
-* Default: count_valid_reads is 0
+* Default: min_umi_per_barcode is 0
 * Save fastas in a directory called fastsas inside outdir:
-  * `--count_valid_reads 10`
+  * `--min_umi_per_barcode 10`
 
 
 ## Reference Genomes

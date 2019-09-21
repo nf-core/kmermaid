@@ -73,11 +73,11 @@ def helpMessage() {
                                     a k-mer signature for each read!)
       --save_fastas                 For bam files, Path relative to outdir to save unique barcodes to {CELL_BARCODE}.fasta
       --write_barcode_meta_csv      For bam files, Csv file name relative to outdir/barcode_metadata to write number of reads and number of umis per barcode.
-                                    This csv file is empty with just header when the count_valid_reads is zero i.e
+                                    This csv file is empty with just header when the min_umi_per_barcode is zero i.e
                                     Reads and umis per barcode are calculated only when the barcodes are filtered
-                                    based on count_valid_reads
-      --count_valid_reads           A barcode is only considered a valid barcode read
-                                    and its signature is written if number of umis are greater than count_valid_reads
+                                    based on min_umi_per_barcode
+      --min_umi_per_barcode           A barcode is only considered a valid barcode read
+                                    and its signature is written if number of umis are greater than min_umi_per_barcode
       --barcodes_file               For bam files, Optional absolute path to a .tsv barcodes file if the input is unfiltered 10x bam file
       --rename_10x_barcodes         For bam files, Optional absolute path to a .tsv Tab-separated file mapping 10x barcode name
                                     to new name, e.g. with channel or cell annotation label
@@ -257,7 +257,7 @@ summary['Molecule']               = params.molecules
 summary['Log2 Sketch Sizes']      = params.log2_sketch_sizes
 summary['One Sig per Record']         = params.one_signature_per_record
 // 10x parameters
-if(params.count_valid_reads) summary['Count valid reads'] = params.count_valid_reads
+if(params.min_umi_per_barcode) summary['Count valid reads'] = params.min_umi_per_barcode
 if(params.save_fastas) summary['Count valid reads'] = params.save_fastas
 if(params.write_barcode_meta_csv) summary['Count valid reads'] = params.write_barcode_meta_csv
 // Resource information
@@ -361,7 +361,7 @@ if (params.bam) {
     not_dna = molecule != 'dna' ? '--no-dna' : ''
     ksize = ksize
 
-    count_valid_reads = 'count_valid_reads' in params ? "--count-valid-reads ${params.count_valid_reads}" : ''
+    min_umi_per_barcode = 'min_umi_per_barcode' in params ? "--count-valid-reads ${params.min_umi_per_barcode}" : ''
     metadata = 'write_barcode_meta_csv' in params ? "--write-barcode-meta-csv ${params.write_barcode_meta_csv}": ''
     save_fastas = 'save_fastas' in params ? "--save-fastas ${params.save_fastas}": ''
 
@@ -374,7 +374,7 @@ if (params.bam) {
         $not_dna \\
         --num-hashes \$((2**$log2_sketch_size)) \\
         --processes ${task.cpus} \\
-        $count_valid_reads \\
+        $min_umi_per_barcode \\
         $rename_10x_barcodes \\
         $barcodes_file \\
         $save_fastas \\
