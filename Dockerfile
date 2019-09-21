@@ -25,9 +25,6 @@ COPY environment.yml /
 RUN conda env create -f /environment.yml && conda clean -a
 ENV PATH /opt/conda/envs/nfcore-kmermaid-0.1dev/bin:$PATH
 
-# Required for multiprocessing of 10x bam file
-RUN pip install pathos pysam
-
 RUN which -a pip
 RUN which -a python
 RUN cd /home && \
