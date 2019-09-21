@@ -31,7 +31,7 @@ RUN pip install pathos pysam
 RUN which -a pip
 RUN which -a python
 RUN cd /home && \
-    git clone https://github.com/czbiohub/sourmash.git && \
+    git clone https://github.com/dib-lab/sourmash.git && \
     cd sourmash && \
     python setup.py install
 
