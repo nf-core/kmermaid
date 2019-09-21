@@ -9,7 +9,7 @@ org.label-schema.vcs-url="e.g. https://github.com/nf-core/kmermaid"
 
 WORKDIR /home
 
-ENV PACKAGES zlib1g git g++ make ca-certificates gcc zlib1g-dev libc6-dev procps libbz2-dev libcurl4-openssl-dev libssl-dev
+ENV PACKAGES zlib1g git g++ make ca-certificates gcc zlib1g-dev libc6-dev procps
 
 ### don't modify things below here for version updates etc.
 

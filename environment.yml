@@ -17,6 +17,10 @@ dependencies:
   - matplotlib
   - alabaster
   - conda-forge::gxx_linux-64
+  - conda-forge::libcurl
+  - conda-forge::zlib
+  - conda-forge::bzip2
+  - conda-forge::openssl
   - pip
   - pip:
     - pathos==0.2.4
