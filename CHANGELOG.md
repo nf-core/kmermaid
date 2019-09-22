@@ -4,7 +4,7 @@
 
 * Add option to use Dayhoff encoding for sourmash
 * Add bam file process to kmermaid pipeline and optional params
-  for bam file handling
+  for the same
 * Update dockerfile with sourmash compute bam input dependencies
 
 ## v1.0 - 6 March 2019
