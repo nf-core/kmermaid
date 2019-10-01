@@ -228,7 +228,7 @@ molecules = params.molecules?.toString().tokenize(',')
 log2_sketch_sizes = params.log2_sketch_sizes?.toString().tokenize(',')
 
 // For bam files, set a folder name to save the optional barcode metadata csv
-if (params.write_barcode_meta_csv == "") {
+if (!params.write_barcode_meta_csv) {
   barcode_metadata_folder = ""
 }
 else {
