@@ -334,7 +334,6 @@ if (params.bam) {
     publishDir "${params.outdir}/${params.save_fastas}", pattern: '*.fasta', mode: 'copy'
     publishDir "${params.outdir}/${barcode_metadata_folder}", pattern: '*.csv', mode: 'copy'
 
-    container "$workflow.container"
 
     // If job fails, try again with more memory
     // memory { 8.GB * task.attempt }
