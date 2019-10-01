@@ -390,7 +390,6 @@ else {
   process sourmash_compute_sketch_fastx {
     tag "${sample_id}_${sketch_id}"
     publishDir "${params.outdir}/sketches", mode: 'copy'
-    container "$workflow.container"
 
     // If job fails, try again with more memory
     // memory { 8.GB * task.attempt }
