@@ -364,7 +364,7 @@ if (params.bam) {
     metadata = params.write_barcode_meta_csv ? "--write-barcode-meta-csv ${params.write_barcode_meta_csv}": ''
     save_fastas = params.save_fastas ? "--save-fastas ${params.save_fastas}": ''
 
-    def barcodes_file = barcodes_file.name != 'NO_BARCODES_FILE' ? "--barcodes-file ${barcodes_file.baseName}.tsv": ''
+    def barcodes_file = barcodes_file ? "--barcodes-file ${barcodes_file.baseName}.tsv": ''
     def rename_10x_barcodes = rename_10x_barcodes.name != 'NO_BARCODE_RENAMER_FILE' ? "--rename-10x-barcodes ${rename_10x_barcodes.baseName}.tsv": ''
     """
       sourmash compute \\
