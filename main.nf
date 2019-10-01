@@ -363,7 +363,7 @@ if (params.bam) {
 
     min_umi_per_barcode = 'min_umi_per_barcode' in params ? "--count-valid-reads ${params.min_umi_per_barcode}" : ''
     metadata = 'write_barcode_meta_csv' in params ? "--write-barcode-meta-csv ${params.write_barcode_meta_csv}": ''
-    save_fastas = 'save_fastas' in params ? "--save-fastas ${params.save_fastas}": ''
+    save_fastas = params.save_fastas ? "--save-fastas ${params.save_fastas}": ''
 
     def barcodes_file = barcodes_file.name != 'NO_BARCODES_FILE' ? "--barcodes-file ${barcodes_file.baseName}.tsv": ''
     def rename_10x_barcodes = rename_10x_barcodes.name != 'NO_BARCODE_RENAMER_FILE' ? "--rename-10x-barcodes ${rename_10x_barcodes.baseName}.tsv": ''
