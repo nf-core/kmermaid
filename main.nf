@@ -41,7 +41,7 @@ def helpMessage() {
 
     With BAM file:
 
-      nextflow run main.nf -profile standard \
+      nextflow run main.nf \
       --outdir ./results \
       --bam possorted_genome_bam.bam
 
