@@ -324,7 +324,7 @@ The log2 sketch size specifies the number of k-mers to use for the sketch. We us
 **Example parameters**
 
 * Default: min_umi_per_barcode is 0
-* Save fastas in a directory called fastsas inside outdir:
+* Save fastas in a directory called fastas inside outdir:
   * `--min_umi_per_barcode 10`
 
 
