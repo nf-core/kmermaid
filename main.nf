@@ -361,7 +361,7 @@ if (params.bam) {
     not_dna = molecule != 'dna' ? '--no-dna' : ''
     ksize = ksize
 
-    min_umi_per_barcode = 'min_umi_per_barcode' in params ? "--count-valid-reads ${params.min_umi_per_barcode}" : ''
+    min_umi_per_barcode = params.min_umi_per_barcode ? "--count-valid-reads ${params.min_umi_per_barcode}" : ''
     metadata = params.write_barcode_meta_csv ? "--write-barcode-meta-csv ${params.write_barcode_meta_csv}": ''
     save_fastas = params.save_fastas ? "--save-fastas ${params.save_fastas}": ''
 
