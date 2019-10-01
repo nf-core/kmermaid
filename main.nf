@@ -188,7 +188,7 @@ if (params.read_paths) {
   }
 
   // If renamer barcode file ends with ".tsv" as expected, check if it exists and set channel
-  if (params.rename_10x_barcodes.endsWith(".tsv")) {
+  if (params.rename_10x_barcodes) {
      Channel.fromPath(params.rename_10x_barcodes, checkIfExists: true)
         .ifEmpty { exit 1, "Barcodes file not found: ${params.rename_10x_barcodes}" }
         .set{rename_10x_barcodes_ch}
