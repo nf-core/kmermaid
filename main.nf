@@ -176,7 +176,7 @@ if (params.read_paths) {
   }
 
   // If barcodes is a file ends with ".tsv" as expected, check if it exists and set channel
-  if (params.barcodes_file.endsWith(".tsv")) {
+  if (params.barcodes_file) {
      Channel.fromPath(params.barcodes_file, checkIfExists: true)
         .ifEmpty { exit 1, "Barcodes file not found: ${params.barcodes_file}" }
         .set{barcodes_ch}
