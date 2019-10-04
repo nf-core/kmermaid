@@ -41,9 +41,9 @@ def helpMessage() {
 
     With BAM file:
 
-      nextflow run main.nf -profile standard \
-      --outdir /Users/pranathivemuri/nf_output_test_3/ \
-      --bam /Users/pranathivemuri/kmermaid/tests/test-data/possorted_genome_bam.bam
+      nextflow run main.nf \
+      --outdir ./results \
+      --bam possorted_genome_bam.bam
 
     Mandatory Arguments:
       --outdir                      Local or S3 directory to output the comparison matrix to
@@ -176,7 +176,7 @@ if (params.read_paths) {
   }
 
   // If barcodes is a file ends with ".tsv" as expected, check if it exists and set channel
-  if (params.barcodes_file.endsWith(".tsv")) {
+  if (params.barcodes_file) {
      Channel.fromPath(params.barcodes_file, checkIfExists: true)
         .ifEmpty { exit 1, "Barcodes file not found: ${params.barcodes_file}" }
         .set{barcodes_ch}
@@ -188,7 +188,7 @@ if (params.read_paths) {
   }
 
   // If renamer barcode file ends with ".tsv" as expected, check if it exists and set channel
-  if (params.rename_10x_barcodes.endsWith(".tsv")) {
+  if (params.rename_10x_barcodes) {
      Channel.fromPath(params.rename_10x_barcodes, checkIfExists: true)
         .ifEmpty { exit 1, "Barcodes file not found: ${params.rename_10x_barcodes}" }
         .set{rename_10x_barcodes_ch}
@@ -228,7 +228,7 @@ molecules = params.molecules?.toString().tokenize(',')
 log2_sketch_sizes = params.log2_sketch_sizes?.toString().tokenize(',')
 
 // For bam files, set a folder name to save the optional barcode metadata csv
-if (params.write_barcode_meta_csv == "") {
+if (!params.write_barcode_meta_csv) {
   barcode_metadata_folder = ""
 }
 else {
@@ -334,7 +334,6 @@ if (params.bam) {
     publishDir "${params.outdir}/${params.save_fastas}", pattern: '*.fasta', mode: 'copy'
     publishDir "${params.outdir}/${barcode_metadata_folder}", pattern: '*.csv', mode: 'copy'
 
-    container "$workflow.container"
 
     // If job fails, try again with more memory
     // memory { 8.GB * task.attempt }
@@ -361,11 +360,11 @@ if (params.bam) {
     not_dna = molecule != 'dna' ? '--no-dna' : ''
     ksize = ksize
 
-    min_umi_per_barcode = 'min_umi_per_barcode' in params ? "--count-valid-reads ${params.min_umi_per_barcode}" : ''
-    metadata = 'write_barcode_meta_csv' in params ? "--write-barcode-meta-csv ${params.write_barcode_meta_csv}": ''
-    save_fastas = 'save_fastas' in params ? "--save-fastas ${params.save_fastas}": ''
+    min_umi_per_barcode = params.min_umi_per_barcode ? "--count-valid-reads ${params.min_umi_per_barcode}" : ''
+    metadata = params.write_barcode_meta_csv ? "--write-barcode-meta-csv ${params.write_barcode_meta_csv}": ''
+    save_fastas = params.save_fastas ? "--save-fastas ${params.save_fastas}": ''
 
-    def barcodes_file = barcodes_file.name != 'NO_BARCODES_FILE' ? "--barcodes-file ${barcodes_file.baseName}.tsv": ''
+    def barcodes_file = barcodes_file ? "--barcodes-file ${barcodes_file.baseName}.tsv": ''
     def rename_10x_barcodes = rename_10x_barcodes.name != 'NO_BARCODE_RENAMER_FILE' ? "--rename-10x-barcodes ${rename_10x_barcodes.baseName}.tsv": ''
     """
       sourmash compute \\
@@ -390,7 +389,6 @@ else {
   process sourmash_compute_sketch_fastx {
     tag "${sample_id}_${sketch_id}"
     publishDir "${params.outdir}/sketches", mode: 'copy'
-    container "$workflow.container"
 
     // If job fails, try again with more memory
     // memory { 8.GB * task.attempt }
