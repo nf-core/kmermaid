@@ -181,9 +181,8 @@ if (params.read_paths) {
         .ifEmpty { exit 1, "Barcodes file not found: ${params.barcodes_file}" }
         .set{barcodes_ch}
   }
-  // If it is default "NO_BARCODES_FILE", don't check existence, set string to channel
   else {
-    Channel.fromPath(params.barcodes_file)
+    Channel.from(false)
         .set{barcodes_ch}
   }
 
@@ -193,9 +192,8 @@ if (params.read_paths) {
         .ifEmpty { exit 1, "Barcodes file not found: ${params.rename_10x_barcodes}" }
         .set{rename_10x_barcodes_ch}
   }
-  // If it is default "NO_BARCODE_RENAMER_FILE", don't check existence, set string to channel
   else {
-    Channel.fromPath(params.rename_10x_barcodes)
+    Channel.from(false)
         .set{rename_10x_barcodes_ch}
   }
 }
@@ -365,7 +363,7 @@ if (params.bam) {
     save_fastas = params.save_fastas ? "--save-fastas ${params.save_fastas}": ''
 
     def barcodes_file = barcodes_file ? "--barcodes-file ${barcodes_file.baseName}.tsv": ''
-    def rename_10x_barcodes = rename_10x_barcodes.name != 'NO_BARCODE_RENAMER_FILE' ? "--rename-10x-barcodes ${rename_10x_barcodes.baseName}.tsv": ''
+    def rename_10x_barcodes = params.rename_10x_barcodes ? "--rename-10x-barcodes ${rename_10x_barcodes.baseName}.tsv": ''
     """
       sourmash compute \\
         --ksize $ksize \\
