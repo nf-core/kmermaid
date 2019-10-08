@@ -7,14 +7,18 @@ cache: pip
 matrix:
   fast_finish: true
   include:
-  - name: "Minimum Nextflow version, regular test suite with STAR aligner"
+  - name: "Minimum Nextflow version, regular test suite"
     env: NXF_VER='0.32.0' SUITE=test FLAGS=
     language: java
     jdk: openjdk8
-  - name: "Latest Nextflow version, regular test suite with STAR aligner"
+  - name: "Latest Nextflow version, regular test suite"
     env: NXF_VER='' SUITE=test FLAGS=
-  - name: "Latest Nextflow version, regular test suite with STAR aligner, force GFF"
-    env: NXF_VER='' SUITE=test FLAGS='--gtf false'
+  - name: "Latest Nextflow version, regular test suite with splitKmers, ensure that `protein` can't be specified"
+    script:
+        # Run the pipeline with split kmers - this should fail because `--molecules` contains `protein,dayhoff`
+        - nextflow run ${TRAVIS_BUILD_DIR} -profile test,docker --splitKmer || (echo "Correctly failed --splitKmer + --molecules protein" || echo "--splitKmer + --molecules protein" should fail && exit 1)
+  - name: "Latest Nextflow version, split k-mer test suite"
+    env: NXF_VER='' SUITE=test_ska FLAGS=
   - name: "Lint the pipeline code"
     install:
       # Install nf-core/tools
@@ -55,8 +59,4 @@ script:
   # Skip linting for now since container is built by czbiohub
   # - nf-core lint ${TRAVIS_BUILD_DIR}
   # Run the pipeline with the test profile
-  - nextflow run ${TRAVIS_BUILD_DIR} -profile test,docker
-
   - nextflow run ${TRAVIS_BUILD_DIR} -profile ${SUITE},docker ${FLAGS}
-  # Run the pipeline with split kmers - this should fail because `--molecules` contains `protein,dayhoff`
-  - nextflow run ${TRAVIS_BUILD_DIR} -profile test,docker --splitKmer || (echo "Correctly failed --splitKmer + --molecules protein" || echo "--splitKmer + --molecules protein" should fail && exit 1)
