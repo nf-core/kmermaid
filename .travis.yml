@@ -20,8 +20,8 @@ matrix:
   - name: "Lint the pipeline code"
     install:
       # Install nf-core/tools
-      - pip install --upgrade pip
-      - pip install nf-core
+      - pip install --user --upgrade pip
+      - pip install --user nf-core
     script: nf-core lint ${TRAVIS_BUILD_DIR}
     python: '3.6'
     env: NXF_VER='0.32.0'
@@ -44,13 +44,10 @@ install:
   - wget -qO- get.nextflow.io | bash
   - sudo ln -s /tmp/nextflow/nextflow /usr/local/bin/nextflow
   # Install nf-core/tools
-  - pip install nf-core
+  - pip install --user nf-core
   # Reset
   - mkdir ${TRAVIS_BUILD_DIR}/tests && cd ${TRAVIS_BUILD_DIR}/tests
 
 script:
-  # Lint the pipeline code
-  # Skip linting for now since container is built by czbiohub
-  # - nf-core lint ${TRAVIS_BUILD_DIR}
   # Run the pipeline with the test profile
   - nextflow run ${TRAVIS_BUILD_DIR} -profile ${SUITE},docker ${FLAGS}
