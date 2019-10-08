@@ -17,26 +17,26 @@ By default, this pipeline creates a [MinHash](https://en.wikipedia.org/wiki/MinH
 
 This is where you'd have a csv file with a `sample_id,read1,read2` header containing the sample id and paths to each of your R1 and R2 read files.
 
-```
+```bash
 nextflow run czbiohub/nf-kmer-similarity --outdir s3://olgabot-maca/nf-kmer-similarity/ --samples samples.csv
 ```
 
 ### With R1, R2 read pairs:
 
-```
+```bash
 nextflow run czbiohub/nf-kmer-similarity --outdir s3://olgabot-maca/nf-kmer-similarity/ \
   --read_pairs 's3://olgabot-maca/sra/homo_sapiens/smartseq2_quartzseq/*{R1,R2}*.fastq.gz,s3://olgabot-maca/sra/danio_rerio/smart-seq/whole_kidney_marrow_prjna393431/*{1,2}.fastq.gz'
 ```
 
 ### With SRA ids:
 
-```
+```bash
 nextflow run czbiohub/nf-kmer-similarity --outdir s3://olgabot-maca/nf-kmer-similarity/ --sra SRP016501
 ```
 
 ### With fasta files:
 
-```
+```bash
 nextflow run czbiohub/nf-kmer-similarity --outdir s3://olgabot-maca/nf-kmer-similarity/ \
   --fastas '*.fasta'
 ```
@@ -45,14 +45,14 @@ nextflow run czbiohub/nf-kmer-similarity --outdir s3://olgabot-maca/nf-kmer-simi
 
 Note: the meaning of `ksize` is different with split k-mers, so now the value specified by `--ksize` is just under half of the total sampled sequence size, where the middle base can be any base (`N`) `[---ksize---]N[---ksize---]`. Note that `--splitKmer` can only work with DNA sequence and does not work with `protein` specified in `--molecules`.
 
-```
-nextflow run czbiohub/nf-kmer-similarity --outdir s3://olgabot-maca/nf-kmer-similarity/ --samples samples.csv --splitKmer --subsample 1000
+```bash
+nextflow run czbiohub/nf-kmer-similarity --outdir s3://olgabot-maca/nf-kmer-similarity/ --samples samples.csv --splitKmer
 ```
 
 ### With Split Kmer Analysis [SKA](https://github.com/simonrharris/SKA) and fastq subsampling with [seqtk](https://github.com/lh3/seqtk):
 
 The `subsample` command is often necessary because the `ska` tool uses ALL the reads rather than a MinHash subsampling of them. If your input files are rather big, then the `ska` sketching command (`ska fastq`) runs out of memory, or it takes so long that it's untenable. The `--subsample` command specifies the number of reads to be used.
 
-```
+```bash
 nextflow run czbiohub/nf-kmer-similarity --outdir s3://olgabot-maca/nf-kmer-similarity/ --samples samples.csv --splitKmer --subsample 1000
 ```
