@@ -11,7 +11,7 @@ By default, this pipeline creates a [MinHash](https://en.wikipedia.org/wiki/MinH
 - log2 sketch sizes of 10, 12, 14, 16  (as if `--log2_sketch_sizes 10,12,14,16` was specified on the command line), so 2^10, 2^12, 2^14, 2^16 = 1024, 4096, 16 384, 65 536 hashed k-mers for each sample
 - Compute both DNA and protein signatures (as if `--molecules dna,protein` was specified on the command line). The protein k-mers are obtained by doing [six-frame translation](https://en.wikipedia.org/wiki/Reading_frame#/media/File:Open_reading_frame.jpg) on the DNA k-mers
 - K-mer sizes of 21, 27, 33, 51 (as if `--ksizes 21,27,33,51` was specified on the command line).
-  - If using the `--splitKmer` option, keep in mind that the k-mer size in this case is the two halves of the split k-mer, which you can visualize as `[---ksize---]N[---ksize---]`. So the default k-mer sizes for `--splitKmer` is 9 and 15, for a total sequence unit size of `2*15+1 = 31` and `2*9+1 = 19` which is as if you specified on the command line `--splitKmer --ksize 9,15`
+  - If using the `--splitKmer` option, keep in mind that the k-mer size in this case is the two halves of the split k-mer, which you can visualize as `[---ksize---]N[---ksize---]`. So the default k-mer sizes for `--splitKmer` is 9 and 15, for a total sequence unit size of `2*15+1 = 31` and `2*9+1 = 19` which is as if you specified on the command line `--splitKmer --ksize 9,15`. Additionally k-mer sizes with `--splitKmer` must be divisible by 3 (yes, this is inconvenient)
 
 ### With a samples.csv file:
 
