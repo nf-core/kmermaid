@@ -19,6 +19,8 @@
         * [`--csv_singles`](#--csv_singles)
         * [`--fastas`](#--fastas)
         * [`--sra`](#--sra)
+    * [K-merization/Sketching program options](#k-merization-sketching-program-options)
+        * [`--splitKmer`](#--splitKmer)
     * [Sketch parameters](#sketch-parameters)
         * [`--molecule`](#--molecule)
         * [`--ksize`](#--ksize)
@@ -204,6 +206,35 @@ Please note the following requirements:
 2. Any of the `SRR`, `SRP`, or `PRJNA` ids can be used
 
 If left unspecified, no samples are used.
+
+## K-merization/Sketching program Options
+
+By default, the k-merization and sketch creation program is [sourmash](https://sourmash.readthedocs.io).
+
+### `--splitKmer`
+
+If `--splitKmer` is specified, then the [Split K-mer Analysis (SKA)](https://github.com/simonrharris/SKA) program ([publication](https://www.biorxiv.org/content/10.1101/453142v1)) is used to obtain k-mers from the data. This allows for a SNP to be present in the middle of a k-mer which can be advantageous for metagenomic analyses or with single-cell ATAC-seq data.
+
+#### What does `--ksize` mean when `--splitKmer` is set?
+
+The meaning of `ksize` is different with split k-mers, so now the value specified by `--ksize` is just under half of the total sampled sequence size, where the middle base can be any base (`N`) `[---ksize---]N[---ksize---]`. When `--splitKmer` is set, then the default k-mer sizes are 9 and 15, for a total sequence unit size of `2*15+1 = 31` and `2*9+1 = 19` which is as if you specified on the command line `--splitKmer --ksize 9,15`. Additionally k-mer sizes with `--splitKmer` must be divisible by 3 (yes, this is inconvenient) and between 3 and 60 (inclusive). So the "total" `2*k+1` sizes can be:
+
+- k = 3 --> 2*3 + 1 = 7
+- k = 6 --> 2*6 + 1 = 13
+- k = 9 --> 2*9 + 1 = 18
+- k = 12 --> 2*12 + 1 = 25
+- k = 15 --> 2*15 + 1 = 31
+- ...
+- k = 60 --> 2*60 + 1 = 121
+
+#### `--subsample` reads when `--splitKmer` is set
+
+The `subsample` command is often necessary because the `ska` tool uses ALL the reads rather than a MinHash subsampling of them. If your input files are rather big, then the `ska` sketching command (`ska fastq`) runs out of memory, or it takes so long that it's untenable. The `--subsample` command specifies the number of reads to be used. When e.g. `--subsample 1000` is set, then 1000 reads (or read pairs) are randomly subsampled from the data using [seqtk](https://github.com/lh3/seqtk).
+
+
+#### What `--molecules` are valid when `--splitKmer` is set?
+
+Currently, `--splitKmer` only works with DNA sequence and not protein sequence, and thus will fail if `protein` or `dayhoff` is specified in `--molecules`.
 
 ## Sketch parameters
 
