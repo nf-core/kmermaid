@@ -6,14 +6,35 @@ python: '3.6'
 cache: pip
 matrix:
   fast_finish: true
+  include:
+  - name: "Minimum Nextflow version, regular test suite with STAR aligner"
+    env: NXF_VER='0.32.0' SUITE=test FLAGS=
+    language: java
+    jdk: openjdk8
+  - name: "Latest Nextflow version, regular test suite with STAR aligner"
+    env: NXF_VER='' SUITE=test FLAGS=
+  - name: "Latest Nextflow version, regular test suite with STAR aligner, force GFF"
+    env: NXF_VER='' SUITE=test FLAGS='--gtf false'
+  - name: "Lint the pipeline code"
+    install:
+      # Install nf-core/tools
+      - pip install --upgrade pip
+      - pip install nf-core
+    script: nf-core lint ${TRAVIS_BUILD_DIR}
+    python: '3.6'
+    env: NXF_VER='0.32.0'
+    jdk: openjdk8
+  - name: "Lint the documentation"
+    script: markdownlint ${TRAVIS_BUILD_DIR} -c ${TRAVIS_BUILD_DIR}/.github/markdownlint.yml
+    python: '3.6'
 
 before_install:
   # PRs to master are only ok if coming from dev branch
   - '[ $TRAVIS_PULL_REQUEST = "false" ] || [ $TRAVIS_BRANCH != "master" ] || ([ $TRAVIS_PULL_REQUEST_SLUG = $TRAVIS_REPO_SLUG ] && [ $TRAVIS_PULL_REQUEST_BRANCH = "dev" ])'
   # Pull the docker image first so the test doesn't wait for this
-  - docker pull czbiohub/nf-kmer-similarity:dev
+  - docker pull nfcore/kmermaid:dev
   # Fake the tag locally so that the pipeline runs properly
-  - docker tag czbiohub/nf-kmer-similarity:dev czbiohub/nf-kmer-similarity:dev
+  - docker tag nfcore/kmermaid:dev nfcore/kmermaid:dev
 
 install:
   # Install Nextflow
@@ -35,5 +56,7 @@ script:
   # - nf-core lint ${TRAVIS_BUILD_DIR}
   # Run the pipeline with the test profile
   - nextflow run ${TRAVIS_BUILD_DIR} -profile test,docker
-  # Run the pipeline with split kmers
-  - nextflow run ${TRAVIS_BUILD_DIR} -profile test,docker --splitKmer
+
+  - nextflow run ${TRAVIS_BUILD_DIR} -profile ${SUITE},docker ${FLAGS}
+  # Run the pipeline with split kmers - this should fail because `--molecules` contains `protein,dayhoff`
+  - nextflow run ${TRAVIS_BUILD_DIR} -profile test,docker --splitKmer || (echo "Correctly failed --splitKmer + --molecules protein" || echo "--splitKmer + --molecules protein" should fail && exit 1)
