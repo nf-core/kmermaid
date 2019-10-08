@@ -22,8 +22,8 @@ matrix:
   - name: "Lint the pipeline code"
     install:
       # Install nf-core/tools
-      - pip install --user --upgrade pip
-      - pip install --user nf-core
+      - pip install --upgrade pip
+      - pip install nf-core
     script: nf-core lint ${TRAVIS_BUILD_DIR}
     python: '3.6'
     env: NXF_VER='0.32.0'
@@ -46,7 +46,7 @@ install:
   - wget -qO- get.nextflow.io | bash
   - sudo ln -s /tmp/nextflow/nextflow /usr/local/bin/nextflow
   # Install nf-core/tools
-  - pip install --user nf-core
+  - pip install nf-core
   # Reset
   - mkdir ${TRAVIS_BUILD_DIR}/tests && cd ${TRAVIS_BUILD_DIR}/tests
   # Install markdownlint-cli
