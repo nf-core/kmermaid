@@ -47,6 +47,8 @@ install:
   - pip install --user nf-core
   # Reset
   - mkdir ${TRAVIS_BUILD_DIR}/tests && cd ${TRAVIS_BUILD_DIR}/tests
+  # Install markdownlint-cli
+  - sudo apt-get install npm && npm install -g markdownlint-cli
 
 script:
   # Run the pipeline with the test profile
