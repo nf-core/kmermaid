@@ -325,7 +325,7 @@ if (params.splitKmer){
 
   process ska_compute_sketch {
       tag "${sketch_id}"
-      publishDir "${params.outdir}/sketches/ska/", mode: 'copy'
+      publishDir "${params.outdir}/ska/sketches/", mode: 'copy'
       errorStrategy 'retry'
       maxRetries 3
 
@@ -336,7 +336,7 @@ if (params.splitKmer){
 
   	output:
   	set val(ksize), file("${sketch_id}.skf") into ska_sketches
-    
+
   	script:
   	sketch_id = "${id}_ksize_${ksize}"
 
@@ -351,7 +351,7 @@ if (params.splitKmer){
 } else {
   process sourmash_compute_sketch {
   	tag "${sample_id}_${sketch_id}"
-  	publishDir "${params.outdir}/sketches/sourmash/", mode: 'copy'
+  	publishDir "${params.outdir}/sourmash/sketches/", mode: 'copy'
 
   	errorStrategy 'retry'
     maxRetries 3
@@ -399,22 +399,18 @@ if (params.splitKmer){
 if (params.splitKmer){
      process ska_compare_sketches {
   	tag "${sketch_id}"
-
-  	container 'czbiohub/nf-kmer-ska-similarity:latest'
-  	publishDir "${params.outdir}/comparisons/ska/", mode: 'copy'
-  	errorStrategy 'retry'
-	maxRetries 3
+  	publishDir "${params.outdir}/ska/compare/", mode: 'copy'
 
   	input:
- 	set val(ksize), file (sketches) from ska_sketches.groupTuple()
+ 	  set val(ksize), file (sketches) from ska_sketches.groupTuple()
 
   	output:
-	// uploaded distances, clusters, and graph connecting (dot) file
+	   // uploaded distances, clusters, and graph connecting (dot) file
   	file "ksize_${ksize}*"
 
   	script:
   	"""
-        ska distance -o ksize_${ksize} -s 25 -i 0.95 ${sketches}
+    ska distance -o ksize_${ksize} -s 25 -i 0.95 ${sketches}
   	"""
 
 
@@ -423,11 +419,7 @@ if (params.splitKmer){
 } else {
   process sourmash_compare_sketches {
   	tag "${sketch_id}"
-
-  	container 'czbiohub/nf-kmer-similarity'
-  	publishDir "${params.outdir}/", mode: 'copy'
-  	errorStrategy 'retry'
-    maxRetries 3
+  	publishDir "${params.outdir}/sourmash/compare", mode: 'copy'
 
   	input:
     set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file ("sketches/*.sig") \
