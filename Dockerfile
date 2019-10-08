@@ -26,7 +26,8 @@ RUN conda env create -f /environment.yml && conda clean -a
 ENV PATH /opt/conda/envs/nfcore-kmermaid-0.1dev/bin:$PATH
 
 
-# Required for multiprocessing of 10x bam file
+# Required for multiprocessing of 10x bam file - pysam, pathos modules are currently optional installations in sourmash
+# For computing signatures using sourmash - which kmermaid does, they are required, so we need to install it out of sourmash
 RUN pip install pathos pysam
 RUN which -a pip
 RUN which -a python
