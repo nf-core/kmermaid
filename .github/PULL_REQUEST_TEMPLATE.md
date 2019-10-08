@@ -1,4 +1,6 @@
-Many thanks to contributing to nf-core/kmer-similarity!
+Many thanks to contributing to nf-core/kmermaid!
+
+To ensure that your build passes, please make sure your pull request is to the `dev` branch rather than to `master`. Thank you!
 
 Please fill in the appropriate checklist below (delete whatever is not relevant). These are the most common things requested on pull requests (PRs).
 
