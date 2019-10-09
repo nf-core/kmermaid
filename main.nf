@@ -1,4 +1,3 @@
-
 def helpMessage() {
     log.info """
     ==============================================================
@@ -173,9 +172,13 @@ if (params.read_paths) {
         .ifEmpty { exit 1, "Bam file not found: ${params.bam_file}" }
         .map{ f -> tuple(f.baseName, tuple(file(f))) }
         .set{bam_ch}
+  def bai_path = file(params.bam).getParent() + "/*.bai"
+  Channel.fromPath(bai_path)
+        .ifEmpty { exit 1, "Bai file not found in ${bai_path}" }
+        .set{bai_ch}
   }
 
-  // If barcodes is a file ends with ".tsv" as expected, check if it exists and set channel
+  // If barcodes is as expected, check if it exists and set channel
   if (params.barcodes_file) {
      Channel.fromPath(params.barcodes_file, checkIfExists: true)
         .ifEmpty { exit 1, "Barcodes file not found: ${params.barcodes_file}" }
@@ -186,7 +189,7 @@ if (params.read_paths) {
         .set{barcodes_ch}
   }
 
-  // If renamer barcode file ends with ".tsv" as expected, check if it exists and set channel
+  // If renamer barcode file is as expected, check if it exists and set channel
   if (params.rename_10x_barcodes) {
      Channel.fromPath(params.rename_10x_barcodes, checkIfExists: true)
         .ifEmpty { exit 1, "Barcodes file not found: ${params.rename_10x_barcodes}" }
@@ -344,6 +347,7 @@ if (params.bam) {
     each log2_sketch_size from log2_sketch_sizes
     set sample_id, file(bam) from bam_ch
     file(barcodes_file) from barcodes_ch
+    file(bai) from bai_ch
     file(rename_10x_barcodes) from rename_10x_barcodes_ch
 
     output:
