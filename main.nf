@@ -173,7 +173,7 @@ if (params.read_paths) {
         .map{ f -> tuple(f.baseName, tuple(file(f))) }
         .set{bam_ch}
   def bai_path = file(params.bam).getParent() + "/*.bai"
-  Channel.fromPath(bai_path)
+  Channel.fromPath(bai_path, checkIfExists: true)
         .ifEmpty { exit 1, "Bai file not found in ${bai_path}" }
         .set{bai_ch}
   }
