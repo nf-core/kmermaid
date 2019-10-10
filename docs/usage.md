@@ -20,8 +20,10 @@
         * [`--fastas`](#--fastas)
         * [`--sra`](#--sra)
         * [`--bam`](#--bam)
+        * [`--bai`](#--bai)
         * [`--barcodes_file`](#--barcodes_file)
         * [`--rename_10x_barcodes`](#--rename_10x_barcodes)
+        * [`--save_fastas`](#--save_fastas)
     * [Sketch parameters](#sketch-parameters)
         * [`--molecule`](#--molecule)
         * [`--ksize`](#--ksize)
@@ -29,7 +31,6 @@
     * [Bam optional parameters](#bam-optional-parameters)
         * [`--min_umi_per_barcode`](#--min_umi_per_barcode)
         * [`--write_barcode_meta_csv`](#--write_barcode_meta_csv)
-        * [`--save_fastas`](#--save_fastas)
 * [Job Resources](#job-resources)
 * [Automatic resubmission](#automatic-resubmission)
 * [Custom resource requests](#custom-resource-requests)
@@ -218,6 +219,13 @@ For bam/10x files, Use this to specify the location of the bam file. For example
 ```bash
 --bam /path/to/data/10x-example/possorted_genome_bam
 ```
+### `--bai`
+  A bai file isn't an indexed form of a bam - it's a companion to your bam that contains the index.
+For bai/10x files, Use this to specify the location of the bai file. It is mandatory file that pysam needs to successfully read the bam file while checking sequences is True. For example:
+
+```bash
+--bai /path/to/data/10x-example/possorted_genome_bam.bai
+```
 
 ### `--barcodes_file`
 For bam/10x files, Use this to specify the location of tsv (tab separated file) containing cell barcodes. For example:
@@ -295,19 +303,21 @@ The log2 sketch size specifies the number of k-mers to use for the sketch. We us
   * `--log2_sketch_size 8`
 
 
-## Bam optional parameters
-
-1. The [save_fastas ](#--save_fastas ) used to save the sequences of each barcode in the bam file. It is a path relative to outdir to save unique barcodes to files namely {CELL_BARCODE}.fasta
-1. [write_barcode_meta_csv](#--write_barcode_meta_csv): This creates a CSV containing the number of reads and number of UMIs per barcode, written in a path relative to `${params.outdir}/barcode_metadata`. This csv file is empty with just header when the min_umi_per_barcode is zero i.e reads and UMIs per barcode are calculated only when the barcodes are filtered based on [min_umi_per_barcode](#--min_umi_per_barcode)
-1. [min_umi_per_barcode](#--min_umi_per_barcode): Ensures that a barcode is only considered a valid barcode read and its sketch is written if number of umis are greater than the value specified by [min_umi_per_barcode](#--min_umi_per_barcode)
-       
 ### `--save_fastas`
+
+1. The [save_fastas ](#--save_fastas ) used to save the sequences of each unique barcode in the bam file. It is a path relative to outdir to save unique barcodes to files namely {CELL_BARCODE}.fasta. These fastas are computed once for one permutation of ksize, molecule, and log2_sketch_size, further used to compute the signatures and compare signature matrix for all permutations of ksizes, molecules, and log2_sketch_size. This is done to save the time on saving the computational time and storage in obtaining unique barcodes, sharding the bam file. 
+
 
 **Example parameters**
 
-* Default: fastas are not saved 
-* Save fastas in a directory called fastsas inside outdir:
+* Default: Save fastas in a directory called fastsas inside outdir:
   * `--save_fastas "fastas"`
+
+
+## Bam optional parameters
+
+1. [write_barcode_meta_csv](#--write_barcode_meta_csv): This creates a CSV containing the number of reads and number of UMIs per barcode, written in a path relative to `${params.outdir}/barcode_metadata`. This csv file is empty with just header when the min_umi_per_barcode is zero i.e reads and UMIs per barcode are calculated only when the barcodes are filtered based on [min_umi_per_barcode](#--min_umi_per_barcode)
+1. [min_umi_per_barcode](#--min_umi_per_barcode): Ensures that a barcode is only considered a valid barcode read and its sketch is written if number of umis are greater than the value specified by [min_umi_per_barcode](#--min_umi_per_barcode)
 
 
 ### `--write_barcode_meta_csv`

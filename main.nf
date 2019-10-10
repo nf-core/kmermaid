@@ -55,6 +55,8 @@ def helpMessage() {
       --csv_singles                 CSV file with columns id, read1, read2 for each sample
       --fastas                      Path to FASTA sequence files. Can be semi-colon-separated
       --bam                         Path to 10x BAM file
+      --bai                         Path to 10x BAI file
+      --save_fastas                 For bam files, Path relative to outdir to save unique barcodes to {CELL_BARCODE}.fasta
       --sra                         SRR, ERR, SRP IDs representing a project. Only compatible with
                                     Nextflow 19.03-edge or greater
 
@@ -70,7 +72,6 @@ def helpMessage() {
                                     Useful for comparing e.g. assembled transcriptomes or metagenomes.
                                     (Not typically used for raw sequencing data as this would create
                                     a k-mer signature for each read!)
-      --save_fastas                 For bam files, Path relative to outdir to save unique barcodes to {CELL_BARCODE}.fasta
       --write_barcode_meta_csv      For bam files, Csv file name relative to outdir/barcode_metadata to write number of reads and number of umis per barcode.
                                     This csv file is empty with just header when the min_umi_per_barcode is zero i.e
                                     Reads and umis per barcode are calculated only when the barcodes are filtered
@@ -169,12 +170,11 @@ if (params.read_paths) {
 
   if (params.bam) {
   Channel.fromPath(params.bam, checkIfExists: true)
-        .ifEmpty { exit 1, "Bam file not found: ${params.bam_file}" }
+        .ifEmpty { exit 1, "Bam file not found: ${params.bam}" }
         .map{ f -> tuple(f.baseName, tuple(file(f))) }
         .set{bam_ch}
-  def bai_path = file(params.bam).getParent() + "/*.bai"
-  Channel.fromPath(bai_path, checkIfExists: true)
-        .ifEmpty { exit 1, "Bai file not found in ${bai_path}" }
+  Channel.fromPath(params.bai, checkIfExists: true)
+        .ifEmpty { exit 1, "Bai file not found in ${params.bai}" }
         .set{bai_ch}
   }
 
@@ -253,6 +253,7 @@ if(params.csv_singles)  summary['Single-end samples.csv']    = params.csv_single
 if(params.sra)          summary['SRA']                             = params.sra
 if(params.fastas)       summary["FASTAs"]                          = params.fastas
 if(params.bam)          summary["BAM"]                             = params.bam
+if(params.bam)          summary["BAI"]                             = params.bai
 if(params.barcodes_file)          summary["Barcodes"]              = params.barcodes_file
 if(params.rename_10x_barcodes)    summary["Renamer barcodes"]      = params.rename_10x_barcodes
 if(params.read_paths)   summary['Read paths (paired-end)']         = params.read_paths
@@ -336,7 +337,6 @@ if (params.bam) {
   process sourmash_compute_sketch_bam {
     tag "${sample_id}_${sketch_id}"
     publishDir "${params.outdir}/sketches", pattern: '*.sig', mode: 'copy'
-    // publishDir "${params.outdir}/${params.save_fastas}", pattern: '*.fasta', mode: 'copy'
     publishDir "${params.outdir}/${params.save_fastas}", pattern: '*.fasta', saveAs: { filename -> "${params.outdir}/${params.save_fastas}/${filename.replace("|", "-")}"}
     publishDir "${params.outdir}/${barcode_metadata_folder}", pattern: '*.csv', mode: 'copy'
 
