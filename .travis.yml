@@ -11,7 +11,7 @@ matrix:
     env: NXF_VER='0.32.0' SUITE=test FLAGS=
     language: java
     jdk: openjdk8
-  - name: "Test nextflow kmermaid, regular test suite with fastas"
+  - name: "Test nextflow kmermaid, latest test suite with fastas"
     env: NXF_VER='' SUITE=test FLAGS=
   - name: "Test nextflow kmermaid, with BAM"
     env: NXF_VER='' SUITE=test_bam FLAGS='--barcodes_file false --rename_10x_barcodes false --save_fastas false --write_barcodes_meta_csv false'

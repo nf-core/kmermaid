@@ -169,10 +169,10 @@ if (params.read_paths) {
    }
 
   if (params.bam) {
-  Channel.fromPath(params.bam, checkIfExists: true)
+  Channel.fromPath([params.bam,params.bai], checkIfExists: true)
         .ifEmpty { exit 1, "Bam file not found: ${params.bam}" }
-        .map{ f -> tuple(f.baseName, tuple(file(f))) }
         .set{bam_ch}
+  sample_id = file(params.bam).baseName
   Channel.fromPath(params.bai, checkIfExists: true)
         .ifEmpty { exit 1, "Bai file not found in ${params.bai}" }
         .set{bai_ch}
@@ -350,8 +350,9 @@ if (params.bam) {
     ksize
     molecule
     log2_sketch_size
-    set sample_id, file(bam) from bam_ch
+    sample_id
     file(barcodes_file) from barcodes_ch
+    file(bam) from bam_ch
     file(bai) from bai_ch
     file(rename_10x_barcodes) from rename_10x_barcodes_ch
 
