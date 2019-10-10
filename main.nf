@@ -55,7 +55,6 @@ def helpMessage() {
       --csv_singles                 CSV file with columns id, read1, read2 for each sample
       --fastas                      Path to FASTA sequence files. Can be semi-colon-separated
       --bam                         Path to 10x BAM file
-      --bai                         Path to 10x BAI file
       --save_fastas                 For bam files, Path relative to outdir to save unique barcodes to {CELL_BARCODE}.fasta
       --sra                         SRR, ERR, SRP IDs representing a project. Only compatible with
                                     Nextflow 19.03-edge or greater
@@ -169,13 +168,10 @@ if (params.read_paths) {
    }
 
   if (params.bam) {
-  Channel.fromPath([params.bam,params.bai], checkIfExists: true)
+  Channel.fromPath(params.bam, checkIfExists: true)
         .ifEmpty { exit 1, "Bam file not found: ${params.bam}" }
         .set{bam_ch}
   sample_id = file(params.bam).baseName
-  Channel.fromPath(params.bai, checkIfExists: true)
-        .ifEmpty { exit 1, "Bai file not found in ${params.bai}" }
-        .set{bai_ch}
   }
 
   // If barcodes is as expected, check if it exists and set channel
@@ -253,7 +249,6 @@ if(params.csv_singles)  summary['Single-end samples.csv']    = params.csv_single
 if(params.sra)          summary['SRA']                             = params.sra
 if(params.fastas)       summary["FASTAs"]                          = params.fastas
 if(params.bam)          summary["BAM"]                             = params.bam
-if(params.bam)          summary["BAI"]                             = params.bai
 if(params.barcodes_file)          summary["Barcodes"]              = params.barcodes_file
 if(params.rename_10x_barcodes)    summary["Renamer barcodes"]      = params.rename_10x_barcodes
 if(params.read_paths)   summary['Read paths (paired-end)']         = params.read_paths
@@ -353,7 +348,6 @@ if (params.bam) {
     sample_id
     file(barcodes_file) from barcodes_ch
     file(bam) from bam_ch
-    file(bai) from bai_ch
     file(rename_10x_barcodes) from rename_10x_barcodes_ch
 
     output:

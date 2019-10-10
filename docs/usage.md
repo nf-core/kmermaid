@@ -20,7 +20,6 @@
         * [`--fastas`](#--fastas)
         * [`--sra`](#--sra)
         * [`--bam`](#--bam)
-        * [`--bai`](#--bai)
         * [`--barcodes_file`](#--barcodes_file)
         * [`--rename_10x_barcodes`](#--rename_10x_barcodes)
         * [`--save_fastas`](#--save_fastas)
@@ -219,14 +218,6 @@ For bam/10x files, Use this to specify the location of the bam file. For example
 ```bash
 --bam /path/to/data/10x-example/possorted_genome_bam
 ```
-### `--bai`
-  A bai file isn't an indexed form of a bam - it's a companion to your bam that contains the index.
-For bai/10x files, Use this to specify the location of the bai file. It is mandatory file that pysam needs to successfully read the bam file while checking sequences is True. For example:
-
-```bash
---bai /path/to/data/10x-example/possorted_genome_bam.bai
-```
-
 ### `--barcodes_file`
 For bam/10x files, Use this to specify the location of tsv (tab separated file) containing cell barcodes. For example:
 
