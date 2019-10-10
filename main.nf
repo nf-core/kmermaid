@@ -386,7 +386,7 @@ if (params.bam) {
         $metadata \\
         --output ${sample_id}_${sketch_id}.sig \\
         --input-is-10x $bam
-      find . -type f -name "*.fasta" | while read src; do mv "$src" `echo $src | tr "|" "_"`; done
+      find . -type f -name "*.fasta" | while read src; do if [[ \$src == *"|"* ]]; then mv "\$src" \$(echo "\$src" | tr "|" "_"); fi done
     """
   }
 }
