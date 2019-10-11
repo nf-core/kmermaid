@@ -29,6 +29,7 @@
         * [`--log2_sketch_size`](#--log2_sketch_size)
     * [Bam optional parameters](#bam-optional-parameters)
         * [`--min_umi_per_barcode`](#--min_umi_per_barcode)
+        * [`--line_count`](#--line_count)
         * [`--write_barcode_meta_csv`](#--write_barcode_meta_csv)
 * [Job Resources](#job-resources)
 * [Automatic resubmission](#automatic-resubmission)
@@ -309,7 +310,7 @@ The log2 sketch size specifies the number of k-mers to use for the sketch. We us
 
 1. [write_barcode_meta_csv](#--write_barcode_meta_csv): This creates a CSV containing the number of reads and number of UMIs per barcode, written in a path relative to `${params.outdir}/barcode_metadata`. This csv file is empty with just header when the min_umi_per_barcode is zero i.e reads and UMIs per barcode are calculated only when the barcodes are filtered based on [min_umi_per_barcode](#--min_umi_per_barcode)
 1. [min_umi_per_barcode](#--min_umi_per_barcode): Ensures that a barcode is only considered a valid barcode read and its sketch is written if number of umis are greater than the value specified by [min_umi_per_barcode](#--min_umi_per_barcode)
-
+1. [line_count](#--line_count): Number of alignments/lines in each bam shard is given by [line_count](#--line_count)
 
 ### `--write_barcode_meta_csv`
 
@@ -328,6 +329,14 @@ The log2 sketch size specifies the number of k-mers to use for the sketch. We us
 * Save fastas in a directory called fastas inside outdir:
   * `--min_umi_per_barcode 10`
 
+
+### `--line_count`
+
+**Example parameters**
+
+* Default: line_count is 350
+* Save fastas in a directory called fastas inside outdir:
+  * `--line_count 400`
 
 ## Reference Genomes
 

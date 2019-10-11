@@ -76,8 +76,9 @@ def helpMessage() {
                                     This csv file is empty with just header when the min_umi_per_barcode is zero i.e
                                     Reads and umis per barcode are calculated only when the barcodes are filtered
                                     based on min_umi_per_barcode
-      --min_umi_per_barcode           A barcode is only considered a valid barcode read
+      --min_umi_per_barcode         A barcode is only considered a valid barcode read
                                     and its signature is written if number of umis are greater than min_umi_per_barcode
+      --line_count                  Number of lines to contain in each sharded bam file
       --barcodes_file               For bam files, Optional absolute path to a .tsv barcodes file if the input is unfiltered 10x bam file
       --rename_10x_barcodes         For bam files, Optional absolute path to a .tsv Tab-separated file mapping 10x barcode name
                                     to new name, e.g. with channel or cell annotation label
@@ -259,9 +260,10 @@ summary['Molecule']               = params.molecules
 summary['Log2 Sketch Sizes']      = params.log2_sketch_sizes
 summary['One Sig per Record']         = params.one_signature_per_record
 // 10x parameters
+if(params.bam) summary["Bam chunk line count"] = params.line_count
 if(params.bam) summary['Count valid reads'] = params.min_umi_per_barcode
 if(params.bam) summary['Saved Fastas '] = params.save_fastas
-if(params.write_barcode_meta_csv) summary['Barcode umi read metadata'] = params.write_barcode_meta_csv
+if(params.bam) summary['Barcode umi read metadata'] = params.write_barcode_meta_csv
 // Resource information
 summary['Max Resources']    = "$params.max_memory memory, $params.max_cpus cpus, $params.max_time time per job"
 if(workflow.containerEngine) summary['Container'] = "$workflow.containerEngine - $workflow.container"
@@ -361,6 +363,7 @@ if (params.bam) {
     ksize = ksize
 
     min_umi_per_barcode = params.min_umi_per_barcode ? "--count-valid-reads ${params.min_umi_per_barcode}" : ''
+    line_count = params.line_count ? "--line-count ${params.line_count}" : ''
     metadata = params.write_barcode_meta_csv ? "--write-barcode-meta-csv ${params.write_barcode_meta_csv}": ''
     save_fastas = "--save-fastas ${params.save_fastas}"
 
@@ -374,6 +377,7 @@ if (params.bam) {
         --num-hashes \$((2**$log2_sketch_size)) \\
         --processes ${task.cpus} \\
         $min_umi_per_barcode \\
+        $line_count \\
         $rename_10x_barcodes \\
         $barcodes_file \\
         $save_fastas \\
@@ -385,7 +389,6 @@ if (params.bam) {
   }
 }
 
-Channel.from(reads_ch)
 process sourmash_compute_sketch_fastx {
   tag "${sample_id}_${sketch_id}"
   publishDir "${params.outdir}/sketches", mode: 'copy'
