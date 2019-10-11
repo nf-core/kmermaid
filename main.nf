@@ -223,11 +223,11 @@ if(workflow.profile == 'awsbatch'){
 
 // Parse the parameters
 ksizes = params.ksizes?.toString().tokenize(',')
-ksize = params.ksizes[0]
+ksize = ksizes[0]
 molecules = params.molecules?.toString().tokenize(',')
 molecule = molecules[0]
 log2_sketch_sizes = params.log2_sketch_sizes?.toString().tokenize(',')
-log2_sketch_size = params.log2_sketch_sizes[0]
+log2_sketch_size = log2_sketch_sizes[0]
 
 
 // For bam files, set a folder name to save the optional barcode metadata csv
@@ -341,7 +341,7 @@ if (params.bam) {
     // If job fails, try again with more memory
     // memory { 8.GB * task.attempt }
     errorStrategy 'retry'
-    maxRetries 3
+    maxRetries 1
 
     input:
     ksize
@@ -366,6 +366,7 @@ if (params.bam) {
     line_count = params.line_count ? "--line-count ${params.line_count}" : ''
     metadata = params.write_barcode_meta_csv ? "--write-barcode-meta-csv ${params.write_barcode_meta_csv}": ''
     save_fastas = "--save-fastas"
+    processes = "-p ${params.max_cpus}"
 
     def barcodes_file = params.barcodes_file ? "--barcodes-file ${barcodes_file.baseName}.tsv": ''
     def rename_10x_barcodes = params.rename_10x_barcodes ? "--rename-10x-barcodes ${rename_10x_barcodes.baseName}.tsv": ''
@@ -375,7 +376,7 @@ if (params.bam) {
         --$molecule \\
         $not_dna \\
         --num-hashes \$((2**$log2_sketch_size)) \\
-        --processes ${task.cpus} \\
+        $processes \\
         $min_umi_per_barcode \\
         $line_count \\
         $rename_10x_barcodes \\
@@ -455,11 +456,12 @@ process sourmash_compare_sketches {
   file "similarities_${sketch_id}.csv"
 
   script:
+  processes = "-p ${params.max_cpus}"
   """
   sourmash compare \\
         --ksize ${ksize[0]} \\
         --${molecule[0]} \\
-        --processes ${task.cpus} \\
+        --$processes \\
         --csv similarities_${sketch_id}.csv \\
         --traverse-directory .
   """
