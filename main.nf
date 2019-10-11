@@ -259,8 +259,8 @@ summary['Molecule']               = params.molecules
 summary['Log2 Sketch Sizes']      = params.log2_sketch_sizes
 summary['One Sig per Record']         = params.one_signature_per_record
 // 10x parameters
-if(params.min_umi_per_barcode) summary['Count valid reads'] = params.min_umi_per_barcode
-if(params.save_fastas) summary['Saved Fastas '] = params.save_fastas
+if(params.bam) summary['Count valid reads'] = params.min_umi_per_barcode
+if(params.bam) summary['Saved Fastas '] = params.save_fastas
 if(params.write_barcode_meta_csv) summary['Barcode umi read metadata'] = params.write_barcode_meta_csv
 // Resource information
 summary['Max Resources']    = "$params.max_memory memory, $params.max_cpus cpus, $params.max_time time per job"
