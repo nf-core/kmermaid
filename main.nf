@@ -334,6 +334,7 @@ process get_software_versions {
 if (params.bam) {
   process sourmash_compute_sketch_bam {
     tag "${sample_id}_${sketch_id}"
+    label "high_memory"
     publishDir "${params.outdir}/${params.save_fastas}", pattern: '*.fasta', saveAs: { filename -> "${params.outdir}/${params.save_fastas}/${filename.replace("|", "-")}"}
     publishDir "${params.outdir}/${barcode_metadata_folder}", pattern: '*.csv', mode: 'copy'
 
@@ -392,6 +393,7 @@ if (params.bam) {
 
 process sourmash_compute_sketch_fastx {
   tag "${sample_id}_${sketch_id}"
+  label "mid_memory"
   publishDir "${params.outdir}/sketches", mode: 'copy'
 
   // If job fails, try again with more memory
@@ -442,6 +444,7 @@ process sourmash_compute_sketch_fastx {
 
 process sourmash_compare_sketches {
   tag "${sketch_id}"
+  label "high_memory"
 
   container "$workflow.container"
   publishDir "${params.outdir}/", mode: 'copy'

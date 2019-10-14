@@ -308,12 +308,9 @@ The log2 sketch size specifies the number of k-mers to use for the sketch. We us
 
 ## Bam optional parameters
 
-1. [write_barcode_meta_csv](#--write_barcode_meta_csv): This creates a CSV containing the number of reads and number of UMIs per barcode, written in a path relative to `${params.outdir}/barcode_metadata`. This csv file is empty with just header when the min_umi_per_barcode is zero i.e reads and UMIs per barcode are calculated only when the barcodes are filtered based on [min_umi_per_barcode](#--min_umi_per_barcode)
-1. [min_umi_per_barcode](#--min_umi_per_barcode): Ensures that a barcode is only considered a valid barcode read and its sketch is written if number of umis are greater than the value specified by [min_umi_per_barcode](#--min_umi_per_barcode)
-1. [line_count](#--line_count): Number of alignments/lines in each bam shard is given by [line_count](#--line_count)
 
 ### `--write_barcode_meta_csv`
-
+This creates a CSV containing the number of reads and number of UMIs per barcode, written in a path relative to `${params.outdir}/barcode_metadata`. This csv file is empty with just header when the min_umi_per_barcode is zero i.e reads and UMIs per barcode are calculated only when the barcodes are filtered based on [min_umi_per_barcode](#--min_umi_per_barcode)
 **Example parameters**
 
 * Default: barcode metadata is not saved 
@@ -322,16 +319,17 @@ The log2 sketch size specifies the number of k-mers to use for the sketch. We us
 
 
 ### `--min_umi_per_barcode`
+The parameter `--min_umi_per_barcode` ensures that a barcode is only considered a valid barcode read and its sketch is written if number of unique molecular identifiers (UMIs, aka molecular barcodes) are greater than the value specified.
 
 **Example parameters**
 
 * Default: min_umi_per_barcode is 0
-* Save fastas in a directory called fastas inside outdir:
+* Set minimum UMI per cellular barcode as 10:
   * `--min_umi_per_barcode 10`
 
 
 ### `--line_count`
-
+The parameter `--line_count` specifies the number of alignments/lines in each bam shard.
 **Example parameters**
 
 * Default: line_count is 350
