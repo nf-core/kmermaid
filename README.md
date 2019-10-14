@@ -36,5 +36,5 @@ nextflow run czbiohub/nf-kmer-similarity --outdir s3://olgabot-maca/nf-kmer-simi
 
 ```
 nextflow run czbiohub/nf-kmer-similarity --outdir s3://olgabot-maca/nf-kmer-similarity/ \
-  --bam 'possorted_genome_bam.bam' --one_signature_per_record
+  --bam 'possorted_genome_bam.bam'
 ```

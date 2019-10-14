@@ -365,7 +365,7 @@ if (params.bam) {
     min_umi_per_barcode = params.min_umi_per_barcode ? "--count-valid-reads ${params.min_umi_per_barcode}" : ''
     line_count = params.line_count ? "--line-count ${params.line_count}" : ''
     metadata = params.write_barcode_meta_csv ? "--write-barcode-meta-csv ${params.write_barcode_meta_csv}": ''
-    save_fastas = "--save-fastas"
+    save_fastas = "--save-fastas ."
     processes = "--processes ${params.max_cpus}"
 
     def barcodes_file = params.barcodes_file ? "--barcodes-file ${barcodes_file.baseName}.tsv": ''
