@@ -42,8 +42,7 @@ def helpMessage() {
 
       nextflow run main.nf \
       --outdir ./results \
-      --bam possorted_genome_bam.bam \
-      --one_signature_per_record
+      --bam possorted_genome_bam.bam
 
     Mandatory Arguments:
       --outdir                      Local or S3 directory to output the comparison matrix to
