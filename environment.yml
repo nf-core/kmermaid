@@ -11,11 +11,9 @@ dependencies:
   - bioconda::bioconductor-edger=3.22.5
   - conda-forge::r-markdown=0.8
   - bioconda::khmer=2.1.2
-  - bioconda::sourmash=2.0.1
   - pytest
   - sphinx
   - matplotlib
   - alabaster
   - conda-forge::gxx_linux-64
-  # - conda-forge::gcc_linux-64
-  # - gcc
+  - pip
