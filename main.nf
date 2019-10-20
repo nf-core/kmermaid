@@ -57,7 +57,7 @@ def helpMessage() {
       --ksizes                      Which nucleotide k-mer sizes to use. Multiple are
                                     separated by commas. Default is '21,27,33,51'
       --molecules                   Which molecule to compare on. Default is both DNA
-                                    and protein, i.e. 'dna,protein'
+                                    and protein, i.e. 'dna,protein,dayhoff'
       --log2_sketch_sizes           Which log2 sketch sizes to use. Multiple are separated
                                     by commas. Default is '10,12,14,16'
       --one_signature_per_record    Make a k-mer signature for each record in the FASTQ/FASTA files.
@@ -108,21 +108,22 @@ if (params.read_paths) {
      read_paths_ch = Channel
          .from(params.read_paths)
          .map { row -> [ row[0], [file(row[1][0]), file(row[1][1])]] }
-         .ifEmpty { exit 1, "params.read_paths was empty - no input files supplied" }
+         .ifEmpty { exit 1, "params.read_paths (${params.read_paths}) was empty - no input files supplied" }
+
  } else {
    // Provided SRA ids
    if (params.sra){
      sra_ch = Channel
          .fromSRA( params.sra?.toString()?.tokenize(';') )
-         .ifEmpty { exit 1, "params.sra ${params.sra} was not found - no input files supplied" }
+         .ifEmpty { exit 1, "params.sra (${params.sra}) was not found - no input files supplied" }
    }
    // Provided a samples.csv file of read pairs
    if (params.csv_pairs){
      samples_ch = Channel
-	    .fromPath(params.csv_pairs)
-	    .splitCsv(header:true)
-	    .map{ row -> tuple(row.id, tuple(file(row.read1), file(row.read2)))}
-	    .ifEmpty { exit 1, "params.csv_pairs was empty - no input files supplied" }
+      .fromPath(params.csv_pairs)
+      .splitCsv(header:true)
+      .map{ row -> tuple(row[0], tuple(file(row[1]), file(row[2])))}
+      .ifEmpty { exit 1, "params.csv_pairs (${params.csv_pairs}) was empty - no input files supplied" }
   }
 
    // Provided a samples.csv file of single-ended reads
@@ -131,29 +132,31 @@ if (params.read_paths) {
       .fromPath(params.csv_singles)
       .splitCsv(header:true)
       .map{ row -> tuple(row[0], tuple(file(row[1])))}
-      .ifEmpty { exit 1, "params.csv_singles was empty - no input files supplied" }
+      .ifEmpty { exit 1, "params.csv_singles (${params.csv_singles}) was empty - no input files supplied" }
   }
 
    // Provided fastq gz read pairs
    if (params.read_pairs){
      read_pairs_ch = Channel
        .fromFilePairs(params.read_pairs?.toString()?.tokenize(';'))
-       .ifEmpty { exit 1, "params.read_pairs was empty - no input files supplied" }
+       .ifEmpty { exit 1, "params.read_pairs (${params.read_pairs}) was empty - no input files supplied" }
    }
-   // Provided fastq gz read pairs
+
+   // Provided fastq gz single-end reads
    if (params.read_singles){
      read_singles_ch = Channel
        .fromFilePairs(params.read_singles?.toString()?.tokenize(';'), size: 1)
-       .ifEmpty { exit 1, "params.read_singles was empty - no input files supplied" }
+       .ifEmpty { exit 1, "params.read_singles (${params.read_singles}) was empty - no input files supplied" }
   }
    // Provided vanilla fastas
    if (params.fastas){
      fastas_ch = Channel
        .fromPath(params.fastas?.toString()?.tokenize(';'))
        .map{ f -> tuple(f.baseName, tuple(file(f))) }
-       .ifEmpty { exit 1, "params.fastas was empty - no input files supplied" }
+       .ifEmpty { exit 1, "params.fastas (${params.fastas}) was empty - no input files supplied" }
    }
- }
+}
+
 
 
 if (params.subsample) {
@@ -189,6 +192,7 @@ if (params.splitKmer){
 } else {
     params.ksizes = '21,27,33,51'
 }
+
 
 // Parse the parameters
 
@@ -289,9 +293,7 @@ process get_software_versions {
 if (params.subsample) {
     process subsample_input {
 	tag "${id}_subsample"
-	publishDir "${params.outdir}/subsampled_fastqs/ska/", mode: 'copy'
-	errorStrategy 'retry'
-	maxRetries 3
+	publishDir "${params.outdir}/seqtk/", mode: 'copy'
 
 	input:
 	set id, file(reads) from subsample_reads_ch
