@@ -31,7 +31,7 @@ For each sample and provided `molecule`, `ksize` and `log2_sketch_size`, a file 
 
 For example:
 
-```
+```bash
 SRR4050379_molecule-dayhoff_ksize-3_log2sketchsize-2.sig
 SRR4050379_molecule-dayhoff_ksize-3_log2sketchsize-4.sig
 SRR4050379_molecule-dayhoff_ksize-9_log2sketchsize-2.sig
@@ -56,7 +56,7 @@ For each provided `molecule`, `ksize` and `log2_sketch_size`, a file is created 
 
 For example,
 
-```
+```bash
 similarities_molecule-dna_ksize-3_log2sketchsize-2.csv
 similarities_molecule-dna_ksize-3_log2sketchsize-4.csv
 similarities_molecule-dna_ksize-9_log2sketchsize-2.csv
@@ -95,4 +95,4 @@ The pipeline has special steps which allow the software versions used to be repo
 * `Project_multiqc_data/`
   * Directory containing parsed statistics from the different tools used in the pipeline
 
-For more information about how to use MultiQC reports, see http://multiqc.info
+For more information about how to use MultiQC reports, see [here](http://multiqc.info).
