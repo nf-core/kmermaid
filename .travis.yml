@@ -9,8 +9,6 @@ matrix:
   include:
   - name: "Minimum Nextflow version, regular test suite"
     env: NXF_VER='0.32.0' SUITE=test FLAGS=
-    language: java
-    jdk: openjdk8
   - name: "Latest Nextflow version, regular test suite"
     env: NXF_VER='' SUITE=test FLAGS=
   - name: "Latest Nextflow version, regular test suite with splitKmers, ensure that `protein` can't be specified"
@@ -19,6 +17,8 @@ matrix:
       - nextflow run ${TRAVIS_BUILD_DIR} -profile test,docker --splitKmer ; if [ $? -eq 0 ]; then echo "--splitKmer + --molecules protein should fail but did not" && exit 1 ; else echo "Correctly failed --splitKmer + --molecules protein" ; fi
   - name: "Latest Nextflow version, split k-mer test suite"
     env: NXF_VER='' SUITE=test_ska FLAGS=
+  - name: "Latest Nextflow version, split k-mer test suite, test subsampling"
+    env: NXF_VER='' SUITE=test_ska FLAGS=--subsample 10
   - name: "Lint the pipeline code"
     install:
       # Install nf-core/tools
