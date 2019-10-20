@@ -17,5 +17,7 @@ dependencies:
   - matplotlib
   - alabaster
   - conda-forge::gxx_linux-64
+  - ska=1.0
+  - seqtk=1.3
   # - conda-forge::gcc_linux-64
   # - gcc
