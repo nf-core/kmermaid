@@ -18,6 +18,7 @@ ENV PACKAGES zlib1g git g++ make ca-certificates gcc zlib1g-dev libc6-dev procps
 
 WORKDIR /home
 
+ENV PACKAGES zlib1g git g++ make ca-certificates gcc zlib1g-dev libc6-dev procps
 RUN apt-get update && \
     apt-get install -y --no-install-recommends ${PACKAGES} && \
     apt-get clean
@@ -25,7 +26,7 @@ RUN apt-get update && \
 
 RUN which -a pip
 RUN which -a python
-ENV SOURMASH_VERSION 'olgabot/dayhoff'
+ENV SOURMASH_VERSION 'master'
 RUN cd /home && \
     git clone --branch $SOURMASH_VERSION https://github.com/czbiohub/sourmash.git && \
     cd sourmash && \
@@ -33,5 +34,9 @@ RUN cd /home && \
 
 RUN which -a sourmash
 
+
 RUN sourmash info
 COPY docker/sysctl.conf /etc/sysctl.conf
+
+# Copy utility scripts to docker image
+COPY bin/* /usr/local/bin/

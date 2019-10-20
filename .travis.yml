@@ -8,8 +8,6 @@ matrix:
   fast_finish: true
 
 before_install:
-  # PRs to master are only ok if coming from dev branch
-  - '[ $TRAVIS_PULL_REQUEST = "false" ] || [ $TRAVIS_BRANCH != "master" ] || ([ $TRAVIS_PULL_REQUEST_SLUG = $TRAVIS_REPO_SLUG ] && [ $TRAVIS_PULL_REQUEST_BRANCH = "dev" ])'
   # Pull the docker image first so the test doesn't wait for this
   - docker pull czbiohub/nf-kmer-similarity:dev
   # Fake the tag locally so that the pipeline runs properly
@@ -23,15 +21,12 @@ install:
   # Install nf-core/tools
   - pip install nf-core
   # Reset
-  - mkdir ${TRAVIS_BUILD_DIR}/tests && cd ${TRAVIS_BUILD_DIR}/tests
+  # - mkdir ${TRAVIS_BUILD_DIR}/tests && cd ${TRAVIS_BUILD_DIR}/tests
 
 env:
   - NXF_VER='19.03.0-edge' # Specify a minimum NF version that should be tested and work
   - NXF_VER='' # Plus: get the latest NF version and check that it works
 
 script:
-  # Lint the pipeline code
-  # Skip linting for now since container is built by czbiohub
-  # - nf-core lint ${TRAVIS_BUILD_DIR}
   # Run the pipeline with the test profile
   - nextflow run ${TRAVIS_BUILD_DIR} -profile test,docker

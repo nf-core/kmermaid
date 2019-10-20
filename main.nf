@@ -1,13 +1,9 @@
 
 def helpMessage() {
     log.info """
-    ==============================================================
-      _                            _       _ _         _ _
-     | |_ ___ _____ ___ ___    ___|_|_____|_| |___ ___|_| |_ _ _
-     | '_|___|     | -_|  _|  |_ -| |     | | | .'|  _| |  _| | |
-     |_,_|   |_|_|_|___|_|    |___|_|_|_|_|_|_|__,|_| |_|_| |_  |
-                                                            |___|
-    ==============================================================
+    =========================================
+     czbiohub/nf-kmer-similarity v${workflow.manifest.version}
+    =========================================
 
     Usage:
 
@@ -64,6 +60,13 @@ def helpMessage() {
                                     Useful for comparing e.g. assembled transcriptomes or metagenomes.
                                     (Not typically used for raw sequencing data as this would create
                                     a k-mer signature for each read!)
+      --minlength                   Minimum length of reads after trimming, default 100
+      --no_trimming                 Don't trim reads on quality
+
+    Other Options:
+      --email                       Set this parameter to your e-mail address to get a summary e-mail with details of the run sent to you when the workflow exits
+      -name                         Name for the pipeline run. If not specified, Nextflow will automatically generate a random mnemonic.
+
     """.stripIndent()
 }
 
@@ -74,6 +77,31 @@ if (params.help){
     helpMessage()
     exit 0
 }
+
+// Configurable variables
+params.name = false
+params.fastas = false
+params.sra = false
+params.samples = false
+params.read_pairs = false
+params.one_signature_per_record = false
+params.multiqc_config = "$baseDir/conf/multiqc_config.yaml"
+params.email = false
+params.plaintext_email = false
+params.minlength = 100
+params.outdir = "nextflow-output"
+params.no_trimming = false
+
+multiqc_config = file(params.multiqc_config)
+output_docs = file("$baseDir/docs/output.md")
+
+// Has the run name been specified by the user?
+//  this has the bonus effect of catching both -name and --name
+custom_runName = params.name
+if( !(workflow.runName ==~ /[a-z]+_[a-z]+/) ){
+  custom_runName = workflow.runName
+}
+
 
 /*
  * SET UP CONFIGURATION VARIABLES
@@ -155,19 +183,21 @@ if (params.read_paths) {
 }
 
 
-
- sra_ch.concat(samples_ch, csv_singles_ch, read_pairs_ch,
-   read_singles_ch, fastas_ch, read_paths_ch)
-   .ifEmpty{ exit 1, "No reads provided! Check read input files"}
-   .set{ reads_ch }
-
-
 // Has the run name been specified by the user?
 //  this has the bonus effect of catching both -name and --name
 custom_runName = params.name
 if( !(workflow.runName ==~ /[a-z]+_[a-z]+/) ){
   custom_runName = workflow.runName
 }
+
+ sra_ch.concat(samples_ch, read_pairs_ch, fastas_ch)
+  .into{ read_files_fastqc; read_files_trimming }
+
+// If user doesn't want trimming, set read_files_trimmed as empty
+// And use read_files_untrimmed directly
+(read_files_trimmed, read_files_untrimmed) = ( params.no_trimming
+                 ? [Channel.empty(), read_files_trimming]
+                 : [read_files_trimming, Channel.empty()] )
 
 // AWSBatch sanity checking
 if(workflow.profile == 'awsbatch'){
@@ -187,56 +217,58 @@ log2_sketch_sizes = params.log2_sketch_sizes?.toString().tokenize(',')
 
 
 // Header log info
-log.info nfcoreHeader()
-def summary = [:]
-if(workflow.revision) summary['Pipeline Release'] = workflow.revision
-summary['Run Name']         = custom_runName ?: workflow.runName
-// Input reads
-if(params.read_pairs)   summary['Read Pairs']                 = params.read_pairs
-if(params.read_singles) summary['Single-end reads']         = params.read_singles
-if(params.csv_pairs)    summary['Paired-end samples.csv']            = params.csv_pairs
-if(params.csv_singles)  summary['Single-end samples.csv']    = params.csv_singles
-if(params.sra)          summary['SRA']                             = params.sra
-if(params.fastas)       summary["FASTAs"]                          = params.fastas
-if(params.read_paths)   summary['Read paths (paired-end)']            = params.read_paths
-// Sketch parameters
-summary['K-mer sizes']            = params.ksizes
-summary['Molecule']               = params.molecules
-summary['Log2 Sketch Sizes']      = params.log2_sketch_sizes
-summary['One Sig per Record']         = params.one_signature_per_record
-// Resource information
-summary['Max Resources']    = "$params.max_memory memory, $params.max_cpus cpus, $params.max_time time per job"
-if(workflow.containerEngine) summary['Container'] = "$workflow.containerEngine - $workflow.container"
-summary['Output dir']       = params.outdir
-summary['Launch dir']       = workflow.launchDir
-summary['Working dir']      = workflow.workDir
-summary['Script dir']       = workflow.projectDir
-summary['User']             = workflow.userName
-if(workflow.profile == 'awsbatch'){
-   summary['AWS Region']    = params.awsregion
-   summary['AWS Queue']     = params.awsqueue
-}
-summary['Config Profile'] = workflow.profile
-if(params.config_profile_description) summary['Config Description'] = params.config_profile_description
-if(params.config_profile_contact)     summary['Config Contact']     = params.config_profile_contact
-if(params.config_profile_url)         summary['Config URL']         = params.config_profile_url
-if(params.email) {
-  summary['E-mail Address']  = params.email
-  summary['MultiQC maxsize'] = params.maxMultiqcEmailFileSize
-}
-log.info summary.collect { k,v -> "${k.padRight(18)}: $v" }.join("\n")
-log.info "\033[0m----------------------------------------------------\033[0m"
+log.info """==================================================================
+      _                            _       _ _         _ _
+     | |_ ___ _____ ___ ___    ___|_|_____|_| |___ ___|_| |_ _ _
+     | '_|___|     | -_|  _|  |_ -| |     | | | .'|  _| |  _| | |
+     |_,_|   |_|_|_|___|_|    |___|_|_|_|_|_|_|__,|_| |_|_| |_  |
+                                                            |___|
 
-// Check the hostnames against configured profiles
-checkHostname()
+czbiohub/nf-kmer-similarity v${workflow.manifest.version}"
+=================================================================="""
+def summary = [:]
+summary['Pipeline Name']       = 'czbiohub/nf-kmer-similarity'
+summary['Pipeline Version']    = workflow.manifest.version
+summary['Run Name']            = custom_runName ?: workflow.runName
+summary['Read Pairs']          = params.read_pairs
+summary['Input fastas']        = params.fastas
+summary['SRA/ENA IDs']         = params.sra
+summary['Molecules']           = params.molecules
+summary['K-mer sizes']         = params.ksizes
+summary['Log2 sketch sizes']   = params.log2_sketch_sizes
+summary["Make one signature per record?"] = params.one_signature_per_record
+
+summary['Max Memory']   = params.max_memory
+summary['Max CPUs']     = params.max_cpus
+summary['Max Time']     = params.max_time
+summary['Output dir']   = params.outdir
+summary['Working dir']  = workflow.workDir
+summary['Container Engine'] = workflow.containerEngine
+if(workflow.containerEngine) summary['Container'] = workflow.container
+summary['Current home']   = "$HOME"
+summary['Current user']   = "$USER"
+summary['Current path']   = "$PWD"
+summary['Working dir']    = workflow.workDir
+summary['Output dir']     = params.outdir
+summary['Script dir']     = workflow.projectDir
+summary['Config Profile'] = workflow.profile
+if(workflow.profile == 'awsbatch'){
+   summary['AWS Region'] = params.awsregion
+   summary['AWS Queue'] = params.awsqueue
+}
+if(params.email) summary['E-mail Address'] = params.email
+log.info summary.collect { k,v -> "${k.padRight(15)}: $v" }.join("\n")
+log.info "========================================="
+
 
 def create_workflow_summary(summary) {
+
     def yaml_file = workDir.resolve('workflow_summary_mqc.yaml')
     yaml_file.text  = """
-    id: 'nf-core-kmer-similarity-summary'
+    id: 'nf-large-assembly-summary'
     description: " - this information is collected when the pipeline is started."
-    section_name: 'nf-core/kmer-similarity Workflow Summary'
-    section_href: 'https://github.com/nf-core/kmer-similarity'
+    section_name: 'czbiohub/nf-kmer-simlarity Workflow Summary'
+    section_href: 'https://github.com/czbiohub/nf-kmer-simlarity'
     plot_type: 'html'
     data: |
         <dl class=\"dl-horizontal\">
@@ -247,11 +279,15 @@ ${summary.collect { k,v -> "            <dt>$k</dt><dd><samp>${v ?: '<span style
    return yaml_file
 }
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> olgabot/trim-fastp
 /*
  * Parse software version numbers
  */
 process get_software_versions {
+<<<<<<< HEAD
     publishDir "${params.outdir}/pipeline_info", mode: 'copy',
     saveAs: {filename ->
         if (filename.indexOf(".csv") > 0) filename
@@ -261,27 +297,92 @@ process get_software_versions {
     output:
     file 'software_versions_mqc.yaml' into software_versions_yaml
     file "software_versions.txt"
+=======
+    container 'czbiohub/nf-kmer-similarity'
+
+    output:
+    file 'software_versions_mqc.yaml' into software_versions_yaml
+>>>>>>> olgabot/trim-fastp
 
     script:
     """
     echo $workflow.manifest.version > v_pipeline.txt
     echo $workflow.nextflow.version > v_nextflow.txt
-    sourmash info &> v_sourmash.txt
-    scrape_software_versions.py &> software_versions_mqc.yaml
+    multiqc --version > v_multiqc.txt
+    fastqc --version > v_fastqc.txt
+    sourmash info > v_sourmash.txt
+    scrape_software_versions.py > software_versions_mqc.yaml
     """
+}
+
+
+/*
+ * STEP 1 - FastQC
+ */
+process fastqc {
+    tag "$name"
+    publishDir "${params.outdir}/fastqc", mode: 'copy',
+        saveAs: {filename -> filename.indexOf(".zip") > 0 ? "zips/$filename" : "$filename"}
+
+    input:
+    set val(name), file(reads) from read_files_fastqc
+
+    output:
+    file "*_fastqc.{zip,html}" into fastqc_results
+
+    script:
+    """
+    fastqc -q $reads
+    """
+}
+
+
+if (!params.no_trimming) {
+  /*
+   * STEP 2 - trim reads - Fastp
+   */
+  process fastp {
+      tag "$name"
+      publishDir "${params.outdir}/fastp", mode: 'copy',
+          saveAs: {filename -> filename.indexOf(".zip") > 0 ? "zips/$filename" : "$filename"}
+
+      input:
+      set val(name), file(reads) from read_files_untrimmed
+
+      output:
+      file "*_fastp.{zip,html}" into fastp_results
+      set val(name), file("*[12]_fastp_trimmed.fastq.gz") into reads_trimmed
+
+      script:
+      read1 = reads[0]
+      read2 = reads[1]
+      """
+      fastp --in1 $read1 --in2 $read2 \
+        --length_required ${params.minlength} \
+        --thread ${task.cpus} \
+        --overrepresentation_analysis \
+        --out1 ${name}_R1_fastp_trimmed.fastq.gz \
+        --out2 ${name}_R2_fastp_trimmed.fastq.gz \
+        -h ${name}_fastp.html \
+        -j ${name}_fastp.json
+      """
+  }
 }
 
 
 process sourmash_compute_sketch {
 	tag "${sample_id}_${sketch_id}"
 	publishDir "${params.outdir}/sketches", mode: 'copy'
-  label 'low_memory'
+
+	// If job fails, try again with more memory
+	// memory { 8.GB * task.attempt }
+	errorStrategy 'retry'
+  maxRetries 3
 
 	input:
 	each ksize from ksizes
 	each molecule from molecules
-	each log2_sketch_size from log2_sketch_sizes
-	set sample_id, file(reads) from reads_ch
+	set sample_id, file(reads) from read_files_untrimmed.mix(read_files_trimmed.collect())
 
 	output:
   set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches
@@ -322,6 +423,7 @@ process sourmash_compute_sketch {
 
 process sourmash_compare_sketches {
 	tag "${sketch_id}"
+
 	publishDir "${params.outdir}/", mode: 'copy'
   label 'mid_memory'
 
@@ -341,6 +443,50 @@ process sourmash_compare_sketches {
         --traverse-directory .
 	"""
 
+}
+
+
+/*
+ * STEP 2 - MultiQC
+ */
+process multiqc {
+    publishDir "${params.outdir}/MultiQC", mode: 'copy'
+
+    input:
+    file multiqc_config
+    file ('fastqc/*') from fastqc_results.collect()
+    file ('software_versions/*') from software_versions_yaml
+    file workflow_summary from create_workflow_summary(summary)
+
+    output:
+    file "*multiqc_report.html" into multiqc_report
+    file "*_data"
+
+    script:
+    rtitle = custom_runName ? "--title \"$custom_runName\"" : ''
+    rfilename = custom_runName ? "--filename " + custom_runName.replaceAll('\\W','_').replaceAll('_+','_') + "_multiqc_report" : ''
+    """
+    multiqc -f $rtitle $rfilename --config $multiqc_config .
+    """
+}
+
+/*
+ * STEP 3 - Output Description HTML
+ */
+process output_documentation {
+    tag "$prefix"
+    publishDir "${params.outdir}/Documentation", mode: 'copy'
+
+    input:
+    file output_docs
+
+    output:
+    file "results_description.html"
+
+    script:
+    """
+    markdown_to_html.r $output_docs results_description.html
+    """
 }
 
 
