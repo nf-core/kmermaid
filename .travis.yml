@@ -28,7 +28,6 @@ matrix:
       - pip install nf-core
     script: nf-core lint ${TRAVIS_BUILD_DIR}
     python: '3.6'
-    env: NXF_VER='0.32.0'
     jdk: openjdk8
   - name: "Lint the documentation"
     script: markdownlint ${TRAVIS_BUILD_DIR} -c ${TRAVIS_BUILD_DIR}/.github/markdownlint.yml
@@ -47,8 +46,6 @@ install:
   - mkdir /tmp/nextflow && cd /tmp/nextflow
   - wget -qO- get.nextflow.io | bash
   - sudo ln -s /tmp/nextflow/nextflow /usr/local/bin/nextflow
-  # Install nf-core/tools
-  - pip install nf-core
   # Reset
   - mkdir ${TRAVIS_BUILD_DIR}/tests && cd ${TRAVIS_BUILD_DIR}/tests
   # Install markdownlint-cli
