@@ -3,6 +3,7 @@
 ## v1.1dev
 
 * Add option to use Dayhoff encoding for sourmash
+* Add "fastp" to container requirements
 
 ## v1.0 - 6 March 2019
 
