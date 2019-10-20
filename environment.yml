@@ -16,14 +16,7 @@ dependencies:
   - matplotlib
   - alabaster
   - conda-forge::gxx_linux-64
-  - pip
-  - fastp=0.20.0
-  - fastqc
-  - pathos=0.2.4
-  - pysam=0.15.3
-  - multiqc
-  - python=3
-  - pip:
-    - git+https://github.com/czbiohub/kh-tools.git@olgabot/partition-coding-reads#egg=khtools
-    - git+https://github.com/czbiohub/sourmash.git@master#egg=sourmash
-    - git+https://github.com/czbiohub/bam2fasta.git@master#egg=bam2fasta
+  - ska=1.0
+  - seqtk=1.3
+  # - conda-forge::gcc_linux-64
+  # - gcc
