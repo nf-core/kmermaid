@@ -3,6 +3,7 @@
 ## v1.1dev
 
 * Add option to use Dayhoff encoding for sourmash
+* Add "fastp" to container requirements
 * Add bam file process to kmermaid pipeline and optional params
   for the same
 * Update dockerfile with sourmash compute bam input dependencies
