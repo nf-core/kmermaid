@@ -1,4 +1,3 @@
-
 def helpMessage() {
     log.info """
     =========================================
@@ -35,6 +34,12 @@ def helpMessage() {
         --outdir s3://olgabot-maca/nf-kmer-similarity/ --sra SRP016501
 
 
+    With BAM file:
+
+      nextflow run main.nf \
+      --outdir ./results \
+      --bam possorted_genome_bam.bam
+
     Mandatory Arguments:
       --outdir                      Local or S3 directory to output the comparison matrix to
 
@@ -44,7 +49,9 @@ def helpMessage() {
       --read_singles                Local or s3 directories of single-end read files, separated by commas
       --csv_pairs                   CSV file with columns id, read1, read2 for each sample
       --csv_singles                 CSV file with columns id, read1, read2 for each sample
-      --fastas
+      --fastas                      Path to FASTA sequence files. Can be semi-colon-separated
+      --bam                         Path to 10x BAM file
+      --save_fastas                 For bam files, Path relative to outdir to save unique barcodes to {CELL_BARCODE}.fasta
       --sra                         SRR, ERR, SRP IDs representing a project. Only compatible with
                                     Nextflow 19.03-edge or greater
 
@@ -60,6 +67,19 @@ def helpMessage() {
                                     Useful for comparing e.g. assembled transcriptomes or metagenomes.
                                     (Not typically used for raw sequencing data as this would create
                                     a k-mer signature for each read!)
+    Bam file options:
+      --write_barcode_meta_csv      For bam files, Csv file name relative to outdir/barcode_metadata to write number of reads and number of umis per barcode.
+                                    This csv file is empty with just header when the min_umi_per_barcode is zero i.e
+                                    Reads and umis per barcode are calculated only when the barcodes are filtered
+                                    based on min_umi_per_barcode
+      --min_umi_per_barcode         A barcode is only considered a valid barcode read
+                                    and its signature is written if number of umis are greater than min_umi_per_barcode
+      --line_count                  Number of lines to contain in each sharded bam file
+      --barcodes_file               For bam files, Optional absolute path to a .tsv barcodes file if the input is unfiltered 10x bam file
+      --rename_10x_barcodes         For bam files, Optional absolute path to a .tsv Tab-separated file mapping 10x barcode name
+                                    to new name, e.g. with channel or cell annotation label
+                                    
+    Trimming options:
       --minlength                   Minimum length of reads after trimming, default 100
       --no_trimming                 Don't trim reads on quality
 
@@ -134,13 +154,12 @@ if (params.read_paths) {
          .from(params.read_paths)
          .map { row -> [ row[0], [file(row[1][0]), file(row[1][1])]] }
          .ifEmpty { exit 1, "params.read_paths (${params.read_paths}) was empty - no input files supplied" }
-
  } else {
    // Provided SRA ids
    if (params.sra){
      sra_ch = Channel
          .fromSRA( params.sra?.toString()?.tokenize(';') )
-         .ifEmpty { exit 1, "params.sra (${params.sra}) was not found - no input files supplied" }
+         .ifEmpty { exit 1, "params.sra ${params.sra} was not found - no input files supplied" }
    }
    // Provided a samples.csv file of read pairs
    if (params.csv_pairs){
@@ -166,8 +185,7 @@ if (params.read_paths) {
        .fromFilePairs(params.read_pairs?.toString()?.tokenize(';'))
        .ifEmpty { exit 1, "params.read_pairs (${params.read_pairs}) was empty - no input files supplied" }
    }
-
-   // Provided fastq gz single-end reads
+   // Provided fastq gz read singles
    if (params.read_singles){
      read_singles_ch = Channel
        .fromFilePairs(params.read_singles?.toString()?.tokenize(';'), size: 1)
@@ -180,7 +198,45 @@ if (params.read_paths) {
        .map{ f -> tuple(f.baseName, tuple(file(f))) }
        .ifEmpty { exit 1, "params.fastas (${params.fastas}) was empty - no input files supplied" }
    }
+
+  if (params.bam) {
+  Channel.fromPath(params.bam, checkIfExists: true)
+       .map{ f -> tuple(f.baseName, tuple(file(f))) }
+       .ifEmpty { exit 1, "Bam file not found: ${params.bam}" }
+       .set{bam_ch}
+  }
+
+  // If barcodes is as expected, check if it exists and set channel
+  if (params.barcodes_file) {
+     Channel.fromPath(params.barcodes_file, checkIfExists: true)
+        .ifEmpty { exit 1, "Barcodes file not found: ${params.barcodes_file}" }
+        .set{barcodes_ch}
+  }
+  else {
+    Channel.from(false)
+        .set{barcodes_ch}
+  }
+
+
+  // If renamer barcode file is as expected, check if it exists and set channel
+  if (params.rename_10x_barcodes) {
+     Channel.fromPath(params.rename_10x_barcodes, checkIfExists: true)
+        .ifEmpty { exit 1, "Barcodes file not found: ${params.rename_10x_barcodes}" }
+        .set{rename_10x_barcodes_ch}
+  }
+  else {
+    Channel.from(false)
+        .set{rename_10x_barcodes_ch}
+  }
 }
+
+if (!params.bam) { 
+sra_ch.concat(samples_ch, csv_singles_ch, read_pairs_ch,
+ read_singles_ch, fastas_ch, read_paths_ch)
+ .ifEmpty{ exit 1, "No reads provided! Check read input files"}
+ .set{ reads_ch }
+}
+
 
 
 // Has the run name been specified by the user?
@@ -206,15 +262,22 @@ if(workflow.profile == 'awsbatch'){
 }
 
 
-params.ksizes = '21,27,33,51'
-params.molecules =  'dna,protein,dayhoff'
-params.log2_sketch_sizes = '10,12,14,16'
-
 // Parse the parameters
 ksizes = params.ksizes?.toString().tokenize(',')
+ksize = ksizes[0]
 molecules = params.molecules?.toString().tokenize(',')
+molecule = molecules[0]
 log2_sketch_sizes = params.log2_sketch_sizes?.toString().tokenize(',')
+log2_sketch_size = log2_sketch_sizes[0]
 
+
+// For bam files, set a folder name to save the optional barcode metadata csv
+if (!params.write_barcode_meta_csv) {
+  barcode_metadata_folder = ""
+}
+else {
+  barcode_metadata_folder = "barcode_metadata"
+}
 
 // Header log info
 log.info """==================================================================
@@ -227,30 +290,42 @@ log.info """==================================================================
 czbiohub/nf-kmer-similarity v${workflow.manifest.version}"
 =================================================================="""
 def summary = [:]
-summary['Pipeline Name']       = 'czbiohub/nf-kmer-similarity'
-summary['Pipeline Version']    = workflow.manifest.version
-summary['Run Name']            = custom_runName ?: workflow.runName
-summary['Read Pairs']          = params.read_pairs
-summary['Input fastas']        = params.fastas
-summary['SRA/ENA IDs']         = params.sra
-summary['Molecules']           = params.molecules
-summary['K-mer sizes']         = params.ksizes
-summary['Log2 sketch sizes']   = params.log2_sketch_sizes
-summary["Make one signature per record?"] = params.one_signature_per_record
 
-summary['Max Memory']   = params.max_memory
-summary['Max CPUs']     = params.max_cpus
-summary['Max Time']     = params.max_time
-summary['Output dir']   = params.outdir
-summary['Working dir']  = workflow.workDir
-summary['Container Engine'] = workflow.containerEngine
-if(workflow.containerEngine) summary['Container'] = workflow.container
-summary['Current home']   = "$HOME"
-summary['Current user']   = "$USER"
-summary['Current path']   = "$PWD"
-summary['Working dir']    = workflow.workDir
-summary['Output dir']     = params.outdir
-summary['Script dir']     = workflow.projectDir
+if(workflow.revision) summary['Pipeline Release'] = workflow.revision
+summary['Run Name']         = custom_runName ?: workflow.runName
+// Input reads
+if(params.read_pairs)   summary['Read Pairs']                 = params.read_pairs
+if(params.read_singles) summary['Single-end reads']         = params.read_singles
+if(params.csv_pairs)    summary['Paired-end samples.csv']            = params.csv_pairs
+if(params.csv_singles)  summary['Single-end samples.csv']    = params.csv_singles
+if(params.sra)          summary['SRA']                             = params.sra
+if(params.fastas)       summary["FASTAs"]                          = params.fastas
+if(params.bam)          summary["BAM"]                             = params.bam
+if(params.barcodes_file)          summary["Barcodes"]              = params.barcodes_file
+if(params.rename_10x_barcodes)    summary["Renamer barcodes"]      = params.rename_10x_barcodes
+if(params.read_paths)   summary['Read paths (paired-end)']         = params.read_paths
+// Sketch parameters
+summary['K-mer sizes']            = params.ksizes
+summary['Molecule']               = params.molecules
+summary['Log2 Sketch Sizes']      = params.log2_sketch_sizes
+summary['One Sig per Record']         = params.one_signature_per_record
+// 10x parameters
+if(params.bam) summary["Bam chunk line count"] = params.line_count
+if(params.bam) summary['Count valid reads'] = params.min_umi_per_barcode
+if(params.bam) summary['Saved Fastas '] = params.save_fastas
+if(params.bam) summary['Barcode umi read metadata'] = params.write_barcode_meta_csv
+// Resource information
+summary['Max Resources']    = "$params.max_memory memory, $params.max_cpus cpus, $params.max_time time per job"
+if(workflow.containerEngine) summary['Container'] = "$workflow.containerEngine - $workflow.container"
+summary['Output dir']       = params.outdir
+summary['Launch dir']       = workflow.launchDir
+summary['Working dir']      = workflow.workDir
+summary['Script dir']       = workflow.projectDir
+summary['User']             = workflow.userName
+if(workflow.profile == 'awsbatch'){
+   summary['AWS Region']    = params.awsregion
+   summary['AWS Queue']     = params.awsqueue
+}
 summary['Config Profile'] = workflow.profile
 if(workflow.profile == 'awsbatch'){
    summary['AWS Region'] = params.awsregion
@@ -279,15 +354,12 @@ ${summary.collect { k,v -> "            <dt>$k</dt><dd><samp>${v ?: '<span style
    return yaml_file
 }
 
-<<<<<<< HEAD
 
-=======
->>>>>>> olgabot/trim-fastp
 /*
  * Parse software version numbers
  */
 process get_software_versions {
-<<<<<<< HEAD
+
     publishDir "${params.outdir}/pipeline_info", mode: 'copy',
     saveAs: {filename ->
         if (filename.indexOf(".csv") > 0) filename
@@ -297,12 +369,6 @@ process get_software_versions {
     output:
     file 'software_versions_mqc.yaml' into software_versions_yaml
     file "software_versions.txt"
-=======
-    container 'czbiohub/nf-kmer-similarity'
-
-    output:
-    file 'software_versions_mqc.yaml' into software_versions_yaml
->>>>>>> olgabot/trim-fastp
 
     script:
     """
@@ -315,6 +381,70 @@ process get_software_versions {
     """
 }
 
+if (params.bam) {
+  process sourmash_compute_sketch_bam {
+    tag "${sample_id}_${sketch_id}"
+    label "high_memory"
+    publishDir "${params.outdir}/${params.save_fastas}", pattern: '*.fasta', saveAs: { filename -> "${params.outdir}/${params.save_fastas}/${filename.replace("|", "-")}"}
+    publishDir "${params.outdir}/${barcode_metadata_folder}", pattern: '*.csv', mode: 'copy'
+
+
+    // If job fails, try again with more memory
+    // memory { 8.GB * task.attempt }
+    errorStrategy 'retry'
+    maxRetries 1
+
+    input:
+    ksize
+    molecule
+    log2_sketch_size
+    file(barcodes_file) from barcodes_ch
+    set sample_id, file(bam) from bam_ch
+    file(rename_10x_barcodes) from rename_10x_barcodes_ch
+
+    output:
+    set val(sample_id), file("*.fasta") into reads_ch
+    // https://github.com/nextflow-io/patterns/blob/master/docs/optional-output.adoc
+    file("${params.write_barcode_meta_csv}") optional true
+
+    script:
+    sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
+    molecule = molecule
+    not_dna = molecule != 'dna' ? '--no-dna' : ''
+    ksize = ksize
+
+    min_umi_per_barcode = params.min_umi_per_barcode ? "--count-valid-reads ${params.min_umi_per_barcode}" : ''
+    line_count = params.line_count ? "--line-count ${params.line_count}" : ''
+    metadata = params.write_barcode_meta_csv ? "--write-barcode-meta-csv ${params.write_barcode_meta_csv}": ''
+    save_fastas = "--save-fastas ."
+    processes = "--processes ${params.max_cpus}"
+
+    def barcodes_file = params.barcodes_file ? "--barcodes-file ${barcodes_file.baseName}.tsv": ''
+    def rename_10x_barcodes = params.rename_10x_barcodes ? "--rename-10x-barcodes ${rename_10x_barcodes.baseName}.tsv": ''
+    """
+      sourmash compute \\
+        --ksize $ksize \\
+        --$molecule \\
+        $not_dna \\
+        --num-hashes \$((2**$log2_sketch_size)) \\
+        $processes \\
+        $min_umi_per_barcode \\
+        $line_count \\
+        $rename_10x_barcodes \\
+        $barcodes_file \\
+        $save_fastas \\
+        $metadata \\
+        --output ${sample_id}_${sketch_id}.sig \\
+        --input-is-10x $bam
+      find . -type f -name "*.fasta" | while read src; do if [[ \$src == *"|"* ]]; then mv "\$src" \$(echo "\$src" | tr "|" "_"); fi done
+    """
+  }
+}
+
+process sourmash_compute_sketch_fastx {
+  tag "${sample_id}_${sketch_id}"
+  label "mid_memory"
+  publishDir "${params.outdir}/sketches", mode: 'copy'
 
 /*
  * STEP 1 - FastQC
@@ -384,17 +514,16 @@ process sourmash_compute_sketch {
 	each molecule from molecules
 	set sample_id, file(reads) from read_files_untrimmed.mix(read_files_trimmed.collect())
 
-	output:
+  output:
   set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches
 
-	script:
+  script:
   sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
   molecule = molecule
-  // Don't calculate DNA signature if this is protein, to minimize disk,
-  // memory and IO requirements in the future
-  not_dna = molecule != 'dna' ? '--no-dna' : ''
+  not_dna = molecule == 'dna' ? '' : '--no-dna'
   ksize = ksize
-  if ( params.one_signature_per_record ){
+
+  if ( params.one_signature_per_record ) {
     """
     sourmash compute \\
       --num-hashes \$((2**$log2_sketch_size)) \\
@@ -404,7 +533,8 @@ process sourmash_compute_sketch {
       --output ${sample_id}_${sketch_id}.sig \\
       $reads
     """
-  } else {
+  }
+  else {
     """
     sourmash compute \\
       --num-hashes \$((2**$log2_sketch_size)) \\
@@ -412,36 +542,35 @@ process sourmash_compute_sketch {
       --$molecule \\
       $not_dna \\
       --output ${sample_id}_${sketch_id}.sig \\
-      --merge '$sample_id' $reads
+      --merge '$sample_id' \\
+      $reads
     """
   }
-
 }
 
-// sourmash_sketches.println()
-// sourmash_sketches.groupTuple(by: [0,3]).println()
 
 process sourmash_compare_sketches {
-	tag "${sketch_id}"
+  tag "${sketch_id}"
+  label "high_memory"
+  publishDir "${params.outdir}/", mode: 'copy'
 
-	publishDir "${params.outdir}/", mode: 'copy'
-  label 'mid_memory'
-
-	input:
+  input:
   set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file ("sketches/*.sig") \
     from sourmash_sketches.groupTuple(by: [0, 3])
 
-	output:
-	file "similarities_${sketch_id}.csv"
+  output:
+  file "similarities_${sketch_id}.csv"
 
-	script:
-	"""
-	sourmash compare \\
+  script:
+  processes = "--processes ${params.max_cpus}"
+  """
+  sourmash compare \\
         --ksize ${ksize[0]} \\
         --${molecule[0]} \\
+        $processes \\
         --csv similarities_${sketch_id}.csv \\
         --traverse-directory .
-	"""
+  """
 
 }
 
@@ -496,9 +625,9 @@ process output_documentation {
 workflow.onComplete {
 
     // Set up the e-mail variables
-    def subject = "[nf-core/rnaseq] Successful: $workflow.runName"
+    def subject = "[nf-core/kmermaid] Successful: $workflow.runName"
     if(!workflow.success){
-      subject = "[nf-core/rnaseq] FAILED: $workflow.runName"
+      subject = "[nf-core/kmermaid] FAILED: $workflow.runName"
     }
     def email_fields = [:]
     email_fields['version'] = workflow.manifest.version
@@ -547,11 +676,11 @@ workflow.onComplete {
           if( params.plaintext_email ){ throw GroovyException('Send plaintext e-mail, not HTML') }
           // Try to send HTML e-mail using sendmail
           [ 'sendmail', '-t' ].execute() << sendmail_html
-          log.info "[nf-core/rnaseq] Sent summary e-mail to $params.email (sendmail)"
+          log.info "[nf-core/kmermaid] Sent summary e-mail to $params.email (sendmail)"
         } catch (all) {
           // Catch failures and try with plaintext
           [ 'mail', '-s', subject, params.email ].execute() << email_txt
-          log.info "[nf-core/rnaseq] Sent summary e-mail to $params.email (mail)"
+          log.info "[nf-core/kmermaid] Sent summary e-mail to $params.email (mail)"
         }
     }
 
@@ -577,10 +706,10 @@ workflow.onComplete {
     }
 
     if(workflow.success){
-        log.info "${c_purple}[nf-core/rnaseq]${c_green} Pipeline completed successfully${c_reset}"
+        log.info "${c_purple}[nf-core/kmermaid]${c_green} Pipeline completed successfully${c_reset}"
     } else {
         checkHostname()
-        log.info "${c_purple}[nf-core/rnaseq]${c_red} Pipeline completed with errors${c_reset}"
+        log.info "${c_purple}[nf-core/kmermaid]${c_red} Pipeline completed with errors${c_reset}"
     }
 
 }
