@@ -31,3 +31,10 @@ nextflow run czbiohub/nf-kmer-similarity --outdir s3://olgabot-maca/nf-kmer-simi
 nextflow run czbiohub/nf-kmer-similarity --outdir s3://olgabot-maca/nf-kmer-similarity/ \
   --fastas '*.fasta'
 ```
+
+### With bam file
+
+```
+nextflow run czbiohub/nf-kmer-similarity --outdir s3://olgabot-maca/nf-kmer-similarity/ \
+  --bam 'possorted_genome_bam.bam'
+```

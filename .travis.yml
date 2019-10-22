@@ -6,10 +6,29 @@ python: '3.6'
 cache: pip
 matrix:
   fast_finish: true
+  include:
+  - name: "Minimum Nextflow version, regular test suite for kmermaid"
+    env: NXF_VER='0.32.0' SUITE=test FLAGS=
+    language: java
+    jdk: openjdk8
+  - name: "Test nextflow kmermaid, latest test suite with fastas"
+    env: NXF_VER='' SUITE=test FLAGS=
+  - name: "Test nextflow kmermaid, with BAM"
+    env: NXF_VER='' SUITE=test_bam FLAGS='--barcodes_file false --rename_10x_barcodes false --save_fastas false --write_barcodes_meta_csv false'
+  - name: "Test nextflow kmermaid, with BAM, Barcodes"
+    env: NXF_VER='' SUITE=test_bam FLAGS='--rename_10x_barcodes false --write_barcodes_meta_csv false'
+  - name: "Test nextflow kmermaid, with BAM, Barcodes, Renamer"
+    env: NXF_VER='' SUITE=test_bam FLAGS='--write_barcodes_meta_csv false'
+  - name: "Test nextflow kmermaid, with BAM, write_barcodes_meta_csv"
+    env: NXF_VER='' SUITE=test_bam FLAGS='--barcodes_file false --rename_10x_barcodes false'
+  - name: "Test nextflow kmermaid, with BAM, Barcodes, write_barcodes_meta_csv"
+    env: NXF_VER='' SUITE=test_bam FLAGS='--rename_10x_barcodes false'
+  - name: "Test nextflow kmermaid, with BAM, Barcodes, Renamer, write_barcodes_meta_csv"
+    env: NXF_VER='' SUITE=test_bam FLAGS='--write_barcodes_meta_csv false'
 
 before_install:
   # PRs to master are only ok if coming from dev branch
-  - '[ $TRAVIS_PULL_REQUEST = "false" ] || [ $TRAVIS_BRANCH != "master" ] || ([ $TRAVIS_PULL_REQUEST_SLUG = $TRAVIS_REPO_SLUG ] && [ $TRAVIS_PULL_REQUEST_BRANCH = "dev" ])'
+  # - '[ $TRAVIS_PULL_REQUEST = "false" ] || [ $TRAVIS_BRANCH != "master" ] || ([ $TRAVIS_PULL_REQUEST_SLUG = $TRAVIS_REPO_SLUG ] && [ $TRAVIS_PULL_REQUEST_BRANCH = "dev" ])'
   # Pull the docker image first so the test doesn't wait for this
   - docker pull czbiohub/nf-kmer-similarity:dev
   # Fake the tag locally so that the pipeline runs properly
@@ -20,18 +39,12 @@ install:
   - mkdir /tmp/nextflow && cd /tmp/nextflow
   - wget -qO- get.nextflow.io | bash
   - sudo ln -s /tmp/nextflow/nextflow /usr/local/bin/nextflow
-  # Install nf-core/tools
-  - pip install nf-core
   # Reset
   - mkdir ${TRAVIS_BUILD_DIR}/tests && cd ${TRAVIS_BUILD_DIR}/tests
-
-env:
-  - NXF_VER='19.03.0-edge' # Specify a minimum NF version that should be tested and work
-  - NXF_VER='' # Plus: get the latest NF version and check that it works
 
 script:
   # Lint the pipeline code
   # Skip linting for now since container is built by czbiohub
   # - nf-core lint ${TRAVIS_BUILD_DIR}
   # Run the pipeline with the test profile
-  - nextflow run ${TRAVIS_BUILD_DIR} -profile test,docker
+  - nextflow run ${TRAVIS_BUILD_DIR} -profile ${SUITE},docker ${FLAGS}
