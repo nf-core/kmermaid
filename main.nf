@@ -1,12 +1,8 @@
 def helpMessage() {
     log.info """
-    ==============================================================
-      _                            _       _ _         _ _
-     | |_ ___ _____ ___ ___    ___|_|_____|_| |___ ___|_| |_ _ _
-     | '_|___|     | -_|  _|  |_ -| |     | | | .'|  _| |  _| | |
-     |_,_|   |_|_|_|___|_|    |___|_|_|_|_|_|_|__,|_| |_|_| |_  |
-                                                            |___|
-    ==============================================================
+    =========================================
+     nf-core/kmermaid v${workflow.manifest.version}
+    =========================================
 
     Usage:
 
@@ -14,27 +10,27 @@ def helpMessage() {
 
     With a samples.csv file containing the columns sample_id,read1,read2:
 
-      nextflow run czbiohub/nf-kmer-similarity \
+      nextflow run nf-core/kmermaid \
         --outdir s3://olgabot-maca/nf-kmer-similarity/ --samples samples.csv
 
 
     With read pairs in one or more semicolon-separated s3 directories:
 
-      nextflow run czbiohub/nf-kmer-similarity \
+      nextflow run nf-core/kmermaid \
         --outdir s3://olgabot-maca/nf-kmer-similarity/ \
         --read_pairs s3://olgabot-maca/sra/homo_sapiens/smartseq2_quartzseq/*{R1,R2}*.fastq.gz;s3://olgabot-maca/sra/danio_rerio/smart-seq/whole_kidney_marrow_prjna393431/*{R1,R2}*.fastq.gz
 
 
     With plain ole fastas in one or more semicolon-separated s3 directories:
 
-      nextflow run czbiohub/nf-kmer-similarity \
+      nextflow run nf-core/kmermaid \
         --outdir s3://olgabot-maca/nf-kmer-similarity/choanoflagellates_richter2018/ \
         --fastas /home/olga/data/figshare/choanoflagellates_richter2018/1_choanoflagellate_transcriptomes/*.fasta
 
 
     With SRA ids (requires nextflow v19.03-edge or greater):
 
-      nextflow run czbiohub/nf-kmer-similarity \
+      nextflow run nf-core/kmermaid \
         --outdir s3://olgabot-maca/nf-kmer-similarity/ --sra SRP016501
 
 
@@ -80,6 +76,16 @@ def helpMessage() {
       --line_count                  Number of lines to contain in each sharded bam file
       --barcodes_file               For bam files, Optional absolute path to a .tsv barcodes file if the input is unfiltered 10x bam file
       --rename_10x_barcodes         For bam files, Optional absolute path to a .tsv Tab-separated file mapping 10x barcode name
+                                    to new name, e.g. with channel or cell annotation label
+
+    Trimming options:
+      --minlength                   Minimum length of reads after trimming, default 100
+      --skipTrimming                 Don't trim reads on quality
+
+    Other Options:
+      --email                       Set this parameter to your e-mail address to get a summary e-mail with details of the run sent to you when the workflow exits
+      -name                         Name for the pipeline run. If not specified, Nextflow will automatically generate a random mnemonic.
+
                                     to new name, e.g. with channel or cell annotation
       --ch_peptide_fasta            Path to a well-curated fasta file of protein sequences. Used to filter for coding reads
     """.stripIndent()
@@ -92,6 +98,17 @@ if (params.help){
     helpMessage()
     exit 0
 }
+
+multiqc_config = file(params.multiqc_config)
+output_docs = file("$baseDir/docs/output.md")
+
+// Has the run name been specified by the user?
+//  this has the bonus effect of catching both -name and --name
+custom_runName = params.name
+if( !(workflow.runName ==~ /[a-z]+_[a-z]+/) ){
+  custom_runName = workflow.runName
+}
+
 
 /*
  * SET UP CONFIGURATION VARIABLES
@@ -203,13 +220,12 @@ if (!params.bam) {
 sra_ch.concat(samples_ch, csv_singles_ch, read_pairs_ch,
  read_singles_ch, fastas_ch, read_paths_ch)
  .ifEmpty{ exit 1, "No reads provided! Check read input files"}
- .set{ reads_ch }
+ .into{ reads_ch }
 }
 
 
 if (params.peptide_fasta) {
 Channel.fromPath(params.peptide_fasta, checkIfExists: true)
-     .map{ f -> tuple(f.baseName, tuple(file(f))) }
      .ifEmpty { exit 1, "Peptide fasta file not found: ${params.peptide_fasta}" }
      .set{ ch_peptide_fasta }
 }
@@ -231,12 +247,9 @@ if(workflow.profile == 'awsbatch'){
 
 // Parse the parameters
 ksizes = params.ksizes?.toString().tokenize(',')
-ksize = ksizes[0]
 molecules = params.molecules?.toString().tokenize(',')
-molecule = molecules[0]
+peptide_molecules = molecules.findAll({it.toUpperCase() != 'DNA' || it.toUpperCase() != 'RNA'})
 log2_sketch_sizes = params.log2_sketch_sizes?.toString().tokenize(',')
-log2_sketch_size = log2_sketch_sizes[0]
-
 
 // For bam files, set a folder name to save the optional barcode metadata csv
 if (!params.write_barcode_meta_csv) {
@@ -340,31 +353,28 @@ process get_software_versions {
 }
 
 process peptide_bloom_filter {
-  tag "${peptides}_${bloom_id}"
+  tag "${peptides}__${bloom_id}"
   label "low_memory"
 
   publishDir "${params.outdir}/", mode: 'copy'
 
   input:
-  set peptides from ch_peptide_fasta
+  set file(peptides) from ch_peptide_fasta
 
   // TODO only do this on protein encodings, e.g "protein", "dayhoff", "hp"
-  each molecule from molecules
-  each ksize from ksizes
+  each molecule from peptide_molecules
 
   output:
   set val(bloom_id), val(molecule), file("${peptides.simpleName}__${bloom_id}.bloomfilter") into ch_khtools_bloom_filters
 
   script:
-  peptide_ksize = 3 * ksize
-  bloom_id = "molecule-${molecule}_peptideksize-${peptide_ksize}"
+  bloom_id = "molecule-${molecule}"
   """
   khtools bloom-filter \\
     --molecule ${molecule} \\
     --save-as ${peptides.simpleName}__${bloom_id}.bloomfilter \\
     ${peptides}
   """
-
 }
 
 process extract_coding {
@@ -374,13 +384,14 @@ process extract_coding {
   publishDir "${params.outdir}/", mode: 'copy'
 
   input:
-  each bloom_id, molecule, bloom_filter from ch_khtools_bloom_filters
+  set bloom_id, molecule, bloom_filter from ch_khtools_bloom_filters.collect()
   set sample_id, file(reads) from reads_ch
 
   output:
   // TODO also extract nucleotide sequence of coding reads and do sourmash compute using only DNA on that?
-  file "${sample_id}_coding_reads.fasta"
-  file "${sample_id}_coding_scores.csv"
+  set val(sample_id), file("${sample_id}_coding_reads_peptides.fasta") into ch_coding_peptides
+  set val(sample_id), file("${sample_id}_coding_reads_nucleotides.fasta") into ch_coding_nucleotides
+  set val(sample_id), file("${sample_id}_coding_scores.csv") into ch_coding_scores
 
   script:
   """
@@ -393,6 +404,7 @@ process extract_coding {
   """
 
 }
+
 
 if (params.bam) {
   process sourmash_compute_sketch_bam {
@@ -408,15 +420,15 @@ if (params.bam) {
     maxRetries 1
 
     input:
-    ksize
-    molecule
-    log2_sketch_size
+    each ksize from ksizes
+    each molecule from molecules
+    each log2_sketch_size from log2_sketch_sizes
     file(barcodes_file) from barcodes_ch
     set sample_id, file(bam) from bam_ch
     file(rename_10x_barcodes) from rename_10x_barcodes_ch
 
     output:
-    set val(sample_id), file("*.fasta") into reads_ch
+    set val(sample_id), file("*.fasta") into cell_barcode_fasta_ch
     // https://github.com/nextflow-io/patterns/blob/master/docs/optional-output.adoc
     file("${params.write_barcode_meta_csv}") optional true
 
@@ -454,29 +466,64 @@ if (params.bam) {
   }
 }
 
-process sourmash_compute_sketch_fastx {
+
+process sourmash_compute_sketch_fastx_nucleotide {
   tag "${sample_id}_${sketch_id}"
   label "mid_memory"
-  publishDir "${params.outdir}/sketches", mode: 'copy'
-
-  // If job fails, try again with more memory
-  // memory { 8.GB * task.attempt }
-  errorStrategy 'retry'
-  maxRetries 3
+  publishDir "${params.outdir}/sketches_nucleotide", mode: 'copy'
 
   input:
   each ksize from ksizes
-  each molecule from molecules
   each log2_sketch_size from log2_sketch_sizes
-  set sample_id, file(reads) from reads_ch
+  set sample_id, file(reads) from ch_coding_nucleotides
 
   output:
-  set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches
+  set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches_nucleotide
+
+  script:
+  sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
+  ksize = ksize
+
+  if ( params.one_signature_per_record ) {
+    """
+    sourmash compute \\
+      --num-hashes \$((2**$log2_sketch_size)) \\
+      --ksizes $ksize \\
+      --dna \\
+      --output ${sample_id}_${sketch_id}.sig \\
+      $reads
+    """
+  }
+  else {
+    """
+    sourmash compute \\
+      --num-hashes \$((2**$log2_sketch_size)) \\
+      --ksizes $ksize \\
+      --dna \\
+      --output ${sample_id}_${sketch_id}.sig \\
+      --merge '$sample_id' \\
+      $reads
+    """
+  }
+}
+
+process sourmash_compute_sketch_fastx_peptide {
+  tag "${sample_id}_${sketch_id}"
+  label "mid_memory"
+  publishDir "${params.outdir}/sketches_peptide", mode: 'copy'
+
+  input:
+  each ksize from ksizes
+  each molecule from peptide_molecules
+  each log2_sketch_size from log2_sketch_sizes
+  set sample_id, file(reads) from ch_coding_peptides
+
+  output:
+  set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches_peptide
 
   script:
   sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
   molecule = molecule
-  not_dna = molecule == 'dna' ? '' : '--no-dna'
   ksize = ksize
 
   if ( params.one_signature_per_record ) {
@@ -485,7 +532,7 @@ process sourmash_compute_sketch_fastx {
       --num-hashes \$((2**$log2_sketch_size)) \\
       --ksizes $ksize \\
       --$molecule \\
-      $not_dna \\
+      --no-dna \\
       --output ${sample_id}_${sketch_id}.sig \\
       $reads
     """
@@ -496,7 +543,7 @@ process sourmash_compute_sketch_fastx {
       --num-hashes \$((2**$log2_sketch_size)) \\
       --ksizes $ksize \\
       --$molecule \\
-      $not_dna \\
+      --no-dna \\
       --output ${sample_id}_${sketch_id}.sig \\
       --merge '$sample_id' \\
       $reads
@@ -504,6 +551,8 @@ process sourmash_compute_sketch_fastx {
   }
 }
 
+// Combine peptide and nucleotide sketches
+sourmash_sketches = sourmash_sketches_peptide.concat(sourmash_sketches_nucleotide)
 
 process sourmash_compare_sketches {
   tag "${sketch_id}"
