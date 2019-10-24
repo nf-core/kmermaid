@@ -1,7 +1,7 @@
 def helpMessage() {
     log.info """
     =========================================
-     czbiohub/nf-kmer-similarity v${workflow.manifest.version}
+     nf-core/kmermaid v${workflow.manifest.version}
     =========================================
 
     Usage:
@@ -10,27 +10,27 @@ def helpMessage() {
 
     With a samples.csv file containing the columns sample_id,read1,read2:
 
-      nextflow run czbiohub/nf-kmer-similarity \
+      nextflow run nf-core/kmermaid \
         --outdir s3://olgabot-maca/nf-kmer-similarity/ --samples samples.csv
 
 
     With read pairs in one or more semicolon-separated s3 directories:
 
-      nextflow run czbiohub/nf-kmer-similarity \
+      nextflow run nf-core/kmermaid \
         --outdir s3://olgabot-maca/nf-kmer-similarity/ \
         --read_pairs s3://olgabot-maca/sra/homo_sapiens/smartseq2_quartzseq/*{R1,R2}*.fastq.gz;s3://olgabot-maca/sra/danio_rerio/smart-seq/whole_kidney_marrow_prjna393431/*{R1,R2}*.fastq.gz
 
 
     With plain ole fastas in one or more semicolon-separated s3 directories:
 
-      nextflow run czbiohub/nf-kmer-similarity \
+      nextflow run nf-core/kmermaid \
         --outdir s3://olgabot-maca/nf-kmer-similarity/choanoflagellates_richter2018/ \
         --fastas /home/olga/data/figshare/choanoflagellates_richter2018/1_choanoflagellate_transcriptomes/*.fasta
 
 
     With SRA ids (requires nextflow v19.03-edge or greater):
 
-      nextflow run czbiohub/nf-kmer-similarity \
+      nextflow run nf-core/kmermaid \
         --outdir s3://olgabot-maca/nf-kmer-similarity/ --sra SRP016501
 
 
@@ -81,7 +81,7 @@ def helpMessage() {
 
     Trimming options:
       --minlength                   Minimum length of reads after trimming, default 100
-      --no_trimming                 Don't trim reads on quality
+      --skipTrimming                 Don't trim reads on quality
 
     Other Options:
       --email                       Set this parameter to your e-mail address to get a summary e-mail with details of the run sent to you when the workflow exits
@@ -97,20 +97,6 @@ if (params.help){
     helpMessage()
     exit 0
 }
-
-// Configurable variables
-params.name = false
-params.fastas = false
-params.sra = false
-params.samples = false
-params.read_pairs = false
-params.one_signature_per_record = false
-params.multiqc_config = "$baseDir/conf/multiqc_config.yaml"
-params.email = false
-params.plaintext_email = false
-params.minlength = 100
-params.outdir = "nextflow-output"
-params.no_trimming = false
 
 multiqc_config = file(params.multiqc_config)
 output_docs = file("$baseDir/docs/output.md")
@@ -234,7 +220,7 @@ if (!params.bam) {
 sra_ch.concat(samples_ch, csv_singles_ch, read_pairs_ch,
  read_singles_ch, fastas_ch, read_paths_ch)
  .ifEmpty{ exit 1, "No reads provided! Check read input files"}
- .into{ read_files_fastqc; read_files_trimming }
+ .into{ read_files_fastqc; ch_reads_untrimmed }
 }
 
 
@@ -245,11 +231,11 @@ if( !(workflow.runName ==~ /[a-z]+_[a-z]+/) ){
   custom_runName = workflow.runName
 }
 
-// If user doesn't want trimming, set read_files_trimmed as empty
-// And use read_files_untrimmed directly
-(read_files_trimmed, read_files_untrimmed) = ( params.no_trimming
-                 ? [Channel.empty(), read_files_trimming]
-                 : [read_files_trimming, Channel.empty()] )
+// // If user doesn't want trimming, set read_files_trimmed as empty
+// // And use read_files_untrimmed directly
+// (read_files_trimmed, read_files_untrimmed) = ( params.no_trimming
+//                  ? [Channel.empty(), ch_reads_untrimmed]
+//                  : [ch_reads_untrimmed, Channel.empty()] )
 
 // AWSBatch sanity checking
 if(workflow.profile == 'awsbatch'){
@@ -260,11 +246,8 @@ if(workflow.profile == 'awsbatch'){
 
 // Parse the parameters
 ksizes = params.ksizes?.toString().tokenize(',')
-ksize = ksizes[0]
 molecules = params.molecules?.toString().tokenize(',')
-molecule = molecules[0]
 log2_sketch_sizes = params.log2_sketch_sizes?.toString().tokenize(',')
-log2_sketch_size = log2_sketch_sizes[0]
 
 
 // For bam files, set a folder name to save the optional barcode metadata csv
@@ -283,7 +266,7 @@ log.info """==================================================================
      |_,_|   |_|_|_|___|_|    |___|_|_|_|_|_|_|__,|_| |_|_| |_  |
                                                             |___|
 
-czbiohub/nf-kmer-similarity v${workflow.manifest.version}"
+nf-core/kmermaid v${workflow.manifest.version}"
 =================================================================="""
 def summary = [:]
 
@@ -400,7 +383,7 @@ process fastqc {
 }
 
 
-if (!params.no_trimming) {
+if (!params.skipTrimming) {
   /*
    * STEP 2 - trim reads - Fastp
    */
@@ -410,27 +393,33 @@ if (!params.no_trimming) {
           saveAs: {filename -> filename.indexOf(".zip") > 0 ? "zips/$filename" : "$filename"}
 
       input:
-      set val(name), file(reads) from read_files_untrimmed
+      set val(name), file(reads) from ch_reads_untrimmed
 
       output:
       file "*_fastp.{zip,html}" into fastp_results
-      set val(name), file("*[12]_fastp_trimmed.fastq.gz") into reads_trimmed
+      set val(name), file("*[12]_fastp_trimmed.fastq.gz") into ch_reads_trimmed
 
       script:
       read1 = reads[0]
       read2 = reads[1]
       """
-      fastp --in1 $read1 --in2 $read2 \
-        --length_required ${params.minlength} \
-        --thread ${task.cpus} \
-        --overrepresentation_analysis \
-        --out1 ${name}_R1_fastp_trimmed.fastq.gz \
-        --out2 ${name}_R2_fastp_trimmed.fastq.gz \
-        -h ${name}_fastp.html \
-        -j ${name}_fastp.json
+      fastp --in1 $read1 --in2 $read2 \\
+        --length_required ${params.min_length} \\
+        --thread ${task.cpus} \\
+        --trim_poly_x \\
+        --overrepresentation_analysis \\
+        --out1 ${name}_R1_fastp_trimmed.fastq.gz \\
+        --out2 ${name}_R2_fastp_trimmed.fastq.gz \\
+        --html ${name}_fastp.html \\
+        --json ${name}_fastp.json
       """
   }
+} else {
+   ch_reads_untrimmed
+       .set { ch_reads_trimmed }
+   fastp_results = Channel.empty()
 }
+
 
 if (params.bam) {
   process sourmash_compute_sketch_bam {
@@ -446,9 +435,9 @@ if (params.bam) {
     maxRetries 1
 
     input:
-    ksize
-    molecule
-    log2_sketch_size
+    each ksize from ksizes
+    each molecule from molecules
+    each log2_sketch_size from log2_sketch_sizes
     file(barcodes_file) from barcodes_ch
     set sample_id, file(bam) from bam_ch
     file(rename_10x_barcodes) from rename_10x_barcodes_ch
@@ -504,7 +493,8 @@ if (params.bam) {
   	input:
   	each ksize from ksizes
   	each molecule from molecules
-  	set sample_id, file(reads) from read_files_trimmed.collect()
+    each log2_sketch_size from log2_sketch_sizes
+  	set sample_id, file(reads) from ch_reads_trimmed.collect()
 
     output:
     set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches
