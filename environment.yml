@@ -19,5 +19,9 @@ dependencies:
   - pip
   - fastp=0.20.0
   - fastqc
+  - pathos=0.2.4
+  - pysam=0.15.3
+  - multiqc
   - pip:
-    - git+https://github.com/czbiohub/khtools.git@olgabot/partition-coding-reads
+    - git+https://github.com/czbiohub/kh-tools.git@olgabot/partition-coding-reads#egg=khtools
+    - git+https://github.com/czbiohub/sourmash.git@master#egg=sourmash
