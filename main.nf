@@ -78,7 +78,7 @@ def helpMessage() {
       --barcodes_file               For bam files, Optional absolute path to a .tsv barcodes file if the input is unfiltered 10x bam file
       --rename_10x_barcodes         For bam files, Optional absolute path to a .tsv Tab-separated file mapping 10x barcode name
                                     to new name, e.g. with channel or cell annotation label
-                                    
+
     Trimming options:
       --minlength                   Minimum length of reads after trimming, default 100
       --no_trimming                 Don't trim reads on quality
@@ -230,7 +230,7 @@ if (params.read_paths) {
   }
 }
 
-if (!params.bam) { 
+if (!params.bam) {
 sra_ch.concat(samples_ch, csv_singles_ch, read_pairs_ch,
  read_singles_ch, fastas_ch, read_paths_ch)
  .ifEmpty{ exit 1, "No reads provided! Check read input files"}
@@ -381,6 +381,61 @@ process get_software_versions {
     """
 }
 
+
+
+/*
+ * STEP 1 - FastQC
+ */
+process fastqc {
+    tag "$name"
+    publishDir "${params.outdir}/fastqc", mode: 'copy',
+        saveAs: {filename -> filename.indexOf(".zip") > 0 ? "zips/$filename" : "$filename"}
+
+    input:
+    set val(name), file(reads) from read_files_fastqc
+
+    output:
+    file "*_fastqc.{zip,html}" into fastqc_results
+
+    script:
+    """
+    fastqc -q $reads
+    """
+}
+
+
+if (!params.no_trimming) {
+  /*
+   * STEP 2 - trim reads - Fastp
+   */
+  process fastp {
+      tag "$name"
+      publishDir "${params.outdir}/fastp", mode: 'copy',
+          saveAs: {filename -> filename.indexOf(".zip") > 0 ? "zips/$filename" : "$filename"}
+
+      input:
+      set val(name), file(reads) from read_files_untrimmed
+
+      output:
+      file "*_fastp.{zip,html}" into fastp_results
+      set val(name), file("*[12]_fastp_trimmed.fastq.gz") into reads_trimmed
+
+      script:
+      read1 = reads[0]
+      read2 = reads[1]
+      """
+      fastp --in1 $read1 --in2 $read2 \
+        --length_required ${params.minlength} \
+        --thread ${task.cpus} \
+        --overrepresentation_analysis \
+        --out1 ${name}_R1_fastp_trimmed.fastq.gz \
+        --out2 ${name}_R2_fastp_trimmed.fastq.gz \
+        -h ${name}_fastp.html \
+        -j ${name}_fastp.json
+      """
+  }
+}
+
 if (params.bam) {
   process sourmash_compute_sketch_bam {
     tag "${sample_id}_${sketch_id}"
@@ -439,112 +494,54 @@ if (params.bam) {
       find . -type f -name "*.fasta" | while read src; do if [[ \$src == *"|"* ]]; then mv "\$src" \$(echo "\$src" | tr "|" "_"); fi done
     """
   }
-}
+} else {
+  process sourmash_compute_sketch_fastx {
+    tag "${sample_id}_${sketch_id}"
+    label "mid_memory"
+    publishDir "${params.outdir}/sourmash/sketches", mode: 'copy'
 
-process sourmash_compute_sketch_fastx {
-  tag "${sample_id}_${sketch_id}"
-  label "mid_memory"
-  publishDir "${params.outdir}/sketches", mode: 'copy'
+  	// If job fails, try again with more memory
+  	// memory { 8.GB * task.attempt }
+  	errorStrategy 'retry'
+    maxRetries 3
 
-/*
- * STEP 1 - FastQC
- */
-process fastqc {
-    tag "$name"
-    publishDir "${params.outdir}/fastqc", mode: 'copy',
-        saveAs: {filename -> filename.indexOf(".zip") > 0 ? "zips/$filename" : "$filename"}
-
-    input:
-    set val(name), file(reads) from read_files_fastqc
+  	input:
+  	each ksize from ksizes
+  	each molecule from molecules
+  	set sample_id, file(reads) from read_files_untrimmed.mix(read_files_trimmed.collect())
 
     output:
-    file "*_fastqc.{zip,html}" into fastqc_results
+    set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches
 
     script:
-    """
-    fastqc -q $reads
-    """
-}
+    sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
+    molecule = molecule
+    not_dna = molecule == 'dna' ? '' : '--no-dna'
+    ksize = ksize
 
-
-if (!params.no_trimming) {
-  /*
-   * STEP 2 - trim reads - Fastp
-   */
-  process fastp {
-      tag "$name"
-      publishDir "${params.outdir}/fastp", mode: 'copy',
-          saveAs: {filename -> filename.indexOf(".zip") > 0 ? "zips/$filename" : "$filename"}
-
-      input:
-      set val(name), file(reads) from read_files_untrimmed
-
-      output:
-      file "*_fastp.{zip,html}" into fastp_results
-      set val(name), file("*[12]_fastp_trimmed.fastq.gz") into reads_trimmed
-
-      script:
-      read1 = reads[0]
-      read2 = reads[1]
+    if ( params.one_signature_per_record ) {
       """
-      fastp --in1 $read1 --in2 $read2 \
-        --length_required ${params.minlength} \
-        --thread ${task.cpus} \
-        --overrepresentation_analysis \
-        --out1 ${name}_R1_fastp_trimmed.fastq.gz \
-        --out2 ${name}_R2_fastp_trimmed.fastq.gz \
-        -h ${name}_fastp.html \
-        -j ${name}_fastp.json
+      sourmash compute \\
+        --num-hashes \$((2**$log2_sketch_size)) \\
+        --ksizes $ksize \\
+        --$molecule \\
+        $not_dna \\
+        --output ${sample_id}_${sketch_id}.sig \\
+        $reads
       """
-  }
-}
-
-
-process sourmash_compute_sketch {
-	tag "${sample_id}_${sketch_id}"
-	publishDir "${params.outdir}/sketches", mode: 'copy'
-
-	// If job fails, try again with more memory
-	// memory { 8.GB * task.attempt }
-	errorStrategy 'retry'
-  maxRetries 3
-
-	input:
-	each ksize from ksizes
-	each molecule from molecules
-	set sample_id, file(reads) from read_files_untrimmed.mix(read_files_trimmed.collect())
-
-  output:
-  set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches
-
-  script:
-  sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
-  molecule = molecule
-  not_dna = molecule == 'dna' ? '' : '--no-dna'
-  ksize = ksize
-
-  if ( params.one_signature_per_record ) {
-    """
-    sourmash compute \\
-      --num-hashes \$((2**$log2_sketch_size)) \\
-      --ksizes $ksize \\
-      --$molecule \\
-      $not_dna \\
-      --output ${sample_id}_${sketch_id}.sig \\
-      $reads
-    """
-  }
-  else {
-    """
-    sourmash compute \\
-      --num-hashes \$((2**$log2_sketch_size)) \\
-      --ksizes $ksize \\
-      --$molecule \\
-      $not_dna \\
-      --output ${sample_id}_${sketch_id}.sig \\
-      --merge '$sample_id' \\
-      $reads
-    """
+    }
+    else {
+      """
+      sourmash compute \\
+        --num-hashes \$((2**$log2_sketch_size)) \\
+        --ksizes $ksize \\
+        --$molecule \\
+        $not_dna \\
+        --output ${sample_id}_${sketch_id}.sig \\
+        --merge '$sample_id' \\
+        $reads
+      """
+    }
   }
 }
 
