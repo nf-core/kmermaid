@@ -80,7 +80,8 @@ def helpMessage() {
       --line_count                  Number of lines to contain in each sharded bam file
       --barcodes_file               For bam files, Optional absolute path to a .tsv barcodes file if the input is unfiltered 10x bam file
       --rename_10x_barcodes         For bam files, Optional absolute path to a .tsv Tab-separated file mapping 10x barcode name
-                                    to new name, e.g. with channel or cell annotation label
+                                    to new name, e.g. with channel or cell annotation
+      --ch_peptide_fasta            Path to a well-curated fasta file of protein sequences. Used to filter for coding reads
     """.stripIndent()
 }
 
@@ -198,11 +199,19 @@ if (params.read_paths) {
   }
 }
 
-if (!params.bam) { 
+if (!params.bam) {
 sra_ch.concat(samples_ch, csv_singles_ch, read_pairs_ch,
  read_singles_ch, fastas_ch, read_paths_ch)
  .ifEmpty{ exit 1, "No reads provided! Check read input files"}
  .set{ reads_ch }
+}
+
+
+if (params.peptide_fasta) {
+Channel.fromPath(params.peptide_fasta, checkIfExists: true)
+     .map{ f -> tuple(f.baseName, tuple(file(f))) }
+     .ifEmpty { exit 1, "Peptide fasta file not found: ${params.peptide_fasta}" }
+     .set{ ch_peptide_fasta }
 }
 
 
@@ -328,6 +337,60 @@ process get_software_versions {
     sourmash info &> v_sourmash.txt
     scrape_software_versions.py &> software_versions_mqc.yaml
     """
+}
+
+process peptide_bloom_filter {
+  tag "${peptides}_${bloom_id}"
+  label "low_memory"
+
+  publishDir "${params.outdir}/", mode: 'copy'
+
+  input:
+  set peptides from ch_peptide_fasta
+
+  // TODO only do this on protein encodings, e.g "protein", "dayhoff", "hp"
+  each molecule from molecules
+  each ksize from ksizes
+
+  output:
+  set val(bloom_id), val(molecule), file("${peptides.simpleName}__${bloom_id}.bloomfilter") into ch_khtools_bloom_filters
+
+  script:
+  peptide_ksize = 3 * ksize
+  bloom_id = "molecule-${molecule}_peptideksize-${peptide_ksize}"
+  """
+  khtools bloom-filter \\
+    --molecule ${molecule} \\
+    --save-as ${peptides.simpleName}__${bloom_id}.bloomfilter \\
+    ${peptides}
+  """
+
+}
+
+process extract_coding {
+  tag "${sample_id}"
+  label "low_memory"
+
+  publishDir "${params.outdir}/", mode: 'copy'
+
+  input:
+  each bloom_id, molecule, bloom_filter from ch_khtools_bloom_filters
+  set sample_id, file(reads) from reads_ch
+
+  output:
+  file "${sample_id}_coding_reads.fasta"
+  file "${sample_id}_coding_scores.csv"
+
+  script:
+  """
+  khtools partition \\
+    --molecule ${molecule} \\
+    --csv ${sample_id}_coding_scores.csv \\
+    --peptides-are-bloom-filter \\
+    ${bloom_filter} \\
+    ${reads}
+  """
+
 }
 
 if (params.bam) {
