@@ -378,6 +378,7 @@ process extract_coding {
   set sample_id, file(reads) from reads_ch
 
   output:
+  // TODO also extract nucleotide sequence of coding reads and do sourmash compute using only DNA on that?
   file "${sample_id}_coding_reads.fasta"
   file "${sample_id}_coding_scores.csv"
 
