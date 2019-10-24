@@ -13,7 +13,6 @@
 * Update Dockerfile with sourmash compute bam input dependencies
 * Add "fastp" to container requirements
 * Update Dockerfile with sourmash compute bam input dependencies
-* Update Dockerfile with [czbiohub/khtools](https://github.com/czbiohub/kh-tools/) repo
 
 ## v1.0 - 6 March 2019
 
