@@ -1,6 +1,6 @@
-# nf-core/nf-kmer-similarity: Documentation
+# nf-core/kmermaid: Documentation
 
-The nf-core/nf-kmer-similarity documentation is split into the following files:
+The nf-core/kmermaid documentation is split into the following files:
 
 1. [Installation](installation.md)
 2. [Running the pipeline](usage.md)

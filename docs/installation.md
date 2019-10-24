@@ -1,6 +1,6 @@
-# nf-core/nf-kmer-similarity: Installation
+# nf-core/kmermaid: Installation
 
-To start using the nf-core/nf-kmer-similarity pipeline, follow the steps below:
+To start using the nf-core/kmermaid pipeline, follow the steps below:
 
 1. [Install Nextflow](#1-install-nextflow)
 2. [Install the pipeline](#2-install-the-pipeline)
@@ -35,17 +35,17 @@ See [nextflow.io](https://www.nextflow.io/) for further instructions on how to i
 ## 2) Install the pipeline
 
 #### 2.1) Automatic
-This pipeline itself needs no installation - NextFlow will automatically fetch it from GitHub if `nf-core/nf-kmer-similarity` is specified as the pipeline name.
+This pipeline itself needs no installation - NextFlow will automatically fetch it from GitHub if `nf-core/kmermaid` is specified as the pipeline name.
 
 #### 2.2) Offline
 The above method requires an internet connection so that Nextflow can download the pipeline files. If you're running on a system that has no internet connection, you'll need to download and transfer the pipeline files manually:
 
 ```bash
-wget https://github.com/nf-core/nf-kmer-similarity/archive/master.zip
+wget https://github.com/nf-core/kmermaid/archive/master.zip
 mkdir -p ~/my-pipelines/nf-core/
 unzip master.zip -d ~/my-pipelines/nf-core/
 cd ~/my_data/
-nextflow run ~/my-pipelines/nf-core/nf-kmer-similarity-master
+nextflow run ~/my-pipelines/nf-core/kmermaid-master
 ```
 
 To stop nextflow from looking for updates online, you can tell it to run in offline mode by specifying the following environment variable in your ~/.bashrc file:
@@ -81,7 +81,7 @@ The process is very similar: running the pipeline with the option `-profile stan
 If running offline with Singularity, you'll need to download and transfer the Singularity image first:
 
 ```bash
-singularity pull --name nf-core-nf-kmer-similarity.simg shub://nf-core/nf-kmer-similarity
+singularity pull --name nf-core-nf-kmer-similarity.simg shub://nf-core/kmermaid
 ```
 
 Once transferred, use `-with-singularity` and specify the path to the image file:

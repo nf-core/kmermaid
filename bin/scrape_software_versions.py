@@ -4,12 +4,12 @@ from collections import OrderedDict
 import re
 
 regexes = {
-    'nf-core/nf-kmer-similarity': ['v_pipeline.txt', r"(\S+)"],
+    'nf-core/kmermaid': ['v_pipeline.txt', r"(\S+)"],
     'Nextflow': ['v_nextflow.txt', r"(\S+)"],
     'Sourmash': ['v_sourmash.txt', r"sourmash version (\S+)"],
 }
 results = OrderedDict()
-results['nf-core/nf-kmer-similarity'] = '<span style="color:#999999;\">N/A</span>'
+results['nf-core/kmermaid'] = '<span style="color:#999999;\">N/A</span>'
 results['Nextflow'] = '<span style="color:#999999;\">N/A</span>'
 results['Sourmash'] = '<span style="color:#999999;\">N/A</span>'
 
@@ -23,8 +23,8 @@ for k, v in regexes.items():
 
 # Dump to YAML
 print ('''
-id: 'nf-core/nf-kmer-similarity-software-versions'
-section_name: 'nf-core/nf-kmer-similarity Software Versions'
+id: 'nf-core/kmermaid-software-versions'
+section_name: 'nf-core/kmermaid Software Versions'
 section_href: 'https://github.com/czbiohub/nf-kmer-similarity'
 plot_type: 'html'
 description: 'are collected at run time from the software output.'
