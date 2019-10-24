@@ -234,9 +234,8 @@ if (!params.bam) {
 sra_ch.concat(samples_ch, csv_singles_ch, read_pairs_ch,
  read_singles_ch, fastas_ch, read_paths_ch)
  .ifEmpty{ exit 1, "No reads provided! Check read input files"}
- .set{ reads_ch }
+ .into{ read_files_fastqc; read_files_trimming }
 }
-
 
 
 // Has the run name been specified by the user?
@@ -245,9 +244,6 @@ custom_runName = params.name
 if( !(workflow.runName ==~ /[a-z]+_[a-z]+/) ){
   custom_runName = workflow.runName
 }
-
- sra_ch.concat(samples_ch, read_pairs_ch, fastas_ch)
-  .into{ read_files_fastqc; read_files_trimming }
 
 // If user doesn't want trimming, set read_files_trimmed as empty
 // And use read_files_untrimmed directly
@@ -508,7 +504,7 @@ if (params.bam) {
   	input:
   	each ksize from ksizes
   	each molecule from molecules
-  	set sample_id, file(reads) from read_files_untrimmed.mix(read_files_trimmed.collect())
+  	set sample_id, file(reads) from read_files_trimmed.collect()
 
     output:
     set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches
