@@ -17,9 +17,6 @@ dependencies:
   - alabaster
   - conda-forge::gxx_linux-64
   - pip
-  - fastqc
-  - pip:
-    - git+https://github.com/czbiohub/khtools.git@olgabot/partition-coding-reads
   - fastp=0.20.0
   - fastqc
   - pathos=0.2.4
