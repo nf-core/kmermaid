@@ -386,7 +386,7 @@ if (params.bam) {
 
 process sourmash_compute_sketch_fastx {
   tag "${sample_id}_${sketch_id}"
-  label "mid_memory"
+  label "low_memory"
   publishDir "${params.outdir}/sketches", mode: 'copy'
 
   // If job fails, try again with more memory
