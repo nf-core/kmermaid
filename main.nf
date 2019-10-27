@@ -64,9 +64,6 @@ def helpMessage() {
                                     Useful for comparing e.g. assembled transcriptomes or metagenomes.
                                     (Not typically used for raw sequencing data as this would create
                                     a k-mer signature for each read!)
-      --splitKmer                   If provided, use SKA to compute split k-mer sketches instead of
-                                    sourmash to compute k-mer sketches
-      --subsample                   Integer value to subsample reads from input fastq files
     """.stripIndent()
 }
 
@@ -159,18 +156,10 @@ if (params.read_paths) {
 
 
 
-if (params.subsample) {
- sra_ch.concat(samples_ch, csv_singles_ch, read_pairs_ch,
-   read_singles_ch, fastas_ch, read_paths_ch)
-   .ifEmpty{ exit 1, "No reads provided! Check read input files"}
-   .set{ subsample_reads_ch }
-} else {
  sra_ch.concat(samples_ch, csv_singles_ch, read_pairs_ch,
    read_singles_ch, fastas_ch, read_paths_ch)
    .ifEmpty{ exit 1, "No reads provided! Check read input files"}
    .set{ reads_ch }
-}
-
 
 
 // Has the run name been specified by the user?
@@ -186,23 +175,15 @@ if(workflow.profile == 'awsbatch'){
     if (!workflow.workDir.startsWith('s3') || !params.outdir.startsWith('s3')) exit 1, "Specify S3 URLs for workDir and outdir parameters on AWSBatch!"
 }
 
-if (params.splitKmer){
-    params.ksizes = '15,9'
-    params.molecules = 'dna'
-} else {
-    params.ksizes = '21,27,33,51'
-}
 
+params.ksizes = '21,27,33,51'
+params.molecules =  'dna,protein,dayhoff'
+params.log2_sketch_sizes = '10,12,14,16'
 
 // Parse the parameters
-
 ksizes = params.ksizes?.toString().tokenize(',')
 molecules = params.molecules?.toString().tokenize(',')
 log2_sketch_sizes = params.log2_sketch_sizes?.toString().tokenize(',')
-
-if (params.splitKmer && 'protein' in molecules){
-  exit 1, "Cannot specify 'protein' in `--molecules` if --splitKmer is set"
-}
 
 
 // Header log info
@@ -290,156 +271,76 @@ process get_software_versions {
     """
 }
 
-if (params.subsample) {
-    process subsample_input {
-	tag "${id}_subsample"
-	publishDir "${params.outdir}/seqtk/", mode: 'copy'
+
+process sourmash_compute_sketch {
+	tag "${sample_id}_${sketch_id}"
+	publishDir "${params.outdir}/sketches", mode: 'copy'
+  label 'low_memory'
 
 	input:
-	set id, file(reads) from subsample_reads_ch
+	each ksize from ksizes
+	each molecule from molecules
+	each log2_sketch_size from log2_sketch_sizes
+	set sample_id, file(reads) from reads_ch
 
 	output:
-
-	set val(id), file("*_${params.subsample}.fastq.gz") into reads_ch
+  set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches
 
 	script:
-	read1 = reads[0]
-	read2 = reads[1]
-	read1_prefix = read1.name.minus(".fastq.gz") // TODO: change to RE to match fasta as well?
-	read2_prefix = read2.name.minus(".fastq.gz")
-
+  sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
+  molecule = molecule
+  // Don't calculate DNA signature if this is protein, to minimize disk,
+  // memory and IO requirements in the future
+  not_dna = molecule != 'dna' ? '--no-dna' : ''
+  ksize = ksize
+  if ( params.one_signature_per_record ){
     """
-    seqtk sample -s100 ${read1} ${params.subsample} > ${read1_prefix}_${params.subsample}.fastq.gz
-    seqtk sample -s100 ${read2} ${params.subsample} > ${read2_prefix}_${params.subsample}.fastq.gz
-
+    sourmash compute \\
+      --num-hashes \$((2**$log2_sketch_size)) \\
+      --ksizes $ksize \\
+      --$molecule \\
+      $not_dna \\
+      --output ${sample_id}_${sketch_id}.sig \\
+      $reads
     """
-    }
+  } else {
+    """
+    sourmash compute \\
+      --num-hashes \$((2**$log2_sketch_size)) \\
+      --ksizes $ksize \\
+      --$molecule \\
+      $not_dna \\
+      --output ${sample_id}_${sketch_id}.sig \\
+      --merge '$sample_id' $reads
+    """
+  }
+
 }
 
-if (params.splitKmer){
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-/* --                                                                     -- */
-/* --                     CREATE SKA SKETCH                               -- */
-/* --                                                                     -- */
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
+// sourmash_sketches.println()
+// sourmash_sketches.groupTuple(by: [0,3]).println()
 
-  process ska_compute_sketch {
-      tag "${sketch_id}"
-      publishDir "${params.outdir}/ska/sketches/", mode: 'copy'
-      errorStrategy 'retry'
-      maxRetries 3
+process sourmash_compare_sketches {
+	tag "${sketch_id}"
+	publishDir "${params.outdir}/", mode: 'copy'
+  label 'mid_memory'
 
+	input:
+  set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file ("sketches/*.sig") \
+    from sourmash_sketches.groupTuple(by: [0, 3])
 
-  	input:
-  	each ksize from ksizes
-  	set id, file(reads) from reads_ch
+	output:
+	file "similarities_${sketch_id}.csv"
 
-  	output:
-  	set val(ksize), file("${sketch_id}.skf") into ska_sketches
+	script:
+	"""
+	sourmash compare \\
+        --ksize ${ksize[0]} \\
+        --${molecule[0]} \\
+        --csv similarities_${sketch_id}.csv \\
+        --traverse-directory .
+	"""
 
-  	script:
-  	sketch_id = "${id}_ksize_${ksize}"
-
-      """
-      ska fastq \\
-        -k $ksize \\
-        -o ${sketch_id} \\
-        ${reads}
-      """
-
-    }
-} else {
-  process sourmash_compute_sketch {
-  	tag "${sample_id}_${sketch_id}"
-  	publishDir "${params.outdir}/sourmash/sketches/", mode: 'copy'
-
-  	errorStrategy 'retry'
-    maxRetries 3
-
-  	input:
-  	each ksize from ksizes
-  	each molecule from molecules
-  	each log2_sketch_size from log2_sketch_sizes
-  	set sample_id, file(reads) from reads_ch
-
-  	output:
-    set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches
-
-  	script:
-    sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
-    molecule = molecule
-    not_dna = molecule == 'dna' ? '' : '--no-dna'
-    ksize = ksize
-    if ( params.one_signature_per_record ){
-      """
-      sourmash compute \\
-        --num-hashes \$((2**$log2_sketch_size)) \\
-        --ksizes $ksize \\
-        --$molecule \\
-        $not_dna \\
-        --output ${sample_id}_${sketch_id}.sig \\
-        $reads
-      """
-    } else {
-      """
-      sourmash compute \\
-        --num-hashes \$((2**$log2_sketch_size)) \\
-        --ksizes $ksize \\
-        --$molecule \\
-        $not_dna \\
-        --output ${sample_id}_${sketch_id}.sig \\
-        --merge '$sample_id' $reads
-      """
-    }
-
-  }
-}
-
-
-if (params.splitKmer){
-     process ska_compare_sketches {
-  	tag "${sketch_id}"
-  	publishDir "${params.outdir}/ska/compare/", mode: 'copy'
-
-  	input:
- 	  set val(ksize), file (sketches) from ska_sketches.groupTuple()
-
-  	output:
-	   // uploaded distances, clusters, and graph connecting (dot) file
-  	file "ksize_${ksize}*"
-
-  	script:
-  	"""
-    ska distance -o ksize_${ksize} -s 25 -i 0.95 ${sketches}
-  	"""
-
-
-  }
-
-} else {
-  process sourmash_compare_sketches {
-  	tag "${sketch_id}"
-  	publishDir "${params.outdir}/sourmash/compare", mode: 'copy'
-
-  	input:
-    set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file ("sketches/*.sig") \
-      from sourmash_sketches.groupTuple(by: [0, 3])
-
-  	output:
-  	file "similarities_${sketch_id}.csv"
-
-  	script:
-  	"""
-  	sourmash compare \\
-          --ksize ${ksize[0]} \\
-          --${molecule[0]} \\
-          --csv similarities_${sketch_id}.csv \\
-          --traverse-directory .
-  	"""
-
-  }
 }
 
 
@@ -471,7 +372,7 @@ workflow.onComplete {
     email_fields['summary']['Pipeline script hash ID'] = workflow.scriptId
     if(workflow.repository) email_fields['summary']['Pipeline repository Git URL'] = workflow.repository
     if(workflow.commitId) email_fields['summary']['Pipeline repository Git Commit'] = workflow.commitId
-    if(workflow.revision) email_fields['summary']['Pipeline Git branch/tag'] = workflow.revision //
+    if(workflow.revision) email_fields['summary']['Pipeline Git branch/tag'] = workflow.revision
     if(workflow.container) email_fields['summary']['Docker image'] = workflow.container
     email_fields['summary']['Nextflow Version'] = workflow.nextflow.version
     email_fields['summary']['Nextflow Build'] = workflow.nextflow.build
