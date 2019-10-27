@@ -198,7 +198,7 @@ if (params.read_paths) {
   }
 }
 
-if (!params.bam) { 
+if (!params.bam) {
 sra_ch.concat(samples_ch, csv_singles_ch, read_pairs_ch,
  read_singles_ch, fastas_ch, read_paths_ch)
  .ifEmpty{ exit 1, "No reads provided! Check read input files"}
@@ -331,17 +331,11 @@ process get_software_versions {
 }
 
 if (params.bam) {
-  process sourmash_compute_sketch_bam {
+  process extract_cell_fasta_from_bam {
     tag "${sample_id}_${sketch_id}"
     label "high_memory"
     publishDir "${params.outdir}/${params.save_fastas}", pattern: '*.fasta', saveAs: { filename -> "${params.outdir}/${params.save_fastas}/${filename.replace("|", "-")}"}
     publishDir "${params.outdir}/${barcode_metadata_folder}", pattern: '*.csv', mode: 'copy'
-
-
-    // If job fails, try again with more memory
-    // memory { 8.GB * task.attempt }
-    errorStrategy 'retry'
-    maxRetries 1
 
     input:
     ksize
