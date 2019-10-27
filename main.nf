@@ -75,7 +75,7 @@ def helpMessage() {
       --splitKmer                   If provided, use SKA to compute split k-mer sketches instead of
                                     sourmash to compute k-mer sketches
       --subsample                   Integer value to subsample reads from input fastq files
-      
+
     Bam file options:
       --write_barcode_meta_csv      For bam files, Csv file name relative to outdir/barcode_metadata to write number of reads and number of umis per barcode.
                                     This csv file is empty with just header when the min_umi_per_barcode is zero i.e
@@ -211,18 +211,19 @@ if (params.subsample) {
    .ifEmpty{ exit 1, "No reads provided! Check read input files"}
    .set{ subsample_reads_ch }
 } else {
- sra_ch.concat(samples_ch, csv_singles_ch, read_pairs_ch,
+  if (!params.bam) {
+  sra_ch.concat(samples_ch, csv_singles_ch, read_pairs_ch,
    read_singles_ch, fastas_ch, read_paths_ch)
    .ifEmpty{ exit 1, "No reads provided! Check read input files"}
    .set{ reads_ch }
+  } else {
+    sra_ch.concat(samples_ch, csv_singles_ch, read_pairs_ch,
+      read_singles_ch, fastas_ch, read_paths_ch)
+      .ifEmpty{ exit 1, "No reads provided! Check read input files"}
+      .set{ reads_ch }
+  }
 }
 
-if (!params.bam) { 
-sra_ch.concat(samples_ch, csv_singles_ch, read_pairs_ch,
- read_singles_ch, fastas_ch, read_paths_ch)
- .ifEmpty{ exit 1, "No reads provided! Check read input files"}
- .set{ reads_ch }
-}
 
 
 // Has the run name been specified by the user?
@@ -387,83 +388,6 @@ if (params.subsample) {
     }
 }
 
-if (params.splitKmer){
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-/* --                                                                     -- */
-/* --                     CREATE SKA SKETCH                               -- */
-/* --                                                                     -- */
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-
-  process ska_compute_sketch {
-      tag "${sketch_id}"
-      publishDir "${params.outdir}/ska/sketches/", mode: 'copy'
-      errorStrategy 'retry'
-      maxRetries 3
-
-
-  	input:
-  	each ksize from ksizes
-  	set id, file(reads) from reads_ch
-
-  	output:
-  	set val(ksize), file("${sketch_id}.skf") into ska_sketches
-
-  	script:
-  	sketch_id = "${id}_ksize_${ksize}"
-
-      """
-      ska fastq \\
-        -k $ksize \\
-        -o ${sketch_id} \\
-        ${reads}
-      """
-
-    }
-} else {
-  process sourmash_compute_sketch {
-  	tag "${sample_id}_${sketch_id}"
-  	publishDir "${params.outdir}/sourmash/sketches/", mode: 'copy'
-
-  	errorStrategy 'retry'
-    maxRetries 3
-
-  	input:
-  	each ksize from ksizes
-  	each molecule from molecules
-  	each log2_sketch_size from log2_sketch_sizes
-  	set sample_id, file(reads) from reads_ch
-
-  	output:
-    set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches
-
-  	script:
-    sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
-    molecule = molecule
-    not_dna = molecule == 'dna' ? '' : '--no-dna'
-    ksize = ksize
-    if ( params.one_signature_per_record ){
-      """
-      sourmash compute \\
-        --num-hashes \$((2**$log2_sketch_size)) \\
-        --ksizes $ksize \\
-        --$molecule \\
-        $not_dna \\
-        --output ${sample_id}_${sketch_id}.sig \\
-        $reads
-      """
-    } else {
-      """
-      sourmash compute \\
-        --num-hashes \$((2**$log2_sketch_size)) \\
-        --ksizes $ksize \\
-        --$molecule \\
-        $not_dna \\
-        --output ${sample_id}_${sketch_id}.sig \\
-        --merge '$sample_id' $reads
-      """
-    }
 
 if (params.bam) {
   process sourmash_compute_sketch_bam {
@@ -525,53 +449,89 @@ if (params.bam) {
   }
 }
 
-process sourmash_compute_sketch_fastx {
-  tag "${sample_id}_${sketch_id}"
-  label "mid_memory"
-  publishDir "${params.outdir}/sketches", mode: 'copy'
+if (params.splitKmer){
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+/* --                                                                     -- */
+/* --                     CREATE SKA SKETCH                               -- */
+/* --                                                                     -- */
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
-  // If job fails, try again with more memory
-  // memory { 8.GB * task.attempt }
-  errorStrategy 'retry'
-  maxRetries 3
+  process ska_compute_sketch {
+      tag "${sketch_id}"
+      publishDir "${params.outdir}/ska/sketches/", mode: 'copy'
+      errorStrategy 'retry'
+      maxRetries 3
 
-  input:
-  each ksize from ksizes
-  each molecule from molecules
-  each log2_sketch_size from log2_sketch_sizes
-  set sample_id, file(reads) from reads_ch
 
-  output:
-  set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches
+  	input:
+  	each ksize from ksizes
+  	set id, file(reads) from reads_ch
 
-  script:
-  sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
-  molecule = molecule
-  not_dna = molecule == 'dna' ? '' : '--no-dna'
-  ksize = ksize
+  	output:
+  	set val(ksize), file("${sketch_id}.skf") into ska_sketches
 
-  if ( params.one_signature_per_record ) {
-    """
-    sourmash compute \\
-      --num-hashes \$((2**$log2_sketch_size)) \\
-      --ksizes $ksize \\
-      --$molecule \\
-      $not_dna \\
-      --output ${sample_id}_${sketch_id}.sig \\
-      $reads
-    """
-  }
-  else {
-    """
-    sourmash compute \\
-      --num-hashes \$((2**$log2_sketch_size)) \\
-      --ksizes $ksize \\
-      --$molecule \\
-      $not_dna \\
-      --output ${sample_id}_${sketch_id}.sig \\
-      --merge '$sample_id' \\
-      $reads
-    """
+  	script:
+  	sketch_id = "${id}_ksize_${ksize}"
+
+      """
+      ska fastq \\
+        -k $ksize \\
+        -o ${sketch_id} \\
+        ${reads}
+      """
+
+    }
+} else {
+  process sourmash_compute_sketch_fastx {
+    tag "${sample_id}_${sketch_id}"
+    label "mid_memory"
+    publishDir "${params.outdir}/sourmash/sketches", mode: 'copy'
+
+    // If job fails, try again with more memory
+    // memory { 8.GB * task.attempt }
+    errorStrategy 'retry'
+    maxRetries 3
+
+    input:
+    each ksize from ksizes
+    each molecule from molecules
+    each log2_sketch_size from log2_sketch_sizes
+    set sample_id, file(reads) from reads_ch
+
+    output:
+    set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches
+
+    script:
+    sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
+    molecule = molecule
+    not_dna = molecule == 'dna' ? '' : '--no-dna'
+    ksize = ksize
+
+    if ( params.one_signature_per_record ) {
+      """
+      sourmash compute \\
+        --num-hashes \$((2**$log2_sketch_size)) \\
+        --ksizes $ksize \\
+        --$molecule \\
+        $not_dna \\
+        --output ${sample_id}_${sketch_id}.sig \\
+        $reads
+      """
+    }
+    else {
+      """
+      sourmash compute \\
+        --num-hashes \$((2**$log2_sketch_size)) \\
+        --ksizes $ksize \\
+        --$molecule \\
+        $not_dna \\
+        --output ${sample_id}_${sketch_id}.sig \\
+        --merge '$sample_id' \\
+        $reads
+      """
+    }
   }
 }
 
@@ -593,48 +553,21 @@ if (params.splitKmer){
     ska distance -o ksize_${ksize} -s 25 -i 0.95 ${sketches}
   	"""
 
-
-  }
-process sourmash_compare_sketches {
-  tag "${sketch_id}"
-  label "high_memory"
-
-  container "$workflow.container"
-  publishDir "${params.outdir}/", mode: 'copy'
-  errorStrategy 'retry'
-  maxRetries 3
-
-  input:
-  set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file ("sketches/*.sig") \
-    from sourmash_sketches.groupTuple(by: [0, 3])
-
-  output:
-  file "similarities_${sketch_id}.csv"
-
-  script:
-  processes = "--processes ${params.max_cpus}"
-  """
-  sourmash compare \\
-        --ksize ${ksize[0]} \\
-        --${molecule[0]} \\
-        $processes \\
-        --csv similarities_${sketch_id}.csv \\
-        --traverse-directory .
-  """
-
-} else {
+    }
+  } else {
   process sourmash_compare_sketches {
   	tag "${sketch_id}"
   	publishDir "${params.outdir}/sourmash/compare", mode: 'copy'
 
   	input:
-    set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file ("sketches/*.sig") \
+    set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file ("sourmash/sketches/*.sig") \
       from sourmash_sketches.groupTuple(by: [0, 3])
 
   	output:
   	file "similarities_${sketch_id}.csv"
 
   	script:
+    processes = "--processes ${task.cpus}"
   	"""
   	sourmash compare \\
           --ksize ${ksize[0]} \\
