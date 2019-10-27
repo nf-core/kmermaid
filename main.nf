@@ -87,7 +87,7 @@ def helpMessage() {
       -name                         Name for the pipeline run. If not specified, Nextflow will automatically generate a random mnemonic.
 
                                     to new name, e.g. with channel or cell annotation
-      --ch_peptide_fasta            Path to a well-curated fasta file of protein sequences. Used to filter for coding reads
+      --peptide_fasta            Path to a well-curated fasta file of protein sequences. Used to filter for coding reads
     """.stripIndent()
 }
 
@@ -248,8 +248,19 @@ if(workflow.profile == 'awsbatch'){
 // Parse the parameters
 ksizes = params.ksizes?.toString().tokenize(',')
 molecules = params.molecules?.toString().tokenize(',')
-peptide_molecules = molecules.findAll({it.toUpperCase() != 'DNA' || it.toUpperCase() != 'RNA'})
+peptide_molecules = molecules.findAll { it != "dna" }
 log2_sketch_sizes = params.log2_sketch_sizes?.toString().tokenize(',')
+
+println "peptide_molecules:"
+println peptide_molecules
+
+if (params.bam){
+  // Extract the fasta just once using sourmash
+  single_ksize = ksizes[0]
+  single_molecule = molecules[0]
+  single_log2_sketch_size = log2_sketch_sizes[0]
+}
+
 
 // For bam files, set a folder name to save the optional barcode metadata csv
 if (!params.write_barcode_meta_csv) {
@@ -359,7 +370,7 @@ process peptide_bloom_filter {
   publishDir "${params.outdir}/", mode: 'copy'
 
   input:
-  set file(peptides) from ch_peptide_fasta
+  file(peptides) from ch_peptide_fasta
 
   // TODO only do this on protein encodings, e.g "protein", "dayhoff", "hp"
   each molecule from peptide_molecules
@@ -420,9 +431,9 @@ if (params.bam) {
     maxRetries 1
 
     input:
-    each ksize from ksizes
-    each molecule from molecules
-    each log2_sketch_size from log2_sketch_sizes
+    val single_ksize
+    val single_molecule
+    val single_log2_sketch_size
     file(barcodes_file) from barcodes_ch
     set sample_id, file(bam) from bam_ch
     file(rename_10x_barcodes) from rename_10x_barcodes_ch
