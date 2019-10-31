@@ -303,6 +303,7 @@ The log2 sketch size specifies the number of k-mers to use for the sketch. We us
 **Example parameters**
 
 * Default: Save fastas in a directory called fastsas inside outdir:
+* Set flag to save fastas per barcode inside outdir/fastas:
   * `--save_fastas "fastas"`
 
 
@@ -314,7 +315,7 @@ This creates a CSV containing the number of reads and number of UMIs per barcode
 **Example parameters**
 
 * Default: barcode metadata is not saved 
-* Save fastas in a file cinside outdir/barcode/metadata:
+* Set flag to save metadata csv file in a file inside outdir/barcode_metadata:
   * `--write_barcode_meta_csv "barcodes_counts.csv"`
 
 
@@ -333,7 +334,7 @@ The parameter `--line_count` specifies the number of alignments/lines in each ba
 **Example parameters**
 
 * Default: line_count is 350
-* Save fastas in a directory called fastas inside outdir:
+* Set number of lines in a bam shard as 10:
   * `--line_count 400`
 
 ## Reference Genomes

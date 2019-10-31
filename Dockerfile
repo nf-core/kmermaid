@@ -9,9 +9,7 @@ org.label-schema.vcs-url="e.g. https://github.com/nf-core/kmermaid"
 
 WORKDIR /home
 
-ENV PACKAGES zlib1g git g++ make ca-certificates gcc zlib1g-dev libc6-dev procps libbz2-dev libcurl4-openssl-dev libssl-dev
-
-# Sourmash requires last 3 of the above apt packages for installation of htslib in pysam
+ENV PACKAGES zlib1g git g++ make ca-certificates gcc zlib1g-dev libc6-dev procps
 
 ### don't modify things below here for version updates etc.
 
@@ -25,10 +23,6 @@ COPY environment.yml /
 RUN conda env create -f /environment.yml && conda clean -a
 ENV PATH /opt/conda/envs/nfcore-kmermaid-0.1dev/bin:$PATH
 
-
-# Required for multiprocessing of 10x bam file - pysam, pathos modules are currently optional installations in sourmash
-# For computing signatures using sourmash - which kmermaid does, they are required, so we need to install it out of sourmash
-RUN pip install pathos==0.2.4 pysam==0.15.3
 RUN which -a pip
 RUN which -a python
 RUN cd /home && \

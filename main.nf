@@ -222,11 +222,8 @@ if(workflow.profile == 'awsbatch'){
 
 // Parse the parameters
 ksizes = params.ksizes?.toString().tokenize(',')
-ksize = ksizes[0]
 molecules = params.molecules?.toString().tokenize(',')
-molecule = molecules[0]
 log2_sketch_sizes = params.log2_sketch_sizes?.toString().tokenize(',')
-log2_sketch_size = log2_sketch_sizes[0]
 
 
 // For bam files, set a folder name to save the optional barcode metadata csv
@@ -344,9 +341,6 @@ if (params.bam) {
     maxRetries 1
 
     input:
-    ksize
-    molecule
-    log2_sketch_size
     file(barcodes_file) from barcodes_ch
     set sample_id, file(bam) from bam_ch
     file(rename_10x_barcodes) from rename_10x_barcodes_ch
@@ -357,12 +351,8 @@ if (params.bam) {
     file("${params.write_barcode_meta_csv}") optional true
 
     script:
-    sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
-    molecule = molecule
-    not_dna = molecule != 'dna' ? '--no-dna' : ''
-    ksize = ksize
 
-    min_umi_per_barcode = params.min_umi_per_barcode ? "--count-valid-reads ${params.min_umi_per_barcode}" : ''
+    min_umi_per_barcode = params.min_umi_per_barcode ? "--min-umi-per-barcode ${params.min_umi_per_barcode}" : ''
     line_count = params.line_count ? "--line-count ${params.line_count}" : ''
     metadata = params.write_barcode_meta_csv ? "--write-barcode-meta-csv ${params.write_barcode_meta_csv}": ''
     save_fastas = "--save-fastas ."
@@ -371,11 +361,7 @@ if (params.bam) {
     def barcodes_file = params.barcodes_file ? "--barcodes-file ${barcodes_file.baseName}.tsv": ''
     def rename_10x_barcodes = params.rename_10x_barcodes ? "--rename-10x-barcodes ${rename_10x_barcodes.baseName}.tsv": ''
     """
-      sourmash compute \\
-        --ksize $ksize \\
-        --$molecule \\
-        $not_dna \\
-        --num-hashes \$((2**$log2_sketch_size)) \\
+      bam2fasta convert \\
         $processes \\
         $min_umi_per_barcode \\
         $line_count \\
@@ -383,8 +369,7 @@ if (params.bam) {
         $barcodes_file \\
         $save_fastas \\
         $metadata \\
-        --output ${sample_id}_${sketch_id}.sig \\
-        --input-is-10x $bam
+        --filename $bam
       find . -type f -name "*.fasta" | while read src; do if [[ \$src == *"|"* ]]; then mv "\$src" \$(echo "\$src" | tr "|" "_"); fi done
     """
   }

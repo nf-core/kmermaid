@@ -11,6 +11,7 @@ dependencies:
   - bioconda::bioconductor-edger=3.22.5
   - conda-forge::r-markdown=0.8
   - bioconda::khmer=2.1.2
+  - bam2fasta
   - pytest
   - sphinx
   - matplotlib
