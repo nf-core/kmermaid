@@ -13,3 +13,6 @@ ENV PATH /opt/conda/envs/nfcore-kmermaid-0.1dev/bin:$PATH
 
 RUN sourmash info
 COPY docker/sysctl.conf /etc/sysctl.conf
+
+RUN khtools bloom-filter --help
+RUN khtools extract-coding --help
