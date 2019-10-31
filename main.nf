@@ -234,6 +234,15 @@ else {
   barcode_metadata_folder = "barcode_metadata"
 }
 
+// For bam files, one_signature_per_record is always true
+if (params.bam) {
+  one_signature_per_record = true
+}
+else {
+  one_signature_per_record = params.one_signature_per_record
+}
+
+
 // Header log info
 log.info nfcoreHeader()
 def summary = [:]
@@ -254,7 +263,7 @@ if(params.read_paths)   summary['Read paths (paired-end)']         = params.read
 summary['K-mer sizes']            = params.ksizes
 summary['Molecule']               = params.molecules
 summary['Log2 Sketch Sizes']      = params.log2_sketch_sizes
-summary['One Sig per Record']         = params.one_signature_per_record
+summary['One Sig per Record']     = one_signature_per_record
 // 10x parameters
 if(params.bam) summary["Bam chunk line count"] = params.line_count
 if(params.bam) summary['Count valid reads'] = params.min_umi_per_barcode
@@ -323,13 +332,14 @@ process get_software_versions {
     echo $workflow.manifest.version > v_pipeline.txt
     echo $workflow.nextflow.version > v_nextflow.txt
     sourmash info &> v_sourmash.txt
+    bam2fasta info &> v_bam2fasta.txt
     scrape_software_versions.py &> software_versions_mqc.yaml
     """
 }
 
 if (params.bam) {
-  process sourmash_compute_sketch_bam {
-    tag "${sample_id}_${sketch_id}"
+  process bam2fasta_conversion {
+    tag "10x bam to fasta"
     label "high_memory"
     publishDir "${params.outdir}/${params.save_fastas}", pattern: '*.fasta', saveAs: { filename -> "${params.outdir}/${params.save_fastas}/${filename.replace("|", "-")}"}
     publishDir "${params.outdir}/${barcode_metadata_folder}", pattern: '*.csv', mode: 'copy'
@@ -386,6 +396,7 @@ process sourmash_compute_sketch_fastx {
   maxRetries 3
 
   input:
+  one_signature_per_record
   each ksize from ksizes
   each molecule from molecules
   each log2_sketch_size from log2_sketch_sizes
@@ -400,7 +411,7 @@ process sourmash_compute_sketch_fastx {
   not_dna = molecule == 'dna' ? '' : '--no-dna'
   ksize = ksize
 
-  if ( params.one_signature_per_record ) {
+  if (one_signature_per_record) {
     """
     sourmash compute \\
       --num-hashes \$((2**$log2_sketch_size)) \\
