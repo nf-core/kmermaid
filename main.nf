@@ -234,7 +234,7 @@ else {
   barcode_metadata_folder = "barcode_metadata"
 }
 
-// For bam files, one_signature_per_record is always true
+// For bam files, one_signature_per_record is true
 if (params.bam) {
   one_signature_per_record = true
 }
