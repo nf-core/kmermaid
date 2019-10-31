@@ -78,6 +78,11 @@ def helpMessage() {
       --rename_10x_barcodes         For bam files, Optional absolute path to a .tsv Tab-separated file mapping 10x barcode name
                                     to new name, e.g. with channel or cell annotation label
 
+    Extract protein-coding options:
+      --peptide_fasta               Path to a well-curated fasta file of protein sequences. Used to filter for coding reads
+      --bloomfilter_tablesize       Maximum table size for bloom filter creation
+
+
     Trimming options:
       --minlength                   Minimum length of reads after trimming, default 100
       --skipTrimming                 Don't trim reads on quality
@@ -86,8 +91,6 @@ def helpMessage() {
       --email                       Set this parameter to your e-mail address to get a summary e-mail with details of the run sent to you when the workflow exits
       -name                         Name for the pipeline run. If not specified, Nextflow will automatically generate a random mnemonic.
 
-                                    to new name, e.g. with channel or cell annotation
-      --peptide_fasta            Path to a well-curated fasta file of protein sequences. Used to filter for coding reads
     """.stripIndent()
 }
 
@@ -251,6 +254,8 @@ molecules = params.molecules?.toString().tokenize(',')
 peptide_molecules = molecules.findAll { it != "dna" }
 log2_sketch_sizes = params.log2_sketch_sizes?.toString().tokenize(',')
 
+int bloomfilter_tablesize = Math.round(params.bloomfilter_tablesize)
+
 println "peptide_molecules:"
 println peptide_molecules
 
@@ -382,6 +387,7 @@ process peptide_bloom_filter {
   bloom_id = "molecule-${molecule}"
   """
   khtools bloom-filter \\
+    --tablesize ${bloomfilter_tablesize} \\
     --molecule ${molecule} \\
     --save-as ${peptides.simpleName}__${bloom_id}.bloomfilter \\
     ${peptides}
@@ -406,7 +412,7 @@ process extract_coding {
 
   script:
   """
-  khtools partition \\
+  khtools extract-coding \\
     --molecule ${molecule} \\
     --csv ${sample_id}_coding_scores.csv \\
     --peptides-are-bloom-filter \\
