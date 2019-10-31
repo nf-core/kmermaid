@@ -17,5 +17,10 @@ dependencies:
   - alabaster
   - conda-forge::gxx_linux-64
   - pip
+  - fastp=0.20.0
+  - fastqc
+  - multiqc
   - pip:
-    - bam2fasta
+    - git+https://github.com/czbiohub/sourmash.git@master#egg=bam2fasta
+    - git+https://github.com/czbiohub/kh-tools.git@olgabot/partition-coding-reads#egg=khtools
+    - git+https://github.com/czbiohub/sourmash.git@master#egg=sourmash
