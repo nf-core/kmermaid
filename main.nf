@@ -414,10 +414,11 @@ process extract_coding {
   """
   khtools extract-coding \\
     --molecule ${molecule} \\
+    --coding-nucleotide-fasta ${sample_id}_coding_reads_nucleotides.fasta \\
     --csv ${sample_id}_coding_scores.csv \\
     --peptides-are-bloom-filter \\
     ${bloom_filter} \\
-    ${reads}
+    ${reads} > ${sample_id}_coding_reads_peptides.fasta
   """
 
 }
