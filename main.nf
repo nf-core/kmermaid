@@ -499,7 +499,7 @@ process sourmash_compute_sketch_fastx_nucleotide {
   set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches_nucleotide
 
   script:
-  sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
+  sketch_id = "molecule-dna_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
   ksize = ksize
 
   if ( params.one_signature_per_record ) {
