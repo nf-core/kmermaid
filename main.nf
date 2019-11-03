@@ -465,7 +465,7 @@ process extract_coding {
   publishDir "${params.outdir}/extract_coding/", mode: 'copy'
 
   input:
-  set bloom_id, molecule, bloom_filter from ch_khtools_bloom_filter.collect()
+  set bloom_id, molecule, file(bloom_filter) from ch_khtools_bloom_filter.collect()
   set sample_id, file(reads) from reads_ch
 
   output:
