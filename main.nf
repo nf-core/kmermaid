@@ -258,6 +258,7 @@ int bloomfilter_tablesize = Math.round(params.bloomfilter_tablesize)
 
 peptide_ksize = params.extract_coding_peptide_ksize
 peptide_molecule = params.extract_coding_peptide_molecule
+jaccard_threshold = params.extract_coding_jaccard_threshold
 
 if (params.bam){
   // Extract the fasta just once using sourmash
@@ -372,7 +373,7 @@ process peptide_bloom_filter {
   tag "${peptides}__${bloom_id}"
   label "low_memory"
 
-  publishDir "${params.outdir}/", mode: 'copy'
+  publishDir "${params.outdir}/bloom_filter", mode: 'copy'
 
   input:
   file(peptides) from ch_peptide_fasta
@@ -460,7 +461,7 @@ if (params.bam) {
 process extract_coding {
   tag "${sample_id}"
   label "low_memory"
-  publishDir "${params.outdir}/", mode: 'copy'
+  publishDir "${params.outdir}/extract_coding/", mode: 'copy'
 
   input:
   set bloom_id, molecule, bloom_filter from ch_khtools_bloom_filter.collect()
@@ -478,11 +479,18 @@ process extract_coding {
     --molecule ${molecule} \\
     --coding-nucleotide-fasta ${sample_id}__coding_reads_nucleotides.fasta \\
     --csv ${sample_id}__coding_scores.csv \\
+    --jaccard-threshold ${jaccard_threshold} \\
     --peptides-are-bloom-filter \\
     ${bloom_filter} \\
     ${reads} > ${sample_id}__coding_reads_peptides.fasta
   """
 }
+
+// Remove empty files
+// it[0] = sample id
+// it[1] = sequence fasta file
+ch_coding_nucleotides_nonempty = ch_coding_nucleotides.filter{ it[1].size() > 0 }
+ch_coding_peptides_nonempty = ch_coding_peptides.filter{ it[1].size() > 0 }
 
 
 process sourmash_compute_sketch_fastx_nucleotide {
@@ -493,7 +501,7 @@ process sourmash_compute_sketch_fastx_nucleotide {
   input:
   each ksize from ksizes
   each log2_sketch_size from log2_sketch_sizes
-  set sample_id, file(reads) from ch_coding_nucleotides
+  set sample_id, file(reads) from ch_coding_nucleotides_nonempty
 
   output:
   set val(sketch_id), val("dna"), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches_nucleotide
@@ -534,7 +542,7 @@ process sourmash_compute_sketch_fastx_peptide {
   each ksize from ksizes
   each molecule from peptide_molecules
   each log2_sketch_size from log2_sketch_sizes
-  set sample_id, file(reads) from ch_coding_peptides
+  set sample_id, file(reads) from ch_coding_peptides_nonempty
 
   output:
   set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches_peptide
