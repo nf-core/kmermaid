@@ -256,8 +256,8 @@ log2_sketch_sizes = params.log2_sketch_sizes?.toString().tokenize(',')
 
 int bloomfilter_tablesize = Math.round(params.bloomfilter_tablesize)
 
-println "peptide_molecules:"
-println peptide_molecules
+peptide_ksize = params.extract_coding_peptide_ksize
+peptide_molecule = params.extract_coding_peptide_molecule
 
 if (params.bam){
   // Extract the fasta just once using sourmash
@@ -376,52 +376,25 @@ process peptide_bloom_filter {
 
   input:
   file(peptides) from ch_peptide_fasta
-
-  // TODO only do this on protein encodings, e.g "protein", "dayhoff", "hp"
-  each molecule from peptide_molecules
+  peptide_ksize
+  peptide_molecule
 
   output:
-  set val(bloom_id), val(molecule), file("${peptides.simpleName}__${bloom_id}.bloomfilter") into ch_khtools_bloom_filters
+  set val(bloom_id), val(peptide_molecule), file("${peptides.simpleName}__${bloom_id}.bloomfilter") into ch_khtools_bloom_filter
 
   script:
-  bloom_id = "molecule-${molecule}"
+  bloom_id = "molecule-${peptide_molecule}_ksize-${peptide_ksize}"
   """
   khtools bloom-filter \\
     --tablesize ${bloomfilter_tablesize} \\
-    --molecule ${molecule} \\
+    --molecule ${peptide_molecule} \\
+    --peptide-ksize ${peptide_ksize} \\
     --save-as ${peptides.simpleName}__${bloom_id}.bloomfilter \\
     ${peptides}
   """
 }
 
-process extract_coding {
-  tag "${sample_id}"
-  label "low_memory"
 
-  publishDir "${params.outdir}/", mode: 'copy'
-
-  input:
-  set bloom_id, molecule, bloom_filter from ch_khtools_bloom_filters.collect()
-  set sample_id, file(reads) from reads_ch
-
-  output:
-  // TODO also extract nucleotide sequence of coding reads and do sourmash compute using only DNA on that?
-  set val(sample_id), file("${sample_id}_coding_reads_peptides.fasta") into ch_coding_peptides
-  set val(sample_id), file("${sample_id}_coding_reads_nucleotides.fasta") into ch_coding_nucleotides
-  set val(sample_id), file("${sample_id}_coding_scores.csv") into ch_coding_scores
-
-  script:
-  """
-  khtools extract-coding \\
-    --molecule ${molecule} \\
-    --coding-nucleotide-fasta ${sample_id}_coding_reads_nucleotides.fasta \\
-    --csv ${sample_id}_coding_scores.csv \\
-    --peptides-are-bloom-filter \\
-    ${bloom_filter} \\
-    ${reads} > ${sample_id}_coding_reads_peptides.fasta
-  """
-
-}
 
 
 if (params.bam) {
@@ -446,7 +419,7 @@ if (params.bam) {
     file(rename_10x_barcodes) from rename_10x_barcodes_ch
 
     output:
-    set val(sample_id), file("*.fasta") into cell_barcode_fasta_ch
+    set val(sample_id), file("*.fasta") into reads_ch
     // https://github.com/nextflow-io/patterns/blob/master/docs/optional-output.adoc
     file("${params.write_barcode_meta_csv}") optional true
 
@@ -484,6 +457,33 @@ if (params.bam) {
   }
 }
 
+process extract_coding {
+  tag "${sample_id}"
+  label "low_memory"
+  publishDir "${params.outdir}/", mode: 'copy'
+
+  input:
+  set bloom_id, molecule, bloom_filter from ch_khtools_bloom_filter.collect()
+  set sample_id, file(reads) from reads_ch
+
+  output:
+  // TODO also extract nucleotide sequence of coding reads and do sourmash compute using only DNA on that?
+  set val(sample_id), file("${sample_id}__coding_reads_peptides.fasta") into ch_coding_peptides
+  set val(sample_id), file("${sample_id}__coding_reads_nucleotides.fasta") into ch_coding_nucleotides
+  set val(sample_id), file("${sample_id}__coding_scores.csv") into ch_coding_scores
+
+  script:
+  """
+  khtools extract-coding \\
+    --molecule ${molecule} \\
+    --coding-nucleotide-fasta ${sample_id}__coding_reads_nucleotides.fasta \\
+    --csv ${sample_id}__coding_scores.csv \\
+    --peptides-are-bloom-filter \\
+    ${bloom_filter} \\
+    ${reads} > ${sample_id}__coding_reads_peptides.fasta
+  """
+}
+
 
 process sourmash_compute_sketch_fastx_nucleotide {
   tag "${sample_id}_${sketch_id}"
@@ -496,7 +496,7 @@ process sourmash_compute_sketch_fastx_nucleotide {
   set sample_id, file(reads) from ch_coding_nucleotides
 
   output:
-  set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches_nucleotide
+  set val(sketch_id), val("dna"), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches_nucleotide
 
   script:
   sketch_id = "molecule-dna_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
