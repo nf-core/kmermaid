@@ -12,7 +12,8 @@
 * Add [czbiohub/khtools](https://github.com/czbiohub/kh-tools/) repo to environment.yml
 * Update Dockerfile with sourmash compute bam input dependencies
 * Add "fastp" to container requirements
-* Update Dockerfile with sourmash compute bam input dependencies
+* Add [`bam2fasta`](https://pypi.org/project/bam2fasta/) to environment.yml
+* Use Olga's branch of sourmash
 
 ## v1.0 - 6 March 2019
 
