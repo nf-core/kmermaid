@@ -172,7 +172,7 @@ if (params.read_paths) {
    // Provided fastq gz read pairs
    if (params.read_pairs){
      read_pairs_ch = Channel
-       .fromFilePairs(params.read_pairs?.toString()?.tokenize(';'))
+       .fromFilePairs(params.read_pairs?.toString()?.tokenize(';'), size: 2)
        .ifEmpty { exit 1, "params.read_pairs (${params.read_pairs}) was empty - no input files supplied" }
    }
    // Provided fastq gz read singles
@@ -425,10 +425,11 @@ if (params.bam) {
     file("${params.write_barcode_meta_csv}") optional true
 
     script:
+    molecule = single_molecule
+    ksize = single_ksize
+    log2_sketch_size = single_log2_sketch_size
     sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
-    molecule = molecule
     not_dna = molecule != 'dna' ? '--no-dna' : ''
-    ksize = ksize
 
     min_umi_per_barcode = params.min_umi_per_barcode ? "--count-valid-reads ${params.min_umi_per_barcode}" : ''
     line_count = params.line_count ? "--line-count ${params.line_count}" : ''
