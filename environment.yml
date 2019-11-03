@@ -18,3 +18,6 @@ dependencies:
   - conda-forge::gxx_linux-64
   - pip
   - fastp=0.20.0
+  - fastqc
+  - pip:
+    - git+https://github.com/czbiohub/khtools.git@olgabot/partition-coding-reads
