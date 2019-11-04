@@ -1,4 +1,4 @@
-# nf-core/nf-kmer-similarity: Changelog
+# nf-core/kmermaid: Changelog
 
 ## v1.1dev
 
