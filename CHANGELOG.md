@@ -3,9 +3,9 @@
 ## v1.1dev
 
 * Add option to use Dayhoff encoding for sourmash
-* Add bam file process to kmermaid pipeline and optional params
+* Add bam2fasta process to kmermaid pipeline and optional params
   for the same
-* Update dockerfile with sourmash compute bam input dependencies
+* Update dockerfile with bam2fasta dependencies
 
 ## v1.0 - 6 March 2019
 
