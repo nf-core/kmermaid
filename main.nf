@@ -480,6 +480,7 @@ process extract_coding {
     --molecule ${molecule} \\
     --coding-nucleotide-fasta ${sample_id}__coding_reads_nucleotides.fasta \\
     --csv ${sample_id}__coding_scores.csv \\
+    --json-summary ${sample_id}__coding_summary.json \\
     --jaccard-threshold ${jaccard_threshold} \\
     --peptides-are-bloom-filter \\
     ${bloom_filter} \\
