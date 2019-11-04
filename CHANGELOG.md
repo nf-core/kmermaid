@@ -3,7 +3,6 @@
 ## v1.1dev
 
 * Add option to use Dayhoff encoding for sourmash
-* Add "fastp" to container requirements
 * Add bam file process to kmermaid pipeline and optional params
   for the same
 
@@ -11,9 +10,10 @@
 * Add fastqc to environment.yml
 * Add [czbiohub/khtools](https://github.com/czbiohub/kh-tools/) repo to environment.yml
 * Update Dockerfile with sourmash compute bam input dependencies
-* Add "fastp" to container requirements
 * Add [`bam2fasta`](https://pypi.org/project/bam2fasta/) to environment.yml
 * Use Olga's branch of sourmash
+* Add `ska` and `seqtk` to container dependencies
+* Add `fastp` to container requirements
 
 ## v1.0 - 6 March 2019
 
