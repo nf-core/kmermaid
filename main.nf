@@ -179,7 +179,7 @@ if (params.read_paths) {
   Channel.fromPath(params.bam, checkIfExists: true)
        .map{ f -> tuple(f.baseName, tuple(file(f))) }
        .ifEmpty { exit 1, "Bam file not found: ${params.bam}" }
-       .set{bam_ch}
+       .set{ bam_ch }
   }
 
   // If barcodes is as expected, check if it exists and set channel
@@ -206,10 +206,14 @@ if (params.read_paths) {
 }
 
 if (params.subsample) {
- sra_ch.concat(samples_ch, csv_singles_ch, read_pairs_ch,
-   read_singles_ch, fastas_ch, read_paths_ch)
-   .ifEmpty{ exit 1, "No reads provided! Check read input files"}
-   .set{ subsample_reads_ch }
+  if (params.bam){
+     exit 1, "Cannot provide both a bam file with --bam and specify --subsample"
+  } else {
+    sra_ch.concat(samples_ch, csv_singles_ch, read_pairs_ch,
+      read_singles_ch, fastas_ch, read_paths_ch)
+      .ifEmpty{ exit 1, "No reads provided! Check read input files"}
+      .set{ subsample_reads_ch }
+  }
 } else {
   if (!params.bam) {
   sra_ch.concat(samples_ch, csv_singles_ch, read_pairs_ch,
@@ -217,11 +221,8 @@ if (params.subsample) {
    .ifEmpty{ exit 1, "No reads provided! Check read input files"}
    .set{ reads_ch }
   } else {
-    sra_ch.concat(samples_ch, csv_singles_ch, read_pairs_ch,
-      read_singles_ch, fastas_ch, read_paths_ch)
-      .ifEmpty{ exit 1, "No reads provided! Check read input files"}
-      .set{ reads_ch }
-  }
+//   Do nothing - can't combine the fastq files and bam files (yet)
+    }
 }
 
 
