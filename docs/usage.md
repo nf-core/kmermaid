@@ -1,4 +1,4 @@
-# nf-core/nf-kmer-similarity: Usage
+# nf-core/kmermaid: Usage
 
 ## Table of contents
 

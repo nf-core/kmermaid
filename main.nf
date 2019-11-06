@@ -1,3 +1,15 @@
+#!/usr/bin/env nextflow
+/*
+========================================================================================
+                         nf-core/kmermaid
+========================================================================================
+ nf-core/kmermaid Analysis Pipeline.
+ #### Homepage / Documentation
+ https://github.com/nf-core/kmermaid
+----------------------------------------------------------------------------------------
+*/
+
+
 def helpMessage() {
     log.info """
     =========================================
@@ -265,7 +277,7 @@ ${summary.collect { k,v -> "            <dt>$k</dt><dd><samp>${v ?: '<span style
         </dl>
     """.stripIndent()
 
-   return yaml_file
+    return yaml_file
 }
 
 
@@ -291,6 +303,7 @@ process get_software_versions {
     scrape_software_versions.py &> software_versions_mqc.yaml
     """
 }
+
 
 
 process sourmash_compute_sketch {
