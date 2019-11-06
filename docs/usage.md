@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # nf-core/kmermaid: Usage
 
 ## Table of contents

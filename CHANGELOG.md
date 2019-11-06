@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # nf-core/kmermaid: Changelog
 
 ## v1.1dev

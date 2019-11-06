@@ -1,4 +1,3 @@
-
 #!/usr/bin/env nextflow
 /*
 ========================================================================================
@@ -261,7 +260,7 @@ ${summary.collect { k,v -> "            <dt>$k</dt><dd><samp>${v ?: '<span style
         </dl>
     """.stripIndent()
 
-   return yaml_file
+    return yaml_file
 }
 
 
@@ -287,6 +286,8 @@ process get_software_versions {
     scrape_software_versions.py &> software_versions_mqc.yaml
     """
 }
+
+
 
 process sourmash_compute_sketch {
 	tag "${sample_id}_${sketch_id}"
