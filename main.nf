@@ -254,7 +254,7 @@ molecules = params.molecules?.toString().tokenize(',')
 peptide_molecules = molecules.findAll { it != "dna" }
 log2_sketch_sizes = params.log2_sketch_sizes?.toString().tokenize(',')
 
-int bloomfilter_tablesize = Math.round(params.bloomfilter_tablesize)
+int bloomfilter_tablesize = Math.round(Float.valueOf(params.bloomfilter_tablesize))
 
 peptide_ksize = params.extract_coding_peptide_ksize
 peptide_molecule = params.extract_coding_peptide_molecule
@@ -302,6 +302,12 @@ if(params.bam) summary["Bam chunk line count"] = params.line_count
 if(params.bam) summary['Count valid reads'] = params.min_umi_per_barcode
 if(params.bam) summary['Saved Fastas '] = params.save_fastas
 if(params.bam) summary['Barcode umi read metadata'] = params.write_barcode_meta_csv
+// Extract coding parameters
+if(params.peptide_fasta) summary['--- Extracting coding reads ---']  = ''
+if(params.peptide_fasta) summary["Peptide fasta"] = params.peptide_fasta
+if(params.peptide_fasta) summary['Peptide ksize'] = params.extract_coding_peptide_ksize
+if(params.peptide_fasta) summary['Peptide molecule'] = params.extract_coding_peptide_molecule
+if(params.peptide_fasta) summary['Bloom filter table size'] = params.bloomfilter_tablesize
 // Resource information
 summary['Max Resources']    = "$params.max_memory memory, $params.max_cpus cpus, $params.max_time time per job"
 if(workflow.containerEngine) summary['Container'] = "$workflow.containerEngine - $workflow.container"
