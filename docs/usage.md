@@ -41,7 +41,6 @@
     * [`--max_cpus`](#--max_cpus)
     * [`--plaintext_emails`](#--plaintext_emails)
     * [`--sampleLevel`](#--sampleLevel)
-    * [`--multiqc_config`](#--multiqc_config)
 
 
 ## General Nextflow info
@@ -262,88 +261,6 @@ The log2 sketch size specifies the number of k-mers to use for the sketch. We us
 * Only a log2 sketch size of 8 (2^8 = 256):
   * `--log2_sketch_size 8`
 
-**Example parameters**
-
-* Tracking abundance - add this parameter if we want to keep track of the number of times a kmer appears. 
-  * `--track_abundance`
-
-
-### `--save_fastas`
-
-1. The [save_fastas ](#--save_fastas ) used to save the sequences of each unique barcode in the bam file. It is a path relative to outdir to save unique barcodes to files namely {CELL_BARCODE}.fasta. These fastas are computed once for one permutation of ksize, molecule, and log2_sketch_size, further used to compute the signatures and compare signature matrix for all permutations of ksizes, molecules, and log2_sketch_size. This is done to save the time on saving the computational time and storage in obtaining unique barcodes, sharding the bam file. 
-
-
-**Example parameters**
-
-* Default: Save fastas in a directory called fastsas inside outdir:
-  * `--save_fastas "fastas"`
-
-
-## Bam optional parameters
-
-
-### `--write_barcode_meta_csv`
-This creates a CSV containing the number of reads and number of UMIs per barcode, written in a path relative to `${params.outdir}/barcode_metadata`. This csv file is empty with just header when the min_umi_per_barcode is zero i.e reads and UMIs per barcode are calculated only when the barcodes are filtered based on [min_umi_per_barcode](#--min_umi_per_barcode)
-**Example parameters**
-
-* Default: barcode metadata is not saved 
-* Save fastas in a file cinside outdir/barcode/metadata:
-  * `--write_barcode_meta_csv "barcodes_counts.csv"`
-
-
-### `--min_umi_per_barcode`
-The parameter `--min_umi_per_barcode` ensures that a barcode is only considered a valid barcode read and its sketch is written if number of unique molecular identifiers (UMIs, aka molecular barcodes) are greater than the value specified.
-
-**Example parameters**
-
-* Default: min_umi_per_barcode is 0
-* Set minimum UMI per cellular barcode as 10:
-  * `--min_umi_per_barcode 10`
-
-
-### `--line_count`
-The parameter `--line_count` specifies the number of alignments/lines in each bam shard.
-**Example parameters**
-
-* Default: line_count is 350
-* Save fastas in a directory called fastas inside outdir:
-  * `--line_count 400`
-
-## Reference Genomes
-
-The pipeline config files come bundled with paths to the illumina iGenomes reference index files. If running with docker or AWS, the configuration is set up to use the [AWS-iGenomes](https://ewels.github.io/AWS-iGenomes/) resource.
-
-### `--genome` (using iGenomes)
-There are 31 different species supported in the iGenomes references. To run the pipeline, you must specify which to use with the `--genome` flag.
-
-You can find the keys to specify the genomes in the [iGenomes config file](../conf/igenomes.config). Common genomes that are supported are:
-
-* Human
-  * `--genome GRCh37`
-* Mouse
-  * `--genome GRCm38`
-* _Drosophila_
-  * `--genome BDGP6`
-* _S. cerevisiae_
-  * `--genome 'R64-1-1'`
-
-> There are numerous others - check the config file for more.
-
-Note that you can use the same configuration setup to save sets of reference files for your own use, even if they are not part of the iGenomes resource. See the [Nextflow documentation](https://www.nextflow.io/docs/latest/config.html) for instructions on where to save such a file.
-
-The syntax for this reference configuration is as follows:
-
-```nextflow
-params {
-  genomes {
-    'GRCh37' {
-      fasta   = '<path to the genome fasta file>' // Used if no star index given
-    }
-    // Any number of additional genomes, key is used with --genome
-  }
-}
-```
-
 ### `--fasta`
 If you prefer, you can specify the full path to your reference genome when you run the pipeline:
 
@@ -378,7 +295,6 @@ Set this parameter to your e-mail address to get a summary e-mail with details o
 ### `-name`
 Name for the pipeline run. If not specified, Nextflow will automatically generate a random mnemonic.
 
-This is used in the MultiQC report (if not default) and in the summary HTML / e-mail (always).
 
 **NB:** Single hyphen (core Nextflow option)
 
@@ -397,7 +313,7 @@ Specify the path to a specific config file (this is a core NextFlow command).
 Note - you can use this to override defaults. For example, you can specify a config file using `-c` that contains the following:
 
 ```nextflow
-process.$multiqc.module = []
+
 ```
 
 ### `--max_memory`
@@ -415,5 +331,5 @@ Should be a string in the format integer-unit. eg. `--max_cpus 1`
 ### `--plaintext_email`
 Set to receive plain-text e-mails instead of HTML formatted.
 
-### `--multiqc_config`
-Specify a path to a custom MultiQC configuration file.
+### `--monochrome_logs`
+Set to disable colourful command line output and live life in monochrome.
