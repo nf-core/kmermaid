@@ -41,7 +41,6 @@
     * [`--max_cpus`](#--max_cpus)
     * [`--plaintext_emails`](#--plaintext_emails)
     * [`--sampleLevel`](#--sampleLevel)
-    * [`--multiqc_config`](#--multiqc_config)
 
 
 ## General Nextflow info
@@ -265,47 +264,6 @@ The log2 sketch size specifies the number of k-mers to use for the sketch. We us
 * Only a log2 sketch size of 8 (2^8 = 256):
   * `--log2_sketch_size 8`
 
-
-## Reference Genomes
-
-
-The pipeline config files come bundled with paths to the illumina iGenomes reference index files. If running with docker or AWS, the configuration is set up to use the [AWS-iGenomes](https://ewels.github.io/AWS-iGenomes/) resource.
-
-### `--genome` (using iGenomes)
-There are 31 different species supported in the iGenomes references. To run the pipeline, you must specify which to use with the `--genome` flag.
-
-You can find the keys to specify the genomes in the [iGenomes config file](../conf/igenomes.config). Common genomes that are supported are:
-
-* Human
-  * `--genome GRCh37`
-* Mouse
-  * `--genome GRCm38`
-* _Drosophila_
-  * `--genome BDGP6`
-* _S. cerevisiae_
-  * `--genome 'R64-1-1'`
-
-> There are numerous others - check the config file for more.
-
-Note that you can use the same configuration setup to save sets of reference files for your own use, even if they are not part of the iGenomes resource. See the [Nextflow documentation](https://www.nextflow.io/docs/latest/config.html) for instructions on where to save such a file.
-
-The syntax for this reference configuration is as follows:
-
-<!-- TODO nf-core: Update reference genome example according to what is needed -->
-
-```nextflow
-params {
-  genomes {
-    'GRCh37' {
-      fasta   = '<path to the genome fasta file>' // Used if no star index given
-    }
-    // Any number of additional genomes, key is used with --genome
-  }
-}
-```
-
-<!-- TODO nf-core: Describe reference path flags -->
-
 ### `--fasta`
 If you prefer, you can specify the full path to your reference genome when you run the pipeline:
 
@@ -350,7 +308,6 @@ Set this parameter to your e-mail address to get a summary e-mail with details o
 ### `-name`
 Name for the pipeline run. If not specified, Nextflow will automatically generate a random mnemonic.
 
-This is used in the MultiQC report (if not default) and in the summary HTML / e-mail (always).
 
 **NB:** Single hyphen (core Nextflow option)
 
@@ -370,7 +327,7 @@ Specify the path to a specific config file (this is a core NextFlow command).
 Note - you can use this to override defaults. For example, you can specify a config file using `-c` that contains the following:
 
 ```nextflow
-process.$multiqc.module = []
+
 ```
 
 ### `--max_memory`
@@ -410,7 +367,6 @@ nextflow run /path/to/pipeline/ --custom_config_base /path/to/my/configs/configs
 ### `--max_memory`
 Use to set a top-limit for the default memory requirement for each process.
 Should be a string in the format integer-unit. eg. `--max_memory '8.GB'`
->>>>>>> TEMPLATE
 
 ### `--max_time`
 Use to set a top-limit for the default time requirement for each process.
@@ -423,10 +379,5 @@ Should be a string in the format integer-unit. eg. `--max_cpus 1`
 ### `--plaintext_email`
 Set to receive plain-text e-mails instead of HTML formatted.
 
-### `--multiqc_config`
-
 ### `--monochrome_logs`
 Set to disable colourful command line output and live life in monochrome.
-
-### `--multiqc_config`
-Specify a path to a custom MultiQC configuration file.
