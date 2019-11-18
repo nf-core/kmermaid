@@ -290,6 +290,7 @@ if (params.subsample) {
     process subsample_input {
 	tag "${id}_subsample"
 	publishDir "${params.outdir}/subsampled_fastqs/ska/", mode: 'copy'
+	container 'czbiohub/nf-kmer-ska-similarity:latest'
 	errorStrategy 'retry'
 	maxRetries 3
 
@@ -307,8 +308,8 @@ if (params.subsample) {
 	read2_prefix = read2.name.minus(".fastq.gz")
 
     """
-    seqtk sample -s100 ${read1} ${params.subsample} > ${read1_prefix}_${params.subsample}.fastq.gz
-    seqtk sample -s100 ${read2} ${params.subsample} > ${read2_prefix}_${params.subsample}.fastq.gz
+    seqtk sample -s 100 ${read1} ${params.subsample} > ${read1_prefix}_${params.subsample}.fastq.gz
+    seqtk sample -s 100 ${read2} ${params.subsample} > ${read2_prefix}_${params.subsample}.fastq.gz
 
     """
     }
@@ -324,10 +325,11 @@ if (params.splitKmer){
 ///////////////////////////////////////////////////////////////////////////////
 
   process ska_compute_sketch {
-      tag "${sketch_id}"
-      publishDir "${params.outdir}/ska/sketches/", mode: 'copy'
-      errorStrategy 'retry'
-      maxRetries 3
+	tag "${sketch_id}"
+	publishDir "${params.outdir}/ska/sketches/", mode: 'copy'
+	container 'czbiohub/nf-kmer-ska-similarity:latest'
+	errorStrategy 'retry'
+	maxRetries 3
 
 
   	input:
@@ -351,7 +353,9 @@ if (params.splitKmer){
 } else {
   process sourmash_compute_sketch {
   	tag "${sample_id}_${sketch_id}"
+	container 'czbiohub/nf-kmer-ska-similarity:latest'
   	publishDir "${params.outdir}/sourmash/sketches/", mode: 'copy'
+	container "czbiohub/"
 
   	errorStrategy 'retry'
     maxRetries 3
@@ -399,6 +403,7 @@ if (params.splitKmer){
 if (params.splitKmer){
      process ska_compare_sketches {
   	tag "${sketch_id}"
+	container 'czbiohub/nf-kmer-ska-similarity:latest'
   	publishDir "${params.outdir}/ska/compare/", mode: 'copy'
 
   	input:
