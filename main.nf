@@ -329,7 +329,7 @@ if (params.splitKmer){
 	publishDir "${params.outdir}/ska/sketches/", mode: 'copy'
 	container 'czbiohub/nf-kmer-ska-similarity:latest'
 	errorStrategy 'retry'
-	maxRetries 3
+	maxRetries 5
 
 
   	input:
