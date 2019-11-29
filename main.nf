@@ -565,6 +565,7 @@ process sourmash_compute_sketch_fastx_peptide {
     sourmash compute \\
       --num-hashes \$((2**$log2_sketch_size)) \\
       --ksizes $ksize \\
+      --input-is-protein \\
       --$molecule \\
       --no-dna \\
       --output ${sample_id}_${sketch_id}.sig \\
@@ -576,6 +577,7 @@ process sourmash_compute_sketch_fastx_peptide {
     sourmash compute \\
       --num-hashes \$((2**$log2_sketch_size)) \\
       --ksizes $ksize \\
+      --input-is-protein \\
       --$molecule \\
       --no-dna \\
       --output ${sample_id}_${sketch_id}.sig \\
