@@ -375,31 +375,34 @@ process get_software_versions {
     """
 }
 
-process peptide_bloom_filter {
-  tag "${peptides}__${bloom_id}"
-  label "low_memory"
+if (params.peptide_fasta){
+  process peptide_bloom_filter {
+    tag "${peptides}__${bloom_id}"
+    label "low_memory"
 
-  publishDir "${params.outdir}/bloom_filter", mode: 'copy'
+    publishDir "${params.outdir}/bloom_filter", mode: 'copy'
 
-  input:
-  file(peptides) from ch_peptide_fasta
-  peptide_ksize
-  peptide_molecule
+    input:
+    file(peptides) from ch_peptide_fasta
+    peptide_ksize
+    peptide_molecule
 
-  output:
-  set val(bloom_id), val(peptide_molecule), file("${peptides.simpleName}__${bloom_id}.bloomfilter") into ch_khtools_bloom_filter
+    output:
+    set val(bloom_id), val(peptide_molecule), file("${peptides.simpleName}__${bloom_id}.bloomfilter") into ch_khtools_bloom_filter
 
-  script:
-  bloom_id = "molecule-${peptide_molecule}_ksize-${peptide_ksize}"
-  """
-  khtools bloom-filter \\
-    --tablesize ${bloomfilter_tablesize} \\
-    --molecule ${peptide_molecule} \\
-    --peptide-ksize ${peptide_ksize} \\
-    --save-as ${peptides.simpleName}__${bloom_id}.bloomfilter \\
-    ${peptides}
-  """
+    script:
+    bloom_id = "molecule-${peptide_molecule}_ksize-${peptide_ksize}"
+    """
+    khtools bloom-filter \\
+      --tablesize ${bloomfilter_tablesize} \\
+      --molecule ${peptide_molecule} \\
+      --peptide-ksize ${peptide_ksize} \\
+      --save-as ${peptides.simpleName}__${bloom_id}.bloomfilter \\
+      ${peptides}
+    """
+  }
 }
+
 
 
 
@@ -465,40 +468,45 @@ if (params.bam) {
   }
 }
 
-process extract_coding {
-  tag "${sample_id}"
-  label "low_memory"
-  publishDir "${params.outdir}/extract_coding/", mode: 'copy'
 
-  input:
-  set bloom_id, molecule, file(bloom_filter) from ch_khtools_bloom_filter.collect()
-  set sample_id, file(reads) from reads_ch
+if (params.peptide_fasta){
+  process extract_coding {
+    tag "${sample_id}"
+    label "low_memory"
+    publishDir "${params.outdir}/extract_coding/", mode: 'copy'
 
-  output:
-  // TODO also extract nucleotide sequence of coding reads and do sourmash compute using only DNA on that?
-  set val(sample_id), file("${sample_id}__coding_reads_peptides.fasta") into ch_coding_peptides
-  set val(sample_id), file("${sample_id}__coding_reads_nucleotides.fasta") into ch_coding_nucleotides
-  set val(sample_id), file("${sample_id}__coding_scores.csv") into ch_coding_scores
+    input:
+    set bloom_id, molecule, file(bloom_filter) from ch_khtools_bloom_filter.collect()
+    set sample_id, file(reads) from reads_ch
 
-  script:
-  """
-  khtools extract-coding \\
-    --molecule ${molecule} \\
-    --coding-nucleotide-fasta ${sample_id}__coding_reads_nucleotides.fasta \\
-    --csv ${sample_id}__coding_scores.csv \\
-    --json-summary ${sample_id}__coding_summary.json \\
-    --jaccard-threshold ${jaccard_threshold} \\
-    --peptides-are-bloom-filter \\
-    ${bloom_filter} \\
-    ${reads} > ${sample_id}__coding_reads_peptides.fasta
-  """
+    output:
+    // TODO also extract nucleotide sequence of coding reads and do sourmash compute using only DNA on that?
+    set val(sample_id), file("${sample_id}__coding_reads_peptides.fasta") into ch_coding_peptides
+    set val(sample_id), file("${sample_id}__coding_reads_nucleotides.fasta") into ch_coding_nucleotides
+    set val(sample_id), file("${sample_id}__coding_scores.csv") into ch_coding_scores
+
+    script:
+    """
+    khtools extract-coding \\
+      --molecule ${molecule} \\
+      --coding-nucleotide-fasta ${sample_id}__coding_reads_nucleotides.fasta \\
+      --csv ${sample_id}__coding_scores.csv \\
+      --json-summary ${sample_id}__coding_summary.json \\
+      --jaccard-threshold ${jaccard_threshold} \\
+      --peptides-are-bloom-filter \\
+      ${bloom_filter} \\
+      ${reads} > ${sample_id}__coding_reads_peptides.fasta
+    """
+  }
+  // Remove empty files
+  // it[0] = sample id
+  // it[1] = sequence fasta file
+  ch_coding_nucleotides_nonempty = ch_coding_nucleotides.filter{ it[1].size() > 0 }
+  ch_coding_peptides_nonempty = ch_coding_peptides.filter{ it[1].size() > 0 }
+
+} else {
+  reads_ch.set(ch_coding_nucleotides_nonempty)
 }
-
-// Remove empty files
-// it[0] = sample id
-// it[1] = sequence fasta file
-ch_coding_nucleotides_nonempty = ch_coding_nucleotides.filter{ it[1].size() > 0 }
-ch_coding_peptides_nonempty = ch_coding_peptides.filter{ it[1].size() > 0 }
 
 
 process sourmash_compute_sketch_fastx_nucleotide {
