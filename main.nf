@@ -223,7 +223,7 @@ if (!params.bam) {
 sra_ch.concat(samples_ch, csv_singles_ch, read_pairs_ch,
  read_singles_ch, fastas_ch, read_paths_ch)
  .ifEmpty{ exit 1, "No reads provided! Check read input files"}
- .into{ reads_ch }
+ .set{ reads_ch }
 }
 
 
@@ -505,6 +505,7 @@ if (params.peptide_fasta){
   ch_coding_peptides_nonempty = ch_coding_peptides.filter{ it[1].size() > 0 }
 
 } else {
+  // Send reads directly into coding/noncoding
   reads_ch.set(ch_coding_nucleotides_nonempty)
 }
 
@@ -549,51 +550,56 @@ process sourmash_compute_sketch_fastx_nucleotide {
   }
 }
 
-process sourmash_compute_sketch_fastx_peptide {
-  tag "${sample_id}_${sketch_id}"
-  label "mid_memory"
-  publishDir "${params.outdir}/sketches_peptide", mode: 'copy'
+if (params.peptide_fasta){
+  process sourmash_compute_sketch_fastx_peptide {
+    tag "${sample_id}_${sketch_id}"
+    label "mid_memory"
+    publishDir "${params.outdir}/sketches_peptide", mode: 'copy'
 
-  input:
-  each ksize from ksizes
-  each molecule from peptide_molecules
-  each log2_sketch_size from log2_sketch_sizes
-  set sample_id, file(reads) from ch_coding_peptides_nonempty
+    input:
+    each ksize from ksizes
+    each molecule from peptide_molecules
+    each log2_sketch_size from log2_sketch_sizes
+    set sample_id, file(reads) from ch_coding_peptides_nonempty
 
-  output:
-  set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches_peptide
+    output:
+    set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches_peptide
 
-  script:
-  sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
-  molecule = molecule
-  ksize = ksize
+    script:
+    sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
+    molecule = molecule
+    ksize = ksize
 
-  if ( params.one_signature_per_record ) {
-    """
-    sourmash compute \\
-      --num-hashes \$((2**$log2_sketch_size)) \\
-      --ksizes $ksize \\
-      --input-is-protein \\
-      --$molecule \\
-      --no-dna \\
-      --output ${sample_id}_${sketch_id}.sig \\
-      $reads
-    """
+    if ( params.one_signature_per_record ) {
+      """
+      sourmash compute \\
+        --num-hashes \$((2**$log2_sketch_size)) \\
+        --ksizes $ksize \\
+        --input-is-protein \\
+        --$molecule \\
+        --no-dna \\
+        --output ${sample_id}_${sketch_id}.sig \\
+        $reads
+      """
+    }
+    else {
+      """
+      sourmash compute \\
+        --num-hashes \$((2**$log2_sketch_size)) \\
+        --ksizes $ksize \\
+        --input-is-protein \\
+        --$molecule \\
+        --no-dna \\
+        --output ${sample_id}_${sketch_id}.sig \\
+        --merge '$sample_id' \\
+        $reads
+      """
+    }
   }
-  else {
-    """
-    sourmash compute \\
-      --num-hashes \$((2**$log2_sketch_size)) \\
-      --ksizes $ksize \\
-      --input-is-protein \\
-      --$molecule \\
-      --no-dna \\
-      --output ${sample_id}_${sketch_id}.sig \\
-      --merge '$sample_id' \\
-      $reads
-    """
-  }
+} else {
+  sourmash_sketches_peptide = Channel.empty()
 }
+
 
 // Combine peptide and nucleotide sketches
 sourmash_sketches = sourmash_sketches_peptide.concat(sourmash_sketches_nucleotide)
