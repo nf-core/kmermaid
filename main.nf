@@ -506,7 +506,8 @@ if (params.peptide_fasta){
 
 } else {
   // Send reads directly into coding/noncoding
-  reads_ch.set(ch_coding_nucleotides_nonempty)
+  reads_ch
+    .set{ ch_coding_nucleotides_nonempty }
 }
 
 
