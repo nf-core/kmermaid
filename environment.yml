@@ -1,6 +1,6 @@
 # You can use this file to create a conda environment for this pipeline:
 #   conda env create -f environment.yml
-name: nfcore-kmermaid-0.1dev
+name: nfcore-kmermaid-1.0.0dev
 channels:
   - bioconda
   - conda-forge
@@ -21,3 +21,4 @@ dependencies:
   - seqtk=1.3
   # - conda-forge::gcc_linux-64
   # - gcc
+
