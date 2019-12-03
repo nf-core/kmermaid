@@ -339,7 +339,7 @@ process get_software_versions {
 
 if (params.bam) {
   process bam2fasta {
-    tag "10x bam to fasta"
+    tag "bam2fasta"
     label "high_memory"
     publishDir "${params.outdir}/${params.save_fastas}", pattern: '*.fasta', saveAs: { filename -> "${filename.replace("|", "-")}"}
     publishDir "${params.outdir}/${barcode_metadata_folder}", pattern: '*.csv', mode: 'copy'
