@@ -333,7 +333,7 @@ The parameter `--min_umi_per_barcode` ensures that a barcode is only considered 
 The parameter `--line_count` specifies the number of alignments/lines in each bam shard.
 **Example parameters**
 
-* Default: line_count is 350
+* Default: line_count is 1500
 * Set number of lines in a bam shard as 10:
   * `--line_count 400`
 
