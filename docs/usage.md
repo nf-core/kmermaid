@@ -264,7 +264,7 @@ The log2 sketch size specifies the number of k-mers to use for the sketch. We us
 
 **Example parameters**
 
-* Tracking abundance - add this parameter if we want to keep track of the number of times a kmer appears. 
+* Tracking abundance - add this parameter if we want to keep track of the number of times a hashed kmer appears. 
   * `--track_abundance`
 
 
