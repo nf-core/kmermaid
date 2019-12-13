@@ -261,6 +261,47 @@ The log2 sketch size specifies the number of k-mers to use for the sketch. We us
 * Only a log2 sketch size of 8 (2^8 = 256):
   * `--log2_sketch_size 8`
 
+**Example parameters**
+
+* Tracking abundance - add this parameter if we want to keep track of the number of times a hashed kmer appears. 
+  * `--track_abundance`
+
+
+## Reference Genomes
+
+The pipeline config files come bundled with paths to the illumina iGenomes reference index files. If running with docker or AWS, the configuration is set up to use the [AWS-iGenomes](https://ewels.github.io/AWS-iGenomes/) resource.
+
+### `--genome` (using iGenomes)
+There are 31 different species supported in the iGenomes references. To run the pipeline, you must specify which to use with the `--genome` flag.
+
+You can find the keys to specify the genomes in the [iGenomes config file](../conf/igenomes.config). Common genomes that are supported are:
+
+* Human
+  * `--genome GRCh37`
+* Mouse
+  * `--genome GRCm38`
+* _Drosophila_
+  * `--genome BDGP6`
+* _S. cerevisiae_
+  * `--genome 'R64-1-1'`
+
+> There are numerous others - check the config file for more.
+
+Note that you can use the same configuration setup to save sets of reference files for your own use, even if they are not part of the iGenomes resource. See the [Nextflow documentation](https://www.nextflow.io/docs/latest/config.html) for instructions on where to save such a file.
+
+The syntax for this reference configuration is as follows:
+
+```nextflow
+params {
+  genomes {
+    'GRCh37' {
+      fasta   = '<path to the genome fasta file>' // Used if no star index given
+    }
+    // Any number of additional genomes, key is used with --genome
+  }
+}
+```
+
 ### `--fasta`
 If you prefer, you can specify the full path to your reference genome when you run the pipeline:
 
