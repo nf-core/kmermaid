@@ -76,6 +76,8 @@ def helpMessage() {
                                     Useful for comparing e.g. assembled transcriptomes or metagenomes.
                                     (Not typically used for raw sequencing data as this would create
                                     a k-mer signature for each read!)
+
+      --track_abundance             Track abundance of each hashed k-mer, could be useful for cancer RNA-seq or ATAC-seq analyses
     """.stripIndent()
 }
     
@@ -218,7 +220,8 @@ if(params.read_paths)   summary['Read paths (paired-end)']            = params.r
 summary['K-mer sizes']            = params.ksizes
 summary['Molecule']               = params.molecules
 summary['Log2 Sketch Sizes']      = params.log2_sketch_sizes
-summary['One Sig per Record']         = params.one_signature_per_record
+summary['One Sig per Record']     = params.one_signature_per_record
+summary['Track Abundance']        = params.track_abundance
 // Resource information
 summary['Max Resources']    = "$params.max_memory memory, $params.max_cpus cpus, $params.max_time time per job"
 if(workflow.containerEngine) summary['Container'] = "$workflow.containerEngine - $workflow.container"
@@ -304,12 +307,14 @@ process sourmash_compute_sketch {
   set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches
 
 	script:
-  sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
   molecule = molecule
   // Don't calculate DNA signature if this is protein, to minimize disk,
   // memory and IO requirements in the future
   not_dna = molecule != 'dna' ? '--no-dna' : ''
   ksize = ksize
+  track_abundance = params.track_abundance ? '--track-abundance' : ''
+  sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}_trackabundance-${params.track_abundance}"
+
   if ( params.one_signature_per_record ){
     """
     sourmash compute \\
@@ -317,6 +322,7 @@ process sourmash_compute_sketch {
       --ksizes $ksize \\
       --$molecule \\
       $not_dna \\
+      $track_abundance \\
       --output ${sample_id}_${sketch_id}.sig \\
       $reads
     """
@@ -327,6 +333,7 @@ process sourmash_compute_sketch {
       --ksizes $ksize \\
       --$molecule \\
       $not_dna \\
+      $track_abundance \\
       --output ${sample_id}_${sketch_id}.sig \\
       --merge '$sample_id' $reads
     """
