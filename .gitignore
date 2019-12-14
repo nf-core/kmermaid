@@ -1,9 +1,11 @@
+
 .git/
 .nextflow*
 .idea*
 work/
 results
 my-results
+__pycache__
 
 # Nextflow outputs
 timeline.html*

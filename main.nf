@@ -1,5 +1,17 @@
+#!/usr/bin/env nextflow
+/*
+========================================================================================
+                         nf-core/kmermaid
+========================================================================================
+ nf-core/kmermaid Analysis Pipeline.
+ #### Homepage / Documentation
+ https://github.com/nf-core/kmermaid
+----------------------------------------------------------------------------------------
+*/
+
 
 def helpMessage() {
+    log.info nfcoreHeader()
     log.info """
     ==============================================================
       _                            _       _ _         _ _
@@ -57,7 +69,7 @@ def helpMessage() {
       --ksizes                      Which nucleotide k-mer sizes to use. Multiple are
                                     separated by commas. Default is '21,27,33,51'
       --molecules                   Which molecule to compare on. Default is both DNA
-                                    and protein, i.e. 'dna,protein'
+                                    and protein, i.e. 'dna,protein,dayhoff'
       --log2_sketch_sizes           Which log2 sketch sizes to use. Multiple are separated
                                     by commas. Default is '10,12,14,16'
       --one_signature_per_record    Make a k-mer signature for each record in the FASTQ/FASTA files.
@@ -68,8 +80,7 @@ def helpMessage() {
       --track_abundance             Track abundance of each hashed k-mer, could be useful for cancer RNA-seq or ATAC-seq analyses
     """.stripIndent()
 }
-
-
+    
 
 // Show help emssage
 if (params.help){
@@ -107,13 +118,14 @@ if (params.read_paths) {
      read_paths_ch = Channel
          .from(params.read_paths)
          .map { row -> [ row[0], [file(row[1][0]), file(row[1][1])]] }
-         .ifEmpty { exit 1, "params.read_paths was empty - no input files supplied" }
+         .ifEmpty { exit 1, "params.read_paths (${params.read_paths}) was empty - no input files supplied" }
+
  } else {
    // Provided SRA ids
    if (params.sra){
      sra_ch = Channel
          .fromSRA( params.sra?.toString()?.tokenize(';') )
-         .ifEmpty { exit 1, "params.sra ${params.sra} was not found - no input files supplied" }
+         .ifEmpty { exit 1, "params.sra (${params.sra}) was not found - no input files supplied" }
    }
    // Provided a samples.csv file of read pairs
    if (params.csv_pairs){
@@ -121,7 +133,7 @@ if (params.read_paths) {
       .fromPath(params.csv_pairs)
       .splitCsv(header:true)
       .map{ row -> tuple(row[0], tuple(file(row[1]), file(row[2])))}
-      .ifEmpty { exit 1, "params.csv_pairs was empty - no input files supplied" }
+      .ifEmpty { exit 1, "params.csv_pairs (${params.csv_pairs}) was empty - no input files supplied" }
   }
 
    // Provided a samples.csv file of single-ended reads
@@ -130,29 +142,31 @@ if (params.read_paths) {
       .fromPath(params.csv_singles)
       .splitCsv(header:true)
       .map{ row -> tuple(row[0], tuple(file(row[1])))}
-      .ifEmpty { exit 1, "params.csv_singles was empty - no input files supplied" }
+      .ifEmpty { exit 1, "params.csv_singles (${params.csv_singles}) was empty - no input files supplied" }
   }
 
    // Provided fastq gz read pairs
    if (params.read_pairs){
      read_pairs_ch = Channel
        .fromFilePairs(params.read_pairs?.toString()?.tokenize(';'))
-       .ifEmpty { exit 1, "params.read_pairs was empty - no input files supplied" }
+       .ifEmpty { exit 1, "params.read_pairs (${params.read_pairs}) was empty - no input files supplied" }
    }
-   // Provided fastq gz read pairs
+
+   // Provided fastq gz single-end reads
    if (params.read_singles){
      read_singles_ch = Channel
        .fromFilePairs(params.read_singles?.toString()?.tokenize(';'), size: 1)
-       .ifEmpty { exit 1, "params.read_singles was empty - no input files supplied" }
+       .ifEmpty { exit 1, "params.read_singles (${params.read_singles}) was empty - no input files supplied" }
   }
    // Provided vanilla fastas
    if (params.fastas){
      fastas_ch = Channel
        .fromPath(params.fastas?.toString()?.tokenize(';'))
        .map{ f -> tuple(f.baseName, tuple(file(f))) }
-       .ifEmpty { exit 1, "params.fastas was empty - no input files supplied" }
+       .ifEmpty { exit 1, "params.fastas (${params.fastas}) was empty - no input files supplied" }
    }
- }
+}
+
 
 
  sra_ch.concat(samples_ch, csv_singles_ch, read_pairs_ch,
@@ -168,15 +182,18 @@ if( !(workflow.runName ==~ /[a-z]+_[a-z]+/) ){
   custom_runName = workflow.runName
 }
 
-// AWSBatch sanity checking
-if(workflow.profile == 'awsbatch'){
-    if (!params.awsqueue || !params.awsregion) exit 1, "Specify correct --awsqueue and --awsregion parameters on AWSBatch!"
-    if (!workflow.workDir.startsWith('s3') || !params.outdir.startsWith('s3')) exit 1, "Specify S3 URLs for workDir and outdir parameters on AWSBatch!"
+if( workflow.profile == 'awsbatch') {
+  // AWSBatch sanity checking
+  if (!params.awsqueue || !params.awsregion) exit 1, "Specify correct --awsqueue and --awsregion parameters on AWSBatch!"
+  // Check outdir paths to be S3 buckets if running on AWSBatch
+  // related: https://github.com/nextflow-io/nextflow/issues/813
+  if (!params.outdir.startsWith('s3:')) exit 1, "Outdir not on S3 - specify S3 Bucket to run on AWSBatch!"
+  // Prevent trace files to be stored on S3 since S3 does not support rolling files.
+  if (workflow.tracedir.startsWith('s3:')) exit 1, "Specify a local tracedir or run without trace! S3 cannot be used for tracefiles."
 }
 
-
 params.ksizes = '21,27,33,51'
-params.molecules =  'dna,protein'
+params.molecules =  'dna,protein,dayhoff'
 params.log2_sketch_sizes = '10,12,14,16'
 
 // Parse the parameters
@@ -190,6 +207,7 @@ log.info nfcoreHeader()
 def summary = [:]
 if(workflow.revision) summary['Pipeline Release'] = workflow.revision
 summary['Run Name']         = custom_runName ?: workflow.runName
+
 // Input reads
 if(params.read_pairs)   summary['Read Pairs']                 = params.read_pairs
 if(params.read_singles) summary['Single-end reads']         = params.read_singles
@@ -227,16 +245,17 @@ if(params.email) {
 log.info summary.collect { k,v -> "${k.padRight(18)}: $v" }.join("\n")
 log.info "\033[0m----------------------------------------------------\033[0m"
 
+
 // Check the hostnames against configured profiles
 checkHostname()
 
 def create_workflow_summary(summary) {
     def yaml_file = workDir.resolve('workflow_summary_mqc.yaml')
     yaml_file.text  = """
-    id: 'nf-core-kmer-similarity-summary'
+    id: 'nf-core-kmermaid-summary'
     description: " - this information is collected when the pipeline is started."
-    section_name: 'nf-core/kmer-similarity Workflow Summary'
-    section_href: 'https://github.com/nf-core/kmer-similarity'
+    section_name: 'nf-core/kmermaid Workflow Summary'
+    section_href: 'https://github.com/nf-core/kmermaid'
     plot_type: 'html'
     data: |
         <dl class=\"dl-horizontal\">
@@ -244,7 +263,7 @@ ${summary.collect { k,v -> "            <dt>$k</dt><dd><samp>${v ?: '<span style
         </dl>
     """.stripIndent()
 
-   return yaml_file
+    return yaml_file
 }
 
 
@@ -260,7 +279,7 @@ process get_software_versions {
 
     output:
     file 'software_versions_mqc.yaml' into software_versions_yaml
-    file "software_versions.txt"
+    file "software_versions.csv"
 
     script:
     """
@@ -272,15 +291,11 @@ process get_software_versions {
 }
 
 
+
 process sourmash_compute_sketch {
 	tag "${sample_id}_${sketch_id}"
 	publishDir "${params.outdir}/sketches", mode: 'copy'
-	container 'czbiohub/nf-kmer-similarity'
-
-	// If job fails, try again with more memory
-	// memory { 8.GB * task.attempt }
-	errorStrategy 'retry'
-  maxRetries 3
+  label 'low_memory'
 
 	input:
 	each ksize from ksizes
@@ -293,7 +308,9 @@ process sourmash_compute_sketch {
 
 	script:
   molecule = molecule
-  not_dna = molecule == 'dna' ? '' : '--no-dna'
+  // Don't calculate DNA signature if this is protein, to minimize disk,
+  // memory and IO requirements in the future
+  not_dna = molecule != 'dna' ? '--no-dna' : ''
   ksize = ksize
   track_abundance = params.track_abundance ? '--track-abundance' : ''
   sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}_trackabundance-${params.track_abundance}"
@@ -329,11 +346,8 @@ process sourmash_compute_sketch {
 
 process sourmash_compare_sketches {
 	tag "${sketch_id}"
-
-	container 'czbiohub/nf-kmer-similarity'
 	publishDir "${params.outdir}/", mode: 'copy'
-	errorStrategy 'retry'
-  maxRetries 3
+  label 'mid_memory'
 
 	input:
   set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file ("sketches/*.sig") \
@@ -360,9 +374,10 @@ process sourmash_compare_sketches {
 workflow.onComplete {
 
     // Set up the e-mail variables
-    def subject = "[nf-core/rnaseq] Successful: $workflow.runName"
+    def subject = "[nf-core/kmermaid] Successful: $workflow.runName"
     if(!workflow.success){
-      subject = "[nf-core/rnaseq] FAILED: $workflow.runName"
+      subject = "[nf-core/kmermaid] FAILED: $workflow.runName"
+
     }
     def email_fields = [:]
     email_fields['version'] = workflow.manifest.version
@@ -388,6 +403,7 @@ workflow.onComplete {
     email_fields['summary']['Nextflow Build'] = workflow.nextflow.build
     email_fields['summary']['Nextflow Compile Timestamp'] = workflow.nextflow.timestamp
 
+
     // Render the TXT template
     def engine = new groovy.text.GStringTemplateEngine()
     def tf = new File("$baseDir/assets/email_template.txt")
@@ -411,22 +427,24 @@ workflow.onComplete {
           if( params.plaintext_email ){ throw GroovyException('Send plaintext e-mail, not HTML') }
           // Try to send HTML e-mail using sendmail
           [ 'sendmail', '-t' ].execute() << sendmail_html
-          log.info "[nf-core/rnaseq] Sent summary e-mail to $params.email (sendmail)"
+
+          log.info "[nf-core/kmermaid] Sent summary e-mail to $params.email (sendmail)"
         } catch (all) {
           // Catch failures and try with plaintext
           [ 'mail', '-s', subject, params.email ].execute() << email_txt
-          log.info "[nf-core/rnaseq] Sent summary e-mail to $params.email (mail)"
+          log.info "[nf-core/kmermaid] Sent summary e-mail to $params.email (mail)"
         }
     }
 
     // Write summary e-mail HTML to a file
-    def output_d = file( "${params.outdir}/pipeline_info/" )
+
+    def output_d = new File( "${params.outdir}/pipeline_info/" )
     if( !output_d.exists() ) {
       output_d.mkdirs()
     }
-    def output_hf = file( "${output_d}/pipeline_report.html" )
+    def output_hf = new File( output_d, "pipeline_report.html" )
     output_hf.withWriter { w -> w << email_html }
-    def output_tf = file( "${output_d}/pipeline_report.txt" )
+    def output_tf = new File( output_d, "pipeline_report.txt" )
     output_tf.withWriter { w -> w << email_txt }
 
     c_reset = params.monochrome_logs ? '' : "\033[0m";
@@ -434,17 +452,18 @@ workflow.onComplete {
     c_green = params.monochrome_logs ? '' : "\033[0;32m";
     c_red = params.monochrome_logs ? '' : "\033[0;31m";
 
-    if (workflow.stats.ignoredCount > 0 && workflow.success) {
+    if (workflow.stats.ignoredCountFmt > 0 && workflow.success) {
       log.info "${c_purple}Warning, pipeline completed, but with errored process(es) ${c_reset}"
-      log.info "${c_red}Number of ignored errored process(es) : ${workflow.stats.ignoredCount} ${c_reset}"
-      log.info "${c_green}Number of successfully ran process(es) : ${workflow.stats.succeedCount} ${c_reset}"
+      log.info "${c_red}Number of ignored errored process(es) : ${workflow.stats.ignoredCountFmt} ${c_reset}"
+      log.info "${c_green}Number of successfully ran process(es) : ${workflow.stats.succeedCountFmt} ${c_reset}"
     }
 
     if(workflow.success){
-        log.info "${c_purple}[nf-core/rnaseq]${c_green} Pipeline completed successfully${c_reset}"
+        log.info "${c_purple}[nf-core/kmermaid]${c_green} Pipeline completed successfully${c_reset}"
     } else {
         checkHostname()
-        log.info "${c_purple}[nf-core/rnaseq]${c_red} Pipeline completed with errors${c_reset}"
+        log.info "${c_purple}[nf-core/kmermaid]${c_red} Pipeline completed with errors${c_reset}"
+
     }
 
 }
@@ -467,7 +486,9 @@ def nfcoreHeader(){
     ${c_blue}  |\\ | |__  __ /  ` /  \\ |__) |__         ${c_yellow}}  {${c_reset}
     ${c_blue}  | \\| |       \\__, \\__/ |  \\ |___     ${c_green}\\`-._,-`-,${c_reset}
                                             ${c_green}`._,._,\'${c_reset}
-    ${c_purple}  nf-core/kmer-similarity v${workflow.manifest.version}${c_reset}
+
+    ${c_purple}  nf-core/kmermaid v${workflow.manifest.version}${c_reset}
+
     ${c_dim}----------------------------------------------------${c_reset}
     """.stripIndent()
 }
