@@ -24,6 +24,6 @@ dependencies:
   - multiqc
   - python=3
   - pip:
-    - git+https://github.com/czbiohub/kh-tools.git@olgabot/partition-coding-reads#egg=khtools
+    - git+https://github.com/czbiohub/kh-tools.git@pranathi-long-reads#egg=khtools
     - git+https://github.com/czbiohub/sourmash.git@master#egg=sourmash
     - git+https://github.com/czbiohub/bam2fasta.git@master#egg=bam2fasta
