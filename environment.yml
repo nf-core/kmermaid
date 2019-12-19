@@ -1,6 +1,6 @@
 # You can use this file to create a conda environment for this pipeline:
 #   conda env create -f environment.yml
-name: nfcore-kmermaid-0.1dev
+name: nfcore-kmermaid-1.0.0dev
 channels:
   - bioconda
   - conda-forge
@@ -29,3 +29,4 @@ dependencies:
     - git+https://github.com/czbiohub/kh-tools.git@olgabot/partition-coding-reads#egg=khtools
     - git+https://github.com/czbiohub/sourmash.git@olgabot-patch-1#egg=sourmash
     - git+https://github.com/czbiohub/sourmash.git@master#egg=sourmash
+
