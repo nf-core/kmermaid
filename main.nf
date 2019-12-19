@@ -304,7 +304,7 @@ process sourmash_compute_sketch {
 	set sample_id, file(reads) from reads_ch
 
 	output:
-  set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches
+  set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${signature}") into sourmash_sketches
 
 	script:
   molecule = molecule
@@ -315,6 +315,7 @@ process sourmash_compute_sketch {
   track_abundance = params.track_abundance ? '--track-abundance' : ''
   sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}_trackabundance-${params.track_abundance}"
   input_is_protein_flag = input_is_protein ? '--input-is-protein' : ''
+  signature = "${sample_id}_${sketch_id}.sig"
 
   if ( params.one_signature_per_record ){
     """
@@ -325,7 +326,7 @@ process sourmash_compute_sketch {
       $not_dna \\
       ${input_is_protein_flag}\\
       $track_abundance \\
-      --output ${sample_id}_${sketch_id}.sig \\
+      --output ${signature} \\
       $reads
     """
   } else {
@@ -337,7 +338,7 @@ process sourmash_compute_sketch {
       $not_dna \\
       ${input_is_protein_flag} \\
       $track_abundance \\
-      --output ${sample_id}_${sketch_id}.sig \\
+      --output ${signature} \\
       --merge '$sample_id' $reads
     """
   }
