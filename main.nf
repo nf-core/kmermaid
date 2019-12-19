@@ -323,6 +323,7 @@ process sourmash_compute_sketch {
       --ksizes $ksize \\
       --$molecule \\
       $not_dna \\
+      ${input_is_protein_flag}\\
       $track_abundance \\
       --output ${sample_id}_${sketch_id}.sig \\
       $reads
@@ -334,6 +335,7 @@ process sourmash_compute_sketch {
       --ksizes $ksize \\
       --$molecule \\
       $not_dna \\
+      ${input_is_protein_flag} \\
       $track_abundance \\
       --output ${sample_id}_${sketch_id}.sig \\
       --merge '$sample_id' $reads
