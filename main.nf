@@ -80,7 +80,7 @@ def helpMessage() {
       --track_abundance             Track abundance of each hashed k-mer, could be useful for cancer RNA-seq or ATAC-seq analyses
     """.stripIndent()
 }
-    
+
 
 // Show help emssage
 if (params.help){
@@ -200,7 +200,7 @@ params.log2_sketch_sizes = '10,12,14,16'
 ksizes = params.ksizes?.toString().tokenize(',')
 molecules = params.molecules?.toString().tokenize(',')
 log2_sketch_sizes = params.log2_sketch_sizes?.toString().tokenize(',')
-
+input_is_protein = params.input_is_protein
 
 // Header log info
 log.info nfcoreHeader()
@@ -314,6 +314,7 @@ process sourmash_compute_sketch {
   ksize = ksize
   track_abundance = params.track_abundance ? '--track-abundance' : ''
   sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}_trackabundance-${params.track_abundance}"
+  input_is_protein_flag = input_is_protein ? '--input-is-protein' : ''
 
   if ( params.one_signature_per_record ){
     """
