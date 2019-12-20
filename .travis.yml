@@ -13,6 +13,10 @@ matrix:
     jdk: openjdk8
   - name: "Test nextflow kmermaid, latest test suite with fastas"
     env: NXF_VER='' SUITE=test FLAGS=
+  - name: "Test nextflow kmermaid, latest test suite with fastas and track_abundace"
+    env: NXF_VER='' SUITE=test FLAGS='--track_abundace'
+  - name: "Test nextflow kmermaid, latest docker suite with fastas and track_abundace"
+    env: NXF_VER='' SUITE=docker FLAGS='--track_abundace'
   - name: "Test nextflow kmermaid, with BAM"
     env: NXF_VER='' SUITE=test_bam FLAGS='--barcodes_file false --rename_10x_barcodes false --save_fastas false --write_barcodes_meta_csv false'
   - name: "Test nextflow kmermaid, with BAM, Barcodes"
@@ -69,5 +73,4 @@ script:
   # # Lint the documentation
   # - markdownlint ${TRAVIS_BUILD_DIR} -c ${TRAVIS_BUILD_DIR}/.github/markdownlint.yml
   # Run the pipeline with the test profile and different flags
-  - nextflow run ${TRAVIS_BUILD_DIR} -profile test,docker --track_abundance
   - nextflow run ${TRAVIS_BUILD_DIR} -profile ${SUITE},docker ${FLAGS}
