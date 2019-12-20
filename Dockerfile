@@ -3,7 +3,6 @@ LABEL description="Docker image containing all requirements for nf-core/kmermaid
 
 # Suggested tags from https://microbadger.com/labels
 ARG VCS_REF
-ARGS BUILD_DATE
 LABEL org.label-schema.vcs-ref=$VCS_REF \
 org.label-schema.vcs-url="e.g. https://github.com/nf-core/kmermaid"
 
