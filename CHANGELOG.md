@@ -6,7 +6,6 @@
 * Add `ska` and `seqtk` to container dependencies
 * Add `track_abundance` feature to keep track of hashed kmer frequency.
 * Add [czbiohub/khtools](https://github.com/czbiohub/kh-tools/) repo to environment.yml
-* Update Dockerfile with sourmash compute bam input dependencies
 * Add [`bam2fasta`](https://pypi.org/project/bam2fasta/) to environment.yml
 
 
