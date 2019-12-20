@@ -161,7 +161,7 @@ if (params.read_paths) {
       .ifEmpty { exit 1, "params.csv_singles (${params.csv_singles}) was empty - no input files supplied" }
   }
 
-   // Provided fastq gz read pairs
+   // Provided fastq gz single-end reads
    if (params.read_pairs){
      read_pairs_ch = Channel
        .fromFilePairs(params.read_pairs?.toString()?.tokenize(';'))
