@@ -427,7 +427,8 @@ process sourmash_compute_sketch_fastx {
 
   script:
   track_abundance = params.track_abundance ? '--track-abundance' : ''
-  sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}_trackabundance-${params.track_abundance}"  molecule = molecule
+  sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}_trackabundance-${track_abundance}"
+  molecule = molecule
   not_dna = molecule == 'dna' ? '' : '--no-dna'
   ksize = ksize
 
