@@ -33,7 +33,7 @@ for k in results:
 
 # Dump to YAML
 print ('''
-id: 'nf-core/kmermaid-software-versions'
+id: 'software_versions'
 section_name: 'nf-core/kmermaid Software Versions'
 section_href: 'https://github.com/nf-core/kmermaid'
 plot_type: 'html'
