@@ -7,10 +7,6 @@ cache: pip
 matrix:
   fast_finish: true
   include:
-  - name: "Minimum Nextflow version, regular test suite for kmermaid"
-    env: NXF_VER='0.32.0' SUITE=test FLAGS=
-    language: java
-    jdk: openjdk8
   - name: "Test nextflow kmermaid, latest test suite with fastas"
     env: NXF_VER='' SUITE=test FLAGS=
   - name: "Test nextflow kmermaid, latest test suite with fastas and track_abundace"
