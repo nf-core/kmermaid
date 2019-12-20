@@ -11,6 +11,7 @@ dependencies:
   - bioconda::bioconductor-edger=3.22.5
   - conda-forge::r-markdown=0.8
   - bioconda::khmer=2.1.2
+  - bioconda::sourmash=2.0.1
   - pytest
   - sphinx
   - matplotlib
@@ -24,5 +25,4 @@ dependencies:
   - seqtk=1.3
   - pip:
     - git+https://github.com/czbiohub/bam2fasta.git@master#egg=bam2fasta
-    - git+https://github.com/dib-lab/sourmash.git@master#egg=sourmash
     - git+https://github.com/czbiohub/kh-tools.git@master#egg=khtools
