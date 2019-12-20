@@ -49,15 +49,16 @@ install:
   - mkdir /tmp/nextflow && cd /tmp/nextflow
   - wget -qO- get.nextflow.io | bash
   - sudo ln -s /tmp/nextflow/nextflow /usr/local/bin/nextflow
+  # Install nf-core/tools
+  - pip install --upgrade pip
+  - pip install nf-core
   # Reset
   - mkdir ${TRAVIS_BUILD_DIR}/tests && cd ${TRAVIS_BUILD_DIR}/tests
   # Install markdownlint-cli
   # - sudo apt-get install npm && npm install -g markdownlint-cli
 
 env:
-  # TODO: Chnage this? Should we be testing on edge?
   - NXF_VER='19.04.0' # Specify a minimum NF version that should be tested and work
-  # - NXF_VER='0.32.0' # Specify a minimum NF version that should be tested and work
   - NXF_VER='' # Plus: get the latest NF version and check that it works
 
 script:
