@@ -141,7 +141,7 @@ if (params.read_paths) {
    if (params.sra){
      sra_ch = Channel
          .fromSRA( params.sra?.toString()?.tokenize(';') )
-         .ifEmpty { exit 1, "params.sra ${params.sra} was not found - no input files supplied" }
+         .ifEmpty { exit 1, "params.sra (${params.sra}) was not found - no input files supplied" }
    }
    // Provided a samples.csv file of read pairs
    if (params.csv_pairs){
@@ -498,7 +498,7 @@ workflow.onComplete {
     def subject = "[nf-core/kmermaid] Successful: $workflow.runName"
     if(!workflow.success){
       subject = "[nf-core/kmermaid] FAILED: $workflow.runName"
- 
+
     }
     def email_fields = [:]
     email_fields['version'] = workflow.manifest.version
