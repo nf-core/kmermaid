@@ -111,7 +111,7 @@ def helpMessage() {
 
     """.stripIndent()
 }
-    
+
 
 // Show help emssage
 if (params.help){
@@ -558,7 +558,6 @@ process sourmash_compute_sketch_fastx_nucleotide {
   track_abundance_flag = track_abundance ? '--track-abundance' : ''
 
 
-  if ( params.one_signature_per_record ) {
 	script:
   // Don't calculate DNA signature if this is protein, to minimize disk,
   // memory and IO requirements in the future
