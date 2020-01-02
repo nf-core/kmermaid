@@ -561,9 +561,8 @@ process sourmash_compute_sketch_fastx_nucleotide {
 	script:
   // Don't calculate DNA signature if this is protein, to minimize disk,
   // memory and IO requirements in the future
-  not_dna = molecule != 'dna' ? '--no-dna' : ''
   ksize = ksize
-  sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}_trackabundance-${params.track_abundance}"
+  sketch_id = "molecule-dna_ksize-${ksize}_log2sketchsize-${log2_sketch_size}_trackabundance-${params.track_abundance}"
 
   if ( params.one_signature_per_record ){
     """
