@@ -551,18 +551,12 @@ process sourmash_compute_sketch_fastx_nucleotide {
   output:
   set val(sketch_id), val("dna"), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches_nucleotide
 
-  script:
-  sketch_id = "molecule-dna_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
-  ksize = ksize
-  molecule = molecule
-  track_abundance_flag = track_abundance ? '--track-abundance' : ''
-
-
 	script:
   // Don't calculate DNA signature if this is protein, to minimize disk,
   // memory and IO requirements in the future
   ksize = ksize
   sketch_id = "molecule-dna_ksize-${ksize}_log2sketchsize-${log2_sketch_size}_trackabundance-${params.track_abundance}"
+  track_abundance_flag = track_abundance ? '--track-abundance' : ''
 
   if ( params.one_signature_per_record ){
     """
@@ -608,6 +602,7 @@ if (params.peptide_fasta){
     sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
     molecule = molecule
     ksize = ksize
+    track_abundance_flag = track_abundance ? '--track-abundance' : ''
 
     if ( params.one_signature_per_record ) {
       """
@@ -617,6 +612,7 @@ if (params.peptide_fasta){
         --input-is-protein \\
         --$molecule \\
         --no-dna \\
+        $track_abundance_flag \\
         --output ${sample_id}_${sketch_id}.sig \\
         $reads
       """
@@ -629,6 +625,7 @@ if (params.peptide_fasta){
         --input-is-protein \\
         --$molecule \\
         --no-dna \\
+        $track_abundance_flag \\
         --output ${sample_id}_${sketch_id}.sig \\
         --merge '$sample_id' \\
         $reads
