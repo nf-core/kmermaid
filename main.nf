@@ -599,7 +599,7 @@ if (params.peptide_fasta){
     set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches_peptide
 
     script:
-    sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
+    sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}_trackabundance-${params.track_abundance}"
     molecule = molecule
     ksize = ksize
     track_abundance_flag = track_abundance ? '--track-abundance' : ''
