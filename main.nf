@@ -10,6 +10,7 @@
 */
 
 def helpMessage() {
+    log.info nfcoreHeader()
     log.info """
     ==============================================================
       _                            _       _ _         _ _
@@ -172,7 +173,7 @@ if (params.read_paths) {
        .fromFilePairs(params.read_pairs?.toString()?.tokenize(';'))
        .ifEmpty { exit 1, "params.read_pairs (${params.read_pairs}) was empty - no input files supplied" }
    }
-   // Provided fastq gz read singles
+   // Provided fastq gz single-end reads
    if (params.read_singles){
      read_singles_ch = Channel
        .fromFilePairs(params.read_singles?.toString()?.tokenize(';'), size: 1)
@@ -246,10 +247,14 @@ if( !(workflow.runName ==~ /[a-z]+_[a-z]+/) ){
 }
 
 // AWSBatch sanity checking
-if(workflow.profile == 'awsbatch'){
-    if (!params.awsqueue || !params.awsregion) exit 1, "Specify correct --awsqueue and --awsregion parameters on AWSBatch!"
-    if (!workflow.workDir.startsWith('s3') || !params.outdir.startsWith('s3')) exit 1, "Specify S3 URLs for workDir and outdir parameters on AWSBatch!"
-}
+if( workflow.profile == 'awsbatch') {
+  // AWSBatch sanity checking
+  if (!params.awsqueue || !params.awsregion) exit 1, "Specify correct --awsqueue and --awsregion parameters on AWSBatch!"
+  // Check outdir paths to be S3 buckets if running on AWSBatch
+  // related: https://github.com/nextflow-io/nextflow/issues/813
+  if (!params.outdir.startsWith('s3:')) exit 1, "Outdir not on S3 - specify S3 Bucket to run on AWSBatch!"
+  // Prevent trace files to be stored on S3 since S3 does not support rolling files.
+  if (workflow.tracedir.startsWith('s3:')) exit 1, "Specify a local tracedir or run without trace! S3 cannot be used for tracefiles."
 
 if (params.splitKmer){
     params.ksizes = '15,9'
@@ -301,7 +306,8 @@ if(params.read_paths)   summary['Read paths (paired-end)']         = params.read
 summary['K-mer sizes']            = params.ksizes
 summary['Molecule']               = params.molecules
 summary['Log2 Sketch Sizes']      = params.log2_sketch_sizes
-summary['One Sig per Record']         = params.one_signature_per_record
+summary['One Sig per Record']     = params.one_signature_per_record
+summary['Track Abundance']        = params.track_abundance
 // 10x parameters
 if(params.bam) summary["Bam chunk line count"] = params.line_count
 if(params.bam) summary['Count valid reads'] = params.min_umi_per_barcode
@@ -336,10 +342,10 @@ checkHostname()
 def create_workflow_summary(summary) {
     def yaml_file = workDir.resolve('workflow_summary_mqc.yaml')
     yaml_file.text  = """
-    id: 'nf-core-kmer-similarity-summary'
+    id: 'nf-core-kmermaid-summary'
     description: " - this information is collected when the pipeline is started."
-    section_name: 'nf-core/kmer-similarity Workflow Summary'
-    section_href: 'https://github.com/nf-core/kmer-similarity'
+    section_name: 'nf-core/kmermaid Workflow Summary'
+    section_href: 'https://github.com/nf-core/kmermaid'
     plot_type: 'html'
     data: |
         <dl class=\"dl-horizontal\">
@@ -658,13 +664,13 @@ workflow.onComplete {
     }
 
     // Write summary e-mail HTML to a file
-    def output_d = file( "${params.outdir}/pipeline_info/" )
+    def output_d = new File( "${params.outdir}/pipeline_info/" )
     if( !output_d.exists() ) {
       output_d.mkdirs()
     }
-    def output_hf = file( "${output_d}/pipeline_report.html" )
+    def output_hf = new file( "${output_d}/pipeline_report.html" )
     output_hf.withWriter { w -> w << email_html }
-    def output_tf = file( "${output_d}/pipeline_report.txt" )
+    def output_tf = new file( "${output_d}/pipeline_report.txt" )
     output_tf.withWriter { w -> w << email_txt }
 
     c_reset = params.monochrome_logs ? '' : "\033[0m";
@@ -672,10 +678,10 @@ workflow.onComplete {
     c_green = params.monochrome_logs ? '' : "\033[0;32m";
     c_red = params.monochrome_logs ? '' : "\033[0;31m";
 
-    if (workflow.stats.ignoredCount > 0 && workflow.success) {
-      log.info "${c_purple}Warning, pipeline completed, but with errored process(es) ${c_reset}"
-      log.info "${c_red}Number of ignored errored process(es) : ${workflow.stats.ignoredCount} ${c_reset}"
-      log.info "${c_green}Number of successfully ran process(es) : ${workflow.stats.succeedCount} ${c_reset}"
+    if (workflow.stats.ignoredCountFmt > 0 && workflow.success) {
+	    log.info "${c_purple}Warning, pipeline completed, but with errored process(es) ${c_reset}"
+	    log.info "${c_red}Number of ignored errored process(es) : ${workflow.stats.ignoredCountFmt} ${c_reset}"
+	    log.info "${c_green}Number of successfully ran process(es) : ${workflow.stats.succeedCountFmt} ${c_reset}"
     }
 
     if(workflow.success){
@@ -705,7 +711,7 @@ def nfcoreHeader(){
     ${c_blue}  |\\ | |__  __ /  ` /  \\ |__) |__         ${c_yellow}}  {${c_reset}
     ${c_blue}  | \\| |       \\__, \\__/ |  \\ |___     ${c_green}\\`-._,-`-,${c_reset}
                                             ${c_green}`._,._,\'${c_reset}
-    ${c_purple}  nf-core/kmer-similarity v${workflow.manifest.version}${c_reset}
+    ${c_purple}  nf-core/kmermaid v${workflow.manifest.version}${c_reset}
     ${c_dim}----------------------------------------------------${c_reset}
     """.stripIndent()
 }
@@ -725,8 +731,9 @@ def checkHostname(){
                             "  but your machine hostname is ${c_white}'$hostname'${c_reset}\n" +
                             "  ${c_yellow_bold}It's highly recommended that you use `-profile $prof${c_reset}`\n" +
                             "============================================================"
-                }
+                    }
+		}
             }
-        }
+	}
     }
 }
