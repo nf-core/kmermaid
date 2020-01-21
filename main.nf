@@ -246,8 +246,7 @@ if( !(workflow.runName ==~ /[a-z]+_[a-z]+/) ){
   custom_runName = workflow.runName
 }
 
-// AWSBatch sanity checking
-if( workflow.profile == 'awsbatch') {
+if (workflow.profile == 'awsbatch') {
   // AWSBatch sanity checking
   if (!params.awsqueue || !params.awsregion) exit 1, "Specify correct --awsqueue and --awsregion parameters on AWSBatch!"
   // Check outdir paths to be S3 buckets if running on AWSBatch
@@ -255,6 +254,7 @@ if( workflow.profile == 'awsbatch') {
   if (!params.outdir.startsWith('s3:')) exit 1, "Outdir not on S3 - specify S3 Bucket to run on AWSBatch!"
   // Prevent trace files to be stored on S3 since S3 does not support rolling files.
   if (workflow.tracedir.startsWith('s3:')) exit 1, "Specify a local tracedir or run without trace! S3 cannot be used for tracefiles."
+}
 
 if (params.splitKmer){
     params.ksizes = '15,9'
@@ -668,9 +668,9 @@ workflow.onComplete {
     if( !output_d.exists() ) {
       output_d.mkdirs()
     }
-    def output_hf = new file( "${output_d}/pipeline_report.html" )
+    def output_hf = new File( "${output_d}/pipeline_report.html" )
     output_hf.withWriter { w -> w << email_html }
-    def output_tf = new file( "${output_d}/pipeline_report.txt" )
+    def output_tf = new File( "${output_d}/pipeline_report.txt" )
     output_tf.withWriter { w -> w << email_txt }
 
     c_reset = params.monochrome_logs ? '' : "\033[0m";
@@ -731,9 +731,8 @@ def checkHostname(){
                             "  but your machine hostname is ${c_white}'$hostname'${c_reset}\n" +
                             "  ${c_yellow_bold}It's highly recommended that you use `-profile $prof${c_reset}`\n" +
                             "============================================================"
-                    }
-		}
-            }
-	}
+                }
+	    }
+        }
     }
 }
