@@ -1,18 +1,4 @@
-#!/usr/bin/env nextflow
-
-/*
-========================================================================================
-                         nf-core/kmermaid
-========================================================================================
- nf-core/kmermaid Analysis Pipeline.
- #### Homepage / Documentation
- https://github.com/nf-core/kmermaid
-----------------------------------------------------------------------------------------
-*/
-
-
 def helpMessage() {
-    log.info nfcoreHeader()
     log.info """
     ==============================================================
       _                            _       _ _         _ _
@@ -85,7 +71,6 @@ def helpMessage() {
                                     Useful for comparing e.g. assembled transcriptomes or metagenomes.
                                     (Not typically used for raw sequencing data as this would create
                                     a k-mer signature for each read!)
-
     Split K-mer options:
       --splitKmer                   If provided, use SKA to compute split k-mer sketches instead of
                                     sourmash to compute k-mer sketches
@@ -103,11 +88,10 @@ def helpMessage() {
       --rename_10x_barcodes         For bam files, Optional absolute path to a .tsv Tab-separated file mapping 10x barcode name
                                     to new name, e.g. with channel or cell annotation label
 
-      --track_abundance             Track abundance of each hashed k-mer, could be useful for cancer RNA-seq or ATAC-seq analyses
-
     """.stripIndent()
 }
-    
+
+
 
 // Show help emssage
 if (params.help){
@@ -242,6 +226,7 @@ if (params.subsample) {
 }
 
 
+
 // Has the run name been specified by the user?
 //  this has the bonus effect of catching both -name and --name
 custom_runName = params.name
@@ -249,27 +234,32 @@ if( !(workflow.runName ==~ /[a-z]+_[a-z]+/) ){
   custom_runName = workflow.runName
 }
 
-if( workflow.profile == 'awsbatch') {
-  // AWSBatch sanity checking
-  if (!params.awsqueue || !params.awsregion) exit 1, "Specify correct --awsqueue and --awsregion parameters on AWSBatch!"
-  // Check outdir paths to be S3 buckets if running on AWSBatch
-  // related: https://github.com/nextflow-io/nextflow/issues/813
-  if (!params.outdir.startsWith('s3:')) exit 1, "Outdir not on S3 - specify S3 Bucket to run on AWSBatch!"
-  // Prevent trace files to be stored on S3 since S3 does not support rolling files.
-  if (workflow.tracedir.startsWith('s3:')) exit 1, "Specify a local tracedir or run without trace! S3 cannot be used for tracefiles."
+// AWSBatch sanity checking
+if(workflow.profile == 'awsbatch'){
+    if (!params.awsqueue || !params.awsregion) exit 1, "Specify correct --awsqueue and --awsregion parameters on AWSBatch!"
+    if (!workflow.workDir.startsWith('s3') || !params.outdir.startsWith('s3')) exit 1, "Specify S3 URLs for workDir and outdir parameters on AWSBatch!"
 }
 
-params.ksizes = '21,27,33,51'
-params.molecules =  'dna,protein,dayhoff'
-params.log2_sketch_sizes = '10,12,14,16'
+if (params.splitKmer){
+    params.ksizes = '15,9'
+    params.molecules = 'dna'
+} else {
+    params.ksizes = '21,27,33,51'
+}
+
 
 // Parse the parameters
+
 ksizes = params.ksizes?.toString().tokenize(',')
 ksize = ksizes[0]
 molecules = params.molecules?.toString().tokenize(',')
 molecule = molecules[0]
 log2_sketch_sizes = params.log2_sketch_sizes?.toString().tokenize(',')
 log2_sketch_size = log2_sketch_sizes[0]
+
+if (params.splitKmer && 'protein' in molecules){
+  exit 1, "Cannot specify 'protein' in `--molecules` if --splitKmer is set"
+}
 
 
 // For bam files, set a folder name to save the optional barcode metadata csv
@@ -285,7 +275,6 @@ log.info nfcoreHeader()
 def summary = [:]
 if(workflow.revision) summary['Pipeline Release'] = workflow.revision
 summary['Run Name']         = custom_runName ?: workflow.runName
-
 // Input reads
 if(params.read_pairs)   summary['Read Pairs']                 = params.read_pairs
 if(params.read_singles) summary['Single-end reads']         = params.read_singles
@@ -307,8 +296,6 @@ if(params.bam) summary["Bam chunk line count"] = params.line_count
 if(params.bam) summary['Count valid reads'] = params.min_umi_per_barcode
 if(params.bam) summary['Saved Fastas '] = params.save_fastas
 if(params.bam) summary['Barcode umi read metadata'] = params.write_barcode_meta_csv
-
-summary['Track Abundance']        = params.track_abundance
 // Resource information
 summary['Max Resources']    = "$params.max_memory memory, $params.max_cpus cpus, $params.max_time time per job"
 if(workflow.containerEngine) summary['Container'] = "$workflow.containerEngine - $workflow.container"
@@ -332,17 +319,16 @@ if(params.email) {
 log.info summary.collect { k,v -> "${k.padRight(18)}: $v" }.join("\n")
 log.info "\033[0m----------------------------------------------------\033[0m"
 
-
 // Check the hostnames against configured profiles
 checkHostname()
 
 def create_workflow_summary(summary) {
     def yaml_file = workDir.resolve('workflow_summary_mqc.yaml')
     yaml_file.text  = """
-    id: 'nf-core-kmermaid-summary'
+    id: 'nf-core-kmer-similarity-summary'
     description: " - this information is collected when the pipeline is started."
-    section_name: 'nf-core/kmermaid Workflow Summary'
-    section_href: 'https://github.com/nf-core/kmermaid'
+    section_name: 'nf-core/kmer-similarity Workflow Summary'
+    section_href: 'https://github.com/nf-core/kmer-similarity'
     plot_type: 'html'
     data: |
         <dl class=\"dl-horizontal\">
@@ -350,7 +336,7 @@ ${summary.collect { k,v -> "            <dt>$k</dt><dd><samp>${v ?: '<span style
         </dl>
     """.stripIndent()
 
-    return yaml_file
+   return yaml_file
 }
 
 
@@ -366,7 +352,7 @@ process get_software_versions {
 
     output:
     file 'software_versions_mqc.yaml' into software_versions_yaml
-    file "software_versions.csv"
+    file "software_versions.txt"
 
     script:
     """
@@ -377,52 +363,28 @@ process get_software_versions {
     """
 }
 
-
-
-process sourmash_compute_sketch {
-	tag "${sample_id}_${sketch_id}"
-	publishDir "${params.outdir}/sketches", mode: 'copy'
-  label 'low_memory'
+if (params.subsample) {
+    process subsample_input {
+	tag "${id}_subsample"
+	publishDir "${params.outdir}/seqtk/", mode: 'copy'
 
 	input:
-	each ksize from ksizes
-	each molecule from molecules
-	each log2_sketch_size from log2_sketch_sizes
-	set sample_id, file(reads) from reads_ch
+	set id, file(reads) from subsample_reads_ch
 
 	output:
-  set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches
+
+	set val(id), file("*_${params.subsample}.fastq.gz") into reads_ch
 
 	script:
-  molecule = molecule
-  // Don't calculate DNA signature if this is protein, to minimize disk,
-  // memory and IO requirements in the future
-  not_dna = molecule != 'dna' ? '--no-dna' : ''
-  ksize = ksize
-  track_abundance = params.track_abundance ? '--track-abundance' : ''
-  sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}_trackabundance-${params.track_abundance}"
+	read1 = reads[0]
+	read2 = reads[1]
+	read1_prefix = read1.name.minus(".fastq.gz") // TODO: change to RE to match fasta as well?
+	read2_prefix = read2.name.minus(".fastq.gz")
 
-  if ( params.one_signature_per_record ){
     """
-    sourmash compute \\
-      --num-hashes \$((2**$log2_sketch_size)) \\
-      --ksizes $ksize \\
-      --$molecule \\
-      $not_dna \\
-      $track_abundance \\
-      --output ${sample_id}_${sketch_id}.sig \\
-      $reads
-    """
-  } else {
-    """
-    sourmash compute \\
-      --num-hashes \$((2**$log2_sketch_size)) \\
-      --ksizes $ksize \\
-      --$molecule \\
-      $not_dna \\
-      $track_abundance \\
-      --output ${sample_id}_${sketch_id}.sig \\
-      --merge '$sample_id' $reads
+    seqtk sample -s100 ${read1} ${params.subsample} > ${read1_prefix}_${params.subsample}.fastq.gz
+    seqtk sample -s100 ${read2} ${params.subsample} > ${read2_prefix}_${params.subsample}.fastq.gz
+
     """
     }
 }
@@ -572,7 +534,25 @@ if (params.splitKmer){
       """
     }
   }
+}
 
+
+if (params.splitKmer){
+     process ska_compare_sketches {
+  	tag "${sketch_id}"
+  	publishDir "${params.outdir}/ska/compare/", mode: 'copy'
+
+  	input:
+ 	  set val(ksize), file (sketches) from ska_sketches.groupTuple()
+
+  	output:
+	   // uploaded distances, clusters, and graph connecting (dot) file
+  	file "ksize_${ksize}*"
+
+  	script:
+  	"""
+    ska distance -o ksize_${ksize} -s 25 -i 0.95 ${sketches}
+  	"""
 
     }
   } else {
@@ -584,8 +564,8 @@ if (params.splitKmer){
     set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file ("sourmash/sketches/*.sig") \
       from sourmash_sketches.groupTuple(by: [0, 3])
 
-	output:
-	file "similarities_${sketch_id}.csv"
+  	output:
+  	file "similarities_${sketch_id}.csv"
 
   	script:
     processes = "--processes ${task.cpus}"
@@ -597,6 +577,7 @@ if (params.splitKmer){
           --traverse-directory .
   	"""
 
+  }
 }
 
 
@@ -609,7 +590,6 @@ workflow.onComplete {
     def subject = "[nf-core/kmermaid] Successful: $workflow.runName"
     if(!workflow.success){
       subject = "[nf-core/kmermaid] FAILED: $workflow.runName"
-
     }
     def email_fields = [:]
     email_fields['version'] = workflow.manifest.version
@@ -629,12 +609,11 @@ workflow.onComplete {
     email_fields['summary']['Pipeline script hash ID'] = workflow.scriptId
     if(workflow.repository) email_fields['summary']['Pipeline repository Git URL'] = workflow.repository
     if(workflow.commitId) email_fields['summary']['Pipeline repository Git Commit'] = workflow.commitId
-    if(workflow.revision) email_fields['summary']['Pipeline Git branch/tag'] = workflow.revision
+    if(workflow.revision) email_fields['summary']['Pipeline Git branch/tag'] = workflow.revision //
     if(workflow.container) email_fields['summary']['Docker image'] = workflow.container
     email_fields['summary']['Nextflow Version'] = workflow.nextflow.version
     email_fields['summary']['Nextflow Build'] = workflow.nextflow.build
     email_fields['summary']['Nextflow Compile Timestamp'] = workflow.nextflow.timestamp
-
 
     // Render the TXT template
     def engine = new groovy.text.GStringTemplateEngine()
@@ -659,7 +638,6 @@ workflow.onComplete {
           if( params.plaintext_email ){ throw GroovyException('Send plaintext e-mail, not HTML') }
           // Try to send HTML e-mail using sendmail
           [ 'sendmail', '-t' ].execute() << sendmail_html
-
           log.info "[nf-core/kmermaid] Sent summary e-mail to $params.email (sendmail)"
         } catch (all) {
           // Catch failures and try with plaintext
@@ -669,14 +647,13 @@ workflow.onComplete {
     }
 
     // Write summary e-mail HTML to a file
-
-    def output_d = new File( "${params.outdir}/pipeline_info/" )
+    def output_d = file( "${params.outdir}/pipeline_info/" )
     if( !output_d.exists() ) {
       output_d.mkdirs()
     }
-    def output_hf = new File( output_d, "pipeline_report.html" )
+    def output_hf = file( "${output_d}/pipeline_report.html" )
     output_hf.withWriter { w -> w << email_html }
-    def output_tf = new File( output_d, "pipeline_report.txt" )
+    def output_tf = file( "${output_d}/pipeline_report.txt" )
     output_tf.withWriter { w -> w << email_txt }
 
     c_reset = params.monochrome_logs ? '' : "\033[0m";
@@ -684,10 +661,10 @@ workflow.onComplete {
     c_green = params.monochrome_logs ? '' : "\033[0;32m";
     c_red = params.monochrome_logs ? '' : "\033[0;31m";
 
-    if (workflow.stats.ignoredCountFmt > 0 && workflow.success) {
+    if (workflow.stats.ignoredCount > 0 && workflow.success) {
       log.info "${c_purple}Warning, pipeline completed, but with errored process(es) ${c_reset}"
-      log.info "${c_red}Number of ignored errored process(es) : ${workflow.stats.ignoredCountFmt} ${c_reset}"
-      log.info "${c_green}Number of successfully ran process(es) : ${workflow.stats.succeedCountFmt} ${c_reset}"
+      log.info "${c_red}Number of ignored errored process(es) : ${workflow.stats.ignoredCount} ${c_reset}"
+      log.info "${c_green}Number of successfully ran process(es) : ${workflow.stats.succeedCount} ${c_reset}"
     }
 
     if(workflow.success){
@@ -695,7 +672,6 @@ workflow.onComplete {
     } else {
         checkHostname()
         log.info "${c_purple}[nf-core/kmermaid]${c_red} Pipeline completed with errors${c_reset}"
-
     }
 
 }
@@ -718,9 +694,7 @@ def nfcoreHeader(){
     ${c_blue}  |\\ | |__  __ /  ` /  \\ |__) |__         ${c_yellow}}  {${c_reset}
     ${c_blue}  | \\| |       \\__, \\__/ |  \\ |___     ${c_green}\\`-._,-`-,${c_reset}
                                             ${c_green}`._,._,\'${c_reset}
-
-    ${c_purple}  nf-core/kmermaid v${workflow.manifest.version}${c_reset}
-
+    ${c_purple}  nf-core/kmer-similarity v${workflow.manifest.version}${c_reset}
     ${c_dim}----------------------------------------------------${c_reset}
     """.stripIndent()
 }
