@@ -9,7 +9,7 @@ org.label-schema.vcs-url="e.g. https://github.com/nf-core/kmermaid"
 
 COPY environment.yml /
 RUN conda env create -f /environment.yml && conda clean -a
-ENV PATH /opt/conda/envs/nfcore-kmermaid-0.1dev/bin:$PATH
+ENV PATH /opt/conda/envs/nf-core-kmermaid-0.1dev/bin:$PATH
 
 RUN sourmash info
 COPY docker/sysctl.conf /etc/sysctl.conf
