@@ -70,4 +70,3 @@ env:
 script:
   # Run the pipeline with the test profile
   - nextflow run ${TRAVIS_BUILD_DIR} -profile ${SUITE},docker ${FLAGS}
-  - nf-core lint ${TRAVIS_BUILD_DIR}
