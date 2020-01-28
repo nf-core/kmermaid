@@ -29,8 +29,8 @@ matrix:
     script: nf-core lint ${TRAVIS_BUILD_DIR}
     python: '3.6'
     jdk: openjdk8
-  - name: "Lint the documentation"
-    script: markdownlint ${TRAVIS_BUILD_DIR} -c ${TRAVIS_BUILD_DIR}/.github/markdownlint.yml
+  # - name: "Lint the documentation"
+  #   script: markdownlint ${TRAVIS_BUILD_DIR} -c ${TRAVIS_BUILD_DIR}/.github/markdownlint.yml
     python: '3.6'
   - name: "Test nextflow kmermaid, with BAM"
     env: NXF_VER='' SUITE=test_bam FLAGS='--barcodes_file false --rename_10x_barcodes false --save_fastas false --write_barcodes_meta_csv false'
