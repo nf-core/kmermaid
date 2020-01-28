@@ -6,28 +6,27 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - conda-forge::r-data.table=1.12.8
-  - conda-forge::r-gplots=3.0.1.2
-  - bioconda::bioconductor-edger=3.28.0
-  - conda-forge::r-markdown=1.1
-  - bioconda::khmer=3.0.0a3
   - bioconda::bam2fasta=1.0.1
-  - pytest=5.3.4
-  - sphinx=2.3.1
-  - numpy=1.17.5
-  - matplotlib=3.1.1 # don't upgrade, multiqc conflict
-  - alabaster=0.7.12
+  - bioconda::khmer=3.0.0a3
+  - bioconda::bioconductor-edger=3.28.0
   - conda-forge::gxx_linux-64=7.3.0
   - conda-forge::rust=1.40.0
-  - ska=1.0
-  - seqtk=1.3
-  - pip=20.0.2
+  - conda-forge::r-data.table=1.12.8
+  - conda-forge::r-gplots=3.0.1.2
+  - conda-forge::r-markdown=1.1
+  - alabaster=0.7.12
   - fastp=0.20.0
   - fastqc=0.11.9
-  - pathos=0.2.5
-  - pysam=0.15.4
+  - matplotlib=3.1.1 # don't upgrade, multiqc conflict
   - multiqc=1.8
-  
+  - numpy=1.17.5
+  - pathos=0.2.5
+  - pip=20.0.2
+  - pysam=0.15.4
+  - pytest=5.3.4
+  - seqtk=1.3
+  - ska=1.0
+  - sphinx=2.3.1
   - pip:
     - git+https://github.com/czbiohub/kh-tools.git@olgabot/partition-coding-reads#egg=khtools==0.1.0
     - git+https://github.com/czbiohub/sourmash.git@master#egg=sourmash==3.2.0
