@@ -15,7 +15,7 @@ dependencies:
   - pytest=5.3.4
   - sphinx=2.3.1
   - numpy=1.17.5
-  - matplotlib=3.1.2
+  - matplotlib=3.1.1 # don't upgrade, multiqc conflict
   - alabaster=0.7.12
   - conda-forge::gxx_linux-64=7.3.0
   - conda-forge::rust=1.40.0
@@ -29,7 +29,7 @@ dependencies:
   - multiqc=1.8
   
   - pip:
-    - git+https://github.com/czbiohub/kh-tools.git@olgabot/partition-coding-reads#egg=khtools=0.1.0
-    - git+https://github.com/czbiohub/sourmash.git@master#egg=sourmash=3.2.0
+    - git+https://github.com/czbiohub/kh-tools.git@olgabot/partition-coding-reads#egg=khtools==0.1.0
+    - git+https://github.com/czbiohub/sourmash.git@master#egg=sourmash==3.2.0
   # - conda-forge::gcc_linux-64
   # - gcc
