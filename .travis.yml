@@ -2,6 +2,7 @@ sudo: required
 language: python
 jdk: openjdk8
 services: docker
+python: '3.6'
 cache: pip
 matrix:
   fast_finish: true
