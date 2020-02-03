@@ -400,6 +400,31 @@ process get_software_versions {
     """
 }
 
+if (params.subsample) {
+    process subsample_input {
+	tag "${id}_subsample"
+	publishDir "${params.outdir}/seqtk/", mode: 'copy'
+
+	input:
+	set id, file(reads) from subsample_reads_ch
+
+	output:
+
+	set val(id), file("*_${params.subsample}.fastq.gz") into reads_ch
+
+	script:
+	read1 = reads[0]
+	read2 = reads[1]
+	read1_prefix = read1.name.minus(".fastq.gz") // TODO: change to RE to match fasta as well?
+	read2_prefix = read2.name.minus(".fastq.gz")
+
+    """
+    seqtk sample -s100 ${read1} ${params.subsample} > ${read1_prefix}_${params.subsample}.fastq.gz
+    seqtk sample -s100 ${read2} ${params.subsample} > ${read2_prefix}_${params.subsample}.fastq.gz
+    """
+    }
+}
+
 
 if (params.bam) {
   process bam2fasta {
