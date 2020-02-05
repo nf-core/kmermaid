@@ -83,7 +83,12 @@ def helpMessage() {
                                     a k-mer signature for each read!)
       --track_abundance             Track abundance of each hashed k-mer, could be useful for cancer RNA-seq or ATAC-seq analyses
 
-    BAM Options:
+    Split K-mer options:
+      --splitKmer                   If provided, use SKA to compute split k-mer sketches instead of
+                                    sourmash to compute k-mer sketches
+      --subsample                   Integer value to subsample reads from input fastq files
+
+    Bam file options:
       --write_barcode_meta_csv      For bam files, Csv file name relative to outdir/barcode_metadata to write number of reads and number of umis per barcode.
                                     This csv file is empty with just header when the min_umi_per_barcode is zero i.e
                                     Reads and umis per barcode are calculated only when the barcodes are filtered
@@ -110,7 +115,9 @@ def helpMessage() {
 
 
     """.stripIndent()
+
 }
+
 
 
 // Show help emssage
@@ -186,13 +193,13 @@ if (params.read_paths) {
       .ifEmpty { exit 1, "params.csv_singles (${params.csv_singles}) was empty - no input files supplied" }
   }
 
-   // Provided fastq gz read pairs
+   // Provided fastq gz paired-end reads
    if (params.read_pairs){
      read_pairs_ch = Channel
        .fromFilePairs(params.read_pairs?.toString()?.tokenize(';'), size: 2)
        .ifEmpty { exit 1, "params.read_pairs (${params.read_pairs}) was empty - no input files supplied" }
    }
-   // Provided fastq gz read singles
+   // Provided fastq gz single-end reads
    if (params.read_singles){
      read_singles_ch = Channel
        .fromFilePairs(params.read_singles?.toString()?.tokenize(';'), size: 1)
@@ -210,7 +217,7 @@ if (params.read_paths) {
   Channel.fromPath(params.bam, checkIfExists: true)
        .map{ f -> tuple(f.baseName, tuple(file(f))) }
        .ifEmpty { exit 1, "Bam file not found: ${params.bam}" }
-       .set{bam_ch}
+       .set{ bam_ch }
   }
 
   // If barcodes is as expected, check if it exists and set channel
@@ -236,18 +243,30 @@ if (params.read_paths) {
   }
 }
 
-if (!params.bam) {
-sra_ch.concat(samples_ch, csv_singles_ch, read_pairs_ch,
- read_singles_ch, fastas_ch, read_paths_ch)
- .ifEmpty{ exit 1, "No reads provided! Check read input files"}
- .set{ reads_ch }
-}
-
-
 if (params.peptide_fasta) {
 Channel.fromPath(params.peptide_fasta, checkIfExists: true)
      .ifEmpty { exit 1, "Peptide fasta file not found: ${params.peptide_fasta}" }
      .set{ ch_peptide_fasta }
+}
+
+if (params.subsample) {
+  if (params.bam){
+     exit 1, "Cannot provide both a bam file with --bam and specify --subsample"
+  } else {
+    sra_ch.concat(samples_ch, csv_singles_ch, read_pairs_ch,
+      read_singles_ch, fastas_ch, read_paths_ch)
+      .ifEmpty{ exit 1, "No reads provided! Check read input files"}
+      .set{ subsample_reads_ch }
+  }
+} else {
+  if (!params.bam) {
+  sra_ch.concat(samples_ch, csv_singles_ch, read_pairs_ch,
+   read_singles_ch, fastas_ch, read_paths_ch)
+   .ifEmpty{ exit 1, "No reads provided! Check read input files"}
+   .set{ reads_ch }
+  } else {
+//   Do nothing - can't combine the fastq files and bam files (yet)
+    }
 }
 
 
@@ -258,7 +277,7 @@ if( !(workflow.runName ==~ /[a-z]+_[a-z]+/) ){
   custom_runName = workflow.runName
 }
 
-if( workflow.profile == 'awsbatch') {
+if (workflow.profile == 'awsbatch') {
   // AWSBatch sanity checking
   if (!params.awsqueue || !params.awsregion) exit 1, "Specify correct --awsqueue and --awsregion parameters on AWSBatch!"
   // Check outdir paths to be S3 buckets if running on AWSBatch
@@ -268,9 +287,16 @@ if( workflow.profile == 'awsbatch') {
   if (workflow.tracedir.startsWith('s3:')) exit 1, "Specify a local tracedir or run without trace! S3 cannot be used for tracefiles."
 }
 
+if (params.splitKmer){
+    params.ksizes = '15,9'
+    params.molecules = 'dna'
+} else {
+    params.ksizes = '21,27,33,51'
+}
 
 
 // Parse the parameters
+
 ksizes = params.ksizes?.toString().tokenize(',')
 molecules = params.molecules?.toString().tokenize(',')
 peptide_molecules = molecules.findAll { it != "dna" }
@@ -290,6 +316,10 @@ if (params.bam){
   single_log2_sketch_size = log2_sketch_sizes[0]
 }
 
+if (params.splitKmer && 'protein' in molecules){
+  exit 1, "Cannot specify 'protein' in `--molecules` if --splitKmer is set"
+}
+
 
 // For bam files, set a folder name to save the optional barcode metadata csv
 if (!params.write_barcode_meta_csv) {
@@ -299,12 +329,28 @@ else {
   barcode_metadata_folder = "barcode_metadata"
 }
 
+// For bam files, set a folder name to save the optional barcode metadata csv
+if (!params.write_barcode_meta_csv) {
+  barcode_metadata_folder = ""
+}
+else {
+  barcode_metadata_folder = "barcode_metadata"
+}
+
+// For bam files, one_signature_per_record is true
+if (params.bam) {
+  one_signature_per_record = true
+}
+else {
+  one_signature_per_record = params.one_signature_per_record
+}
+
+
 // Header log info
 log.info nfcoreHeader()
 def summary = [:]
 if(workflow.revision) summary['Pipeline Release'] = workflow.revision
 summary['Run Name']         = custom_runName ?: workflow.runName
-
 // Input reads
 if(params.read_pairs)   summary['Read Pairs']                 = params.read_pairs
 if(params.read_singles) summary['Single-end reads']         = params.read_singles
@@ -356,7 +402,6 @@ if(params.email) {
 log.info summary.collect { k,v -> "${k.padRight(18)}: $v" }.join("\n")
 log.info "\033[0m----------------------------------------------------\033[0m"
 
-
 // Check the hostnames against configured profiles
 checkHostname()
 
@@ -374,7 +419,7 @@ ${summary.collect { k,v -> "            <dt>$k</dt><dd><samp>${v ?: '<span style
         </dl>
     """.stripIndent()
 
-    return yaml_file
+   return yaml_file
 }
 
 
@@ -397,6 +442,7 @@ process get_software_versions {
     echo $workflow.manifest.version > v_pipeline.txt
     echo $workflow.nextflow.version > v_nextflow.txt
     sourmash info &> v_sourmash.txt
+    bam2fasta info &> v_bam2fasta.txt
     scrape_software_versions.py &> software_versions_mqc.yaml
     """
 }
@@ -430,14 +476,37 @@ if (params.peptide_fasta){
 }
 
 
+if (params.subsample) {
+    process subsample_input {
+	tag "${id}_subsample"
+	publishDir "${params.outdir}/seqtk/", mode: 'copy'
 
+	input:
+	set id, file(reads) from subsample_reads_ch
+
+	output:
+
+	set val(id), file("*_${params.subsample}.fastq.gz") into reads_ch
+
+	script:
+	read1 = reads[0]
+	read2 = reads[1]
+	read1_prefix = read1.name.minus(".fastq.gz") // TODO: change to RE to match fasta as well?
+	read2_prefix = read2.name.minus(".fastq.gz")
+
+    """
+    seqtk sample -s100 ${read1} ${params.subsample} > ${read1_prefix}_${params.subsample}.fastq.gz
+    seqtk sample -s100 ${read2} ${params.subsample} > ${read2_prefix}_${params.subsample}.fastq.gz
+    """
+    }
+}
 
 
 if (params.bam) {
-  process sourmash_compute_sketch_bam {
-    tag "${sample_id}_${sketch_id}"
+  process bam2fasta {
+    tag "bam2fasta"
     label "high_memory"
-    publishDir "${params.outdir}/${params.save_fastas}", pattern: '*.fasta', saveAs: { filename -> "${params.outdir}/${params.save_fastas}/${filename.replace("|", "-")}"}
+    publishDir "${params.outdir}/${params.save_fastas}", pattern: '*.fasta', saveAs: { filename -> "${filename.replace("|", "-")}"}
     publishDir "${params.outdir}/${barcode_metadata_folder}", pattern: '*.csv', mode: 'copy'
 
 
@@ -447,9 +516,6 @@ if (params.bam) {
     maxRetries 1
 
     input:
-    val single_ksize
-    val single_molecule
-    val single_log2_sketch_size
     file(barcodes_file) from barcodes_ch
     set sample_id, file(bam) from bam_ch
     file(rename_10x_barcodes) from rename_10x_barcodes_ch
@@ -460,13 +526,8 @@ if (params.bam) {
     file("${params.write_barcode_meta_csv}") optional true
 
     script:
-    molecule = single_molecule
-    ksize = single_ksize
-    log2_sketch_size = single_log2_sketch_size
-    sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
-    not_dna = molecule != 'dna' ? '--no-dna' : ''
 
-    min_umi_per_barcode = params.min_umi_per_barcode ? "--count-valid-reads ${params.min_umi_per_barcode}" : ''
+    min_umi_per_barcode = params.min_umi_per_barcode ? "--min-umi-per-barcode ${params.min_umi_per_barcode}" : ''
     line_count = params.line_count ? "--line-count ${params.line_count}" : ''
     metadata = params.write_barcode_meta_csv ? "--write-barcode-meta-csv ${params.write_barcode_meta_csv}": ''
     save_fastas = "--save-fastas ."
@@ -475,11 +536,7 @@ if (params.bam) {
     def barcodes_file = params.barcodes_file ? "--barcodes-file ${barcodes_file.baseName}.tsv": ''
     def rename_10x_barcodes = params.rename_10x_barcodes ? "--rename-10x-barcodes ${rename_10x_barcodes.baseName}.tsv": ''
     """
-      sourmash compute \\
-        --ksize $ksize \\
-        --$molecule \\
-        $not_dna \\
-        --num-hashes \$((2**$log2_sketch_size)) \\
+      bam2fasta convert \\
         $processes \\
         $min_umi_per_barcode \\
         $line_count \\
@@ -487,8 +544,7 @@ if (params.bam) {
         $barcodes_file \\
         $save_fastas \\
         $metadata \\
-        --output ${sample_id}_${sketch_id}.sig \\
-        --input-is-10x $bam
+        --filename $bam
       find . -type f -name "*.fasta" | while read src; do if [[ \$src == *"|"* ]]; then mv "\$src" \$(echo "\$src" | tr "|" "_"); fi done
     """
   }
@@ -537,7 +593,42 @@ if (params.peptide_fasta){
     .set{ ch_coding_nucleotides_nonempty }
 }
 
+if (params.splitKmer){
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+/* --                                                                     -- */
+/* --                     CREATE SKA SKETCH                               -- */
+/* --                                                                     -- */
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
+  process ska_compute_sketch {
+      tag "${sketch_id}"
+      publishDir "${params.outdir}/ska/sketches/", mode: 'copy'
+      errorStrategy 'retry'
+      maxRetries 3
+
+
+    input:
+    each ksize from ksizes
+    set id, file(reads) from reads_ch
+
+    output:
+    set val(ksize), file("${sketch_id}.skf") into ska_sketches
+
+    script:
+    sketch_id = "${id}_ksize_${ksize}"
+
+      """
+      ska fastq \\
+        -k $ksize \\
+        -o ${sketch_id} \\
+        ${reads}
+      """
+
+    }
+} 
+else {
 process sourmash_compute_sketch_fastx_nucleotide {
   tag "${sample_id}_${sketch_id}"
   label "mid_memory"
@@ -551,7 +642,7 @@ process sourmash_compute_sketch_fastx_nucleotide {
   output:
   set val(sketch_id), val("dna"), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches_nucleotide
 
-	script:
+  script:
   // Don't calculate DNA signature if this is protein, to minimize disk,
   // memory and IO requirements in the future
   ksize = ksize
@@ -580,8 +671,10 @@ process sourmash_compute_sketch_fastx_nucleotide {
       --merge '$sample_id' \\
       $reads
     """
+    }
   }
 }
+
 
 if (params.peptide_fasta){
   process sourmash_compute_sketch_fastx_peptide {
@@ -640,33 +733,47 @@ if (params.peptide_fasta){
 // Combine peptide and nucleotide sketches
 sourmash_sketches = sourmash_sketches_peptide.concat(sourmash_sketches_nucleotide)
 
-process sourmash_compare_sketches {
-  tag "${sketch_id}"
-  label "high_memory"
+if (params.splitKmer){
+     process ska_compare_sketches {
+    tag "${sketch_id}"
+    publishDir "${params.outdir}/ska/compare/", mode: 'copy'
 
-  container "$workflow.container"
-  publishDir "${params.outdir}/", mode: 'copy'
-  errorStrategy 'retry'
-  maxRetries 3
+    input:
+    set val(ksize), file (sketches) from ska_sketches.groupTuple()
 
-  input:
-  set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file ("sketches/*.sig") \
-    from sourmash_sketches.groupTuple(by: [0, 3])
+    output:
+     // uploaded distances, clusters, and graph connecting (dot) file
+    file "ksize_${ksize}*"
 
-  output:
-  file "similarities_${sketch_id}.csv"
+    script:
+    """
+    ska distance -o ksize_${ksize} -s 25 -i 0.95 ${sketches}
+    """
 
-  script:
-  processes = "--processes ${params.max_cpus}"
-  """
-  sourmash compare \\
-        --ksize ${ksize[0]} \\
-        --${molecule[0]} \\
-        $processes \\
-        --csv similarities_${sketch_id}.csv \\
-        --traverse-directory .
-  """
+    }
+  } else {
+  process sourmash_compare_sketches {
+    tag "${sketch_id}"
+    publishDir "${params.outdir}/sourmash/compare", mode: 'copy'
 
+    input:
+    set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file ("sourmash/sketches/*.sig") \
+      from sourmash_sketches.groupTuple(by: [0, 3])
+
+    output:
+    file "similarities_${sketch_id}.csv"
+
+    script:
+    processes = "--processes ${task.cpus}"
+    """
+    sourmash compare \\
+          --ksize ${ksize[0]} \\
+          --${molecule[0]} \\
+          --csv similarities_${sketch_id}.csv \\
+          --traverse-directory .
+    """
+
+  }
 }
 
 
@@ -679,7 +786,6 @@ workflow.onComplete {
     def subject = "[nf-core/kmermaid] Successful: $workflow.runName"
     if(!workflow.success){
       subject = "[nf-core/kmermaid] FAILED: $workflow.runName"
-
     }
     def email_fields = [:]
     email_fields['version'] = workflow.manifest.version
@@ -699,12 +805,11 @@ workflow.onComplete {
     email_fields['summary']['Pipeline script hash ID'] = workflow.scriptId
     if(workflow.repository) email_fields['summary']['Pipeline repository Git URL'] = workflow.repository
     if(workflow.commitId) email_fields['summary']['Pipeline repository Git Commit'] = workflow.commitId
-    if(workflow.revision) email_fields['summary']['Pipeline Git branch/tag'] = workflow.revision
+    if(workflow.revision) email_fields['summary']['Pipeline Git branch/tag'] = workflow.revision //
     if(workflow.container) email_fields['summary']['Docker image'] = workflow.container
     email_fields['summary']['Nextflow Version'] = workflow.nextflow.version
     email_fields['summary']['Nextflow Build'] = workflow.nextflow.build
     email_fields['summary']['Nextflow Compile Timestamp'] = workflow.nextflow.timestamp
-
 
     // Render the TXT template
     def engine = new groovy.text.GStringTemplateEngine()
@@ -739,14 +844,13 @@ workflow.onComplete {
     }
 
     // Write summary e-mail HTML to a file
-
     def output_d = new File( "${params.outdir}/pipeline_info/" )
     if( !output_d.exists() ) {
       output_d.mkdirs()
     }
-    def output_hf = new File( output_d, "pipeline_report.html" )
+    def output_hf = new File( "${output_d}/pipeline_report.html" )
     output_hf.withWriter { w -> w << email_html }
-    def output_tf = new File( output_d, "pipeline_report.txt" )
+    def output_tf = new File( "${output_d}/pipeline_report.txt" )
     output_tf.withWriter { w -> w << email_txt }
 
     c_reset = params.monochrome_logs ? '' : "\033[0m";
@@ -765,7 +869,6 @@ workflow.onComplete {
     } else {
         checkHostname()
         log.info "${c_purple}[nf-core/kmermaid]${c_red} Pipeline completed with errors${c_reset}"
-
     }
 
 }
@@ -788,9 +891,7 @@ def nfcoreHeader(){
     ${c_blue}  |\\ | |__  __ /  ` /  \\ |__) |__         ${c_yellow}}  {${c_reset}
     ${c_blue}  | \\| |       \\__, \\__/ |  \\ |___     ${c_green}\\`-._,-`-,${c_reset}
                                             ${c_green}`._,._,\'${c_reset}
-
     ${c_purple}  nf-core/kmermaid v${workflow.manifest.version}${c_reset}
-
     ${c_dim}----------------------------------------------------${c_reset}
     """.stripIndent()
 }
@@ -811,7 +912,7 @@ def checkHostname(){
                             "  ${c_yellow_bold}It's highly recommended that you use `-profile $prof${c_reset}`\n" +
                             "============================================================"
                 }
-            }
+      }
         }
     }
 }
