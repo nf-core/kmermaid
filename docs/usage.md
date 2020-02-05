@@ -30,11 +30,11 @@
         * [`--molecule`](#--molecule)
         * [`--ksize`](#--ksize)
         * [`--log2_sketch_size`](#--log2_sketch_size)
-
     * [Bam optional parameters](#bam-optional-parameters)
         * [`--min_umi_per_barcode`](#--min_umi_per_barcode)
         * [`--write_barcode_meta_csv`](#--write_barcode_meta_csv)
         * [`--line_count`](#--line_count)
+
 
 * [Job Resources](#job-resources)
 * [Automatic resubmission](#automatic-resubmission)
@@ -371,6 +371,47 @@ The parameter `--line_count` specifies the number of alignments/lines in each ba
 * Save fastas in a directory called fastas inside outdir:
   * `--line_count 400`
 
+### `--save_fastas`
+
+1. The [save_fastas ](#--save_fastas ) used to save the sequences of each unique barcode in the bam file. It is a path relative to outdir to save unique barcodes to files namely {CELL_BARCODE}.fasta. These fastas are computed once for one permutation of ksize, molecule, and log2_sketch_size, further used to compute the signatures and compare signature matrix for all permutations of ksizes, molecules, and log2_sketch_size. This is done to save the time on saving the computational time and storage in obtaining unique barcodes, sharding the bam file. 
+
+
+**Example parameters**
+
+* Default: Save fastas in a directory called fastsas inside outdir:
+* Set flag to save fastas per barcode inside outdir/fastas:
+  * `--save_fastas "fastas"`
+
+
+## Bam optional parameters
+
+
+### `--write_barcode_meta_csv`
+This creates a CSV containing the number of reads and number of UMIs per barcode, written in a path relative to `${params.outdir}/barcode_metadata`. This csv file is empty with just header when the min_umi_per_barcode is zero i.e reads and UMIs per barcode are calculated only when the barcodes are filtered based on [min_umi_per_barcode](#--min_umi_per_barcode)
+**Example parameters**
+
+* Default: barcode metadata is not saved 
+* Set flag to save metadata csv file in a file inside outdir/barcode_metadata:
+  * `--write_barcode_meta_csv "barcodes_counts.csv"`
+
+
+### `--min_umi_per_barcode`
+The parameter `--min_umi_per_barcode` ensures that a barcode is only considered a valid barcode read and its sketch is written if number of unique molecular identifiers (UMIs, aka molecular barcodes) are greater than the value specified.
+
+**Example parameters**
+
+* Default: min_umi_per_barcode is 0
+* Set minimum UMI per cellular barcode as 10:
+  * `--min_umi_per_barcode 10`
+
+
+### `--line_count`
+The parameter `--line_count` specifies the number of alignments/lines in each bam shard.
+**Example parameters**
+
+* Default: line_count is 1500
+* Set number of lines in a bam shard as 10:
+  * `--line_count 400`
 **Example parameters**
 
 * Tracking abundance - add this parameter if we want to keep track of the number of times a hashed kmer appears. 

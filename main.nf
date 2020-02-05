@@ -83,6 +83,8 @@ def helpMessage() {
                                     Useful for comparing e.g. assembled transcriptomes or metagenomes.
                                     (Not typically used for raw sequencing data as this would create
                                     a k-mer signature for each read!)
+      --track_abundance             Track abundance of each hashed k-mer, could be useful for cancer RNA-seq or ATAC-seq analyses
+
     Split K-mer options:
       --splitKmer                   If provided, use SKA to compute split k-mer sketches instead of
                                     sourmash to compute k-mer sketches
@@ -167,7 +169,7 @@ if (params.read_paths) {
       .ifEmpty { exit 1, "params.csv_singles (${params.csv_singles}) was empty - no input files supplied" }
   }
 
-   // Provided fastq gz read pairs
+   // Provided fastq gz paired-end reads
    if (params.read_pairs){
      read_pairs_ch = Channel
        .fromFilePairs(params.read_pairs?.toString()?.tokenize(';'))
@@ -286,6 +288,23 @@ else {
   barcode_metadata_folder = "barcode_metadata"
 }
 
+// For bam files, set a folder name to save the optional barcode metadata csv
+if (!params.write_barcode_meta_csv) {
+  barcode_metadata_folder = ""
+}
+else {
+  barcode_metadata_folder = "barcode_metadata"
+}
+
+// For bam files, one_signature_per_record is true
+if (params.bam) {
+  one_signature_per_record = true
+}
+else {
+  one_signature_per_record = params.one_signature_per_record
+}
+
+
 // Header log info
 log.info nfcoreHeader()
 def summary = [:]
@@ -376,6 +395,7 @@ process get_software_versions {
     echo $workflow.manifest.version > v_pipeline.txt
     echo $workflow.nextflow.version > v_nextflow.txt
     sourmash info &> v_sourmash.txt
+    bam2fasta info &> v_bam2fasta.txt
     scrape_software_versions.py &> software_versions_mqc.yaml
     """
 }
@@ -401,17 +421,16 @@ if (params.subsample) {
     """
     seqtk sample -s100 ${read1} ${params.subsample} > ${read1_prefix}_${params.subsample}.fastq.gz
     seqtk sample -s100 ${read2} ${params.subsample} > ${read2_prefix}_${params.subsample}.fastq.gz
-
     """
     }
 }
 
 
 if (params.bam) {
-  process sourmash_compute_sketch_bam {
-    tag "${sample_id}_${sketch_id}"
+  process bam2fasta {
+    tag "bam2fasta"
     label "high_memory"
-    publishDir "${params.outdir}/${params.save_fastas}", pattern: '*.fasta', saveAs: { filename -> "${params.outdir}/${params.save_fastas}/${filename.replace("|", "-")}"}
+    publishDir "${params.outdir}/${params.save_fastas}", pattern: '*.fasta', saveAs: { filename -> "${filename.replace("|", "-")}"}
     publishDir "${params.outdir}/${barcode_metadata_folder}", pattern: '*.csv', mode: 'copy'
 
 
@@ -421,9 +440,6 @@ if (params.bam) {
     maxRetries 1
 
     input:
-    ksize
-    molecule
-    log2_sketch_size
     file(barcodes_file) from barcodes_ch
     set sample_id, file(bam) from bam_ch
     file(rename_10x_barcodes) from rename_10x_barcodes_ch
@@ -434,12 +450,8 @@ if (params.bam) {
     file("${params.write_barcode_meta_csv}") optional true
 
     script:
-    sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
-    molecule = molecule
-    not_dna = molecule != 'dna' ? '--no-dna' : ''
-    ksize = ksize
 
-    min_umi_per_barcode = params.min_umi_per_barcode ? "--count-valid-reads ${params.min_umi_per_barcode}" : ''
+    min_umi_per_barcode = params.min_umi_per_barcode ? "--min-umi-per-barcode ${params.min_umi_per_barcode}" : ''
     line_count = params.line_count ? "--line-count ${params.line_count}" : ''
     metadata = params.write_barcode_meta_csv ? "--write-barcode-meta-csv ${params.write_barcode_meta_csv}": ''
     save_fastas = "--save-fastas ."
@@ -448,11 +460,7 @@ if (params.bam) {
     def barcodes_file = params.barcodes_file ? "--barcodes-file ${barcodes_file.baseName}.tsv": ''
     def rename_10x_barcodes = params.rename_10x_barcodes ? "--rename-10x-barcodes ${rename_10x_barcodes.baseName}.tsv": ''
     """
-      sourmash compute \\
-        --ksize $ksize \\
-        --$molecule \\
-        $not_dna \\
-        --num-hashes \$((2**$log2_sketch_size)) \\
+      bam2fasta convert \\
         $processes \\
         $min_umi_per_barcode \\
         $line_count \\
@@ -460,8 +468,7 @@ if (params.bam) {
         $barcodes_file \\
         $save_fastas \\
         $metadata \\
-        --output ${sample_id}_${sketch_id}.sig \\
-        --input-is-10x $bam
+        --filename $bam
       find . -type f -name "*.fasta" | while read src; do if [[ \$src == *"|"* ]]; then mv "\$src" \$(echo "\$src" | tr "|" "_"); fi done
     """
   }
@@ -483,15 +490,15 @@ if (params.splitKmer){
       maxRetries 3
 
 
-  	input:
-  	each ksize from ksizes
-  	set id, file(reads) from reads_ch
+    input:
+    each ksize from ksizes
+    set id, file(reads) from reads_ch
 
-  	output:
-  	set val(ksize), file("${sketch_id}.skf") into ska_sketches
+    output:
+    set val(ksize), file("${sketch_id}.skf") into ska_sketches
 
-  	script:
-  	sketch_id = "${id}_ksize_${ksize}"
+    script:
+    sketch_id = "${id}_ksize_${ksize}"
 
       """
       ska fastq \\
@@ -556,43 +563,43 @@ if (params.splitKmer){
 
 if (params.splitKmer){
      process ska_compare_sketches {
-  	tag "${sketch_id}"
-  	publishDir "${params.outdir}/ska/compare/", mode: 'copy'
+    tag "${sketch_id}"
+    publishDir "${params.outdir}/ska/compare/", mode: 'copy'
 
-  	input:
- 	  set val(ksize), file (sketches) from ska_sketches.groupTuple()
+    input:
+    set val(ksize), file (sketches) from ska_sketches.groupTuple()
 
-  	output:
-	   // uploaded distances, clusters, and graph connecting (dot) file
-  	file "ksize_${ksize}*"
+    output:
+     // uploaded distances, clusters, and graph connecting (dot) file
+    file "ksize_${ksize}*"
 
-  	script:
-  	"""
+    script:
+    """
     ska distance -o ksize_${ksize} -s 25 -i 0.95 ${sketches}
-  	"""
+    """
 
     }
   } else {
   process sourmash_compare_sketches {
-  	tag "${sketch_id}"
-  	publishDir "${params.outdir}/sourmash/compare", mode: 'copy'
+    tag "${sketch_id}"
+    publishDir "${params.outdir}/sourmash/compare", mode: 'copy'
 
-  	input:
+    input:
     set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file ("sourmash/sketches/*.sig") \
       from sourmash_sketches.groupTuple(by: [0, 3])
 
-  	output:
-  	file "similarities_${sketch_id}.csv"
+    output:
+    file "similarities_${sketch_id}.csv"
 
-  	script:
+    script:
     processes = "--processes ${task.cpus}"
-  	"""
-  	sourmash compare \\
+    """
+    sourmash compare \\
           --ksize ${ksize[0]} \\
           --${molecule[0]} \\
           --csv similarities_${sketch_id}.csv \\
           --traverse-directory .
-  	"""
+    """
 
   }
 }
@@ -679,9 +686,9 @@ workflow.onComplete {
     c_red = params.monochrome_logs ? '' : "\033[0;31m";
 
     if (workflow.stats.ignoredCountFmt > 0 && workflow.success) {
-	    log.info "${c_purple}Warning, pipeline completed, but with errored process(es) ${c_reset}"
-	    log.info "${c_red}Number of ignored errored process(es) : ${workflow.stats.ignoredCountFmt} ${c_reset}"
-	    log.info "${c_green}Number of successfully ran process(es) : ${workflow.stats.succeedCountFmt} ${c_reset}"
+      log.info "${c_purple}Warning, pipeline completed, but with errored process(es) ${c_reset}"
+      log.info "${c_red}Number of ignored errored process(es) : ${workflow.stats.ignoredCountFmt} ${c_reset}"
+      log.info "${c_green}Number of successfully ran process(es) : ${workflow.stats.succeedCountFmt} ${c_reset}"
     }
 
     if(workflow.success){
@@ -732,7 +739,7 @@ def checkHostname(){
                             "  ${c_yellow_bold}It's highly recommended that you use `-profile $prof${c_reset}`\n" +
                             "============================================================"
                 }
-	    }
+      }
         }
     }
 }
