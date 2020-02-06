@@ -104,11 +104,6 @@ def helpMessage() {
       --peptide_fasta               Path to a well-curated fasta file of protein sequences. Used to filter for coding reads
       --bloomfilter_tablesize       Maximum table size for bloom filter creation
 
-
-    Trimming options:
-      --minlength                   Minimum length of reads after trimming, default 100
-      --skipTrimming                 Don't trim reads on quality
-
     Other Options:
       --email                       Set this parameter to your e-mail address to get a summary e-mail with details of the run sent to you when the workflow exits
       -name                         Name for the pipeline run. If not specified, Nextflow will automatically generate a random mnemonic.
@@ -374,7 +369,6 @@ if(params.bam) summary['Count valid reads'] = params.min_umi_per_barcode
 if(params.bam) summary['Saved Fastas '] = params.save_fastas
 if(params.bam) summary['Barcode umi read metadata'] = params.write_barcode_meta_csv
 // Extract coding parameters
-if(params.peptide_fasta) summary['--- Extracting coding reads ---']  = ''
 if(params.peptide_fasta) summary["Peptide fasta"] = params.peptide_fasta
 if(params.peptide_fasta) summary['Peptide ksize'] = params.extract_coding_peptide_ksize
 if(params.peptide_fasta) summary['Peptide molecule'] = params.extract_coding_peptide_molecule
