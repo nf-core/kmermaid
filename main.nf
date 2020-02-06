@@ -730,9 +730,6 @@ if (params.peptide_fasta){
 }
 
 
-// Combine peptide and nucleotide sketches
-sourmash_sketches = sourmash_sketches_peptide.concat(sourmash_sketches_nucleotide)
-
 if (params.splitKmer){
      process ska_compare_sketches {
     tag "${sketch_id}"
@@ -753,6 +750,8 @@ if (params.splitKmer){
     }
   } else {
   process sourmash_compare_sketches {
+    // Combine peptide and nucleotide sketches
+    sourmash_sketches = sourmash_sketches_peptide.concat(sourmash_sketches_nucleotide)
     tag "${sketch_id}"
     publishDir "${params.outdir}/sourmash/compare", mode: 'copy'
 
