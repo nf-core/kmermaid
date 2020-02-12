@@ -66,6 +66,12 @@ def helpMessage() {
       --fastas                      Path to FASTA sequence files. Can be semi-colon-separated
       --bam                         Path to 10x BAM file
       --save_fastas                 For bam files, Path relative to outdir to save unique barcodes to {CELL_BARCODE}.fasta
+      --save_intermediate_files     save temporary fastas and chunks of bam files
+                                    in the absolute path given by this flag
+                                    By default, they are saved in temp directory.
+                                    An important note is This might cause
+                                    not enough space on the device left depending on the size of your bam file and harddisk space allocated for tmp folder on your machine, so its better to specify a directory.
+                                    These files are deleted automatically at the end of the program.
       --sra                         SRR, ERR, SRP IDs representing a project. Only compatible with
                                     Nextflow 19.03-edge or greater
 
@@ -367,6 +373,7 @@ summary['Track Abundance']        = params.track_abundance
 if(params.bam) summary["Bam chunk line count"] = params.line_count
 if(params.bam) summary['Count valid reads'] = params.min_umi_per_barcode
 if(params.bam) summary['Saved Fastas '] = params.save_fastas
+if(params.bam) summary['Saved intermediate files '] = params.save_intermediate_files
 if(params.bam) summary['Barcode umi read metadata'] = params.write_barcode_meta_csv
 // Extract coding parameters
 if(params.peptide_fasta) summary["Peptide fasta"] = params.peptide_fasta
@@ -525,6 +532,7 @@ if (params.bam) {
     line_count = params.line_count ? "--line-count ${params.line_count}" : ''
     metadata = params.write_barcode_meta_csv ? "--write-barcode-meta-csv ${params.write_barcode_meta_csv}": ''
     save_fastas = "--save-fastas ."
+    save_intermediate_files = "--save-intermediate-files ${params.save_intermediate_files}"   
     processes = "--processes ${params.max_cpus}"
 
     def barcodes_file = params.barcodes_file ? "--barcodes-file ${barcodes_file.baseName}.tsv": ''
@@ -537,6 +545,7 @@ if (params.bam) {
         $rename_10x_barcodes \\
         $barcodes_file \\
         $save_fastas \\
+        $save_intermediate_files \\
         $metadata \\
         --filename $bam
       find . -type f -name "*.fasta" | while read src; do if [[ \$src == *"|"* ]]; then mv "\$src" \$(echo "\$src" | tr "|" "_"); fi done
