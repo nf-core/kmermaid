@@ -6,7 +6,6 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - bioconda::bam2fasta=1.0.1
   - bioconda::khmer=3.0.0a3
   - bioconda::bioconductor-edger=3.28.0
   - conda-forge::gxx_linux-64=7.3.0
