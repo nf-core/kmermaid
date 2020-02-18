@@ -3,7 +3,8 @@
 ## v1.0.0dev
 
 * Add option to use Dayhoff encoding for sourmash.
-* Add `bam2fasta` process to kmermaid pipeline and flags to call it.
+* Add `bam2fasta` process to kmermaid pipeline and flags involved.
+* Add `extract_coding` and `peptide_bloom_filger` process and flags involved.
 * Add `track_abundance` feature to keep track of hashed kmer frequency.
 * Add social preview image
 
