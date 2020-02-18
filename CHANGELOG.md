@@ -2,9 +2,8 @@
 
 ## v1.0.0dev
 
-* Add option to use Dayhoff encoding for sourmash
-* Add bam file process to kmermaid pipeline and optional params
-  for the same
+* Add option to use Dayhoff encoding for sourmash.
+* Add `bam2fasta` process to kmermaid pipeline and flags to call it.
 * Add `track_abundance` feature to keep track of hashed kmer frequency.
 
 ### Dependency updates
