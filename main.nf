@@ -9,16 +9,14 @@
 ----------------------------------------------------------------------------------------
 */
 
+
+
 def helpMessage() {
     log.info nfcoreHeader()
     log.info """
-    ==============================================================
-      _                            _       _ _         _ _
-     | |_ ___ _____ ___ ___    ___|_|_____|_| |___ ___|_| |_ _ _
-     | '_|___|     | -_|  _|  |_ -| |     | | | .'|  _| |  _| | |
-     |_,_|   |_|_|_|___|_|    |___|_|_|_|_|_|_|__,|_| |_|_| |_  |
-                                                            |___|
-    ==============================================================
+    =========================================
+     nf-core/kmermaid v${workflow.manifest.version}
+    =========================================
 
     Usage:
 
@@ -26,27 +24,27 @@ def helpMessage() {
 
     With a samples.csv file containing the columns sample_id,read1,read2:
 
-      nextflow run czbiohub/nf-kmer-similarity \
+      nextflow run nf-core/kmermaid \
         --outdir s3://olgabot-maca/nf-kmer-similarity/ --samples samples.csv
 
 
     With read pairs in one or more semicolon-separated s3 directories:
 
-      nextflow run czbiohub/nf-kmer-similarity \
+      nextflow run nf-core/kmermaid \
         --outdir s3://olgabot-maca/nf-kmer-similarity/ \
         --read_pairs s3://olgabot-maca/sra/homo_sapiens/smartseq2_quartzseq/*{R1,R2}*.fastq.gz;s3://olgabot-maca/sra/danio_rerio/smart-seq/whole_kidney_marrow_prjna393431/*{R1,R2}*.fastq.gz
 
 
     With plain ole fastas in one or more semicolon-separated s3 directories:
 
-      nextflow run czbiohub/nf-kmer-similarity \
+      nextflow run nf-core/kmermaid \
         --outdir s3://olgabot-maca/nf-kmer-similarity/choanoflagellates_richter2018/ \
         --fastas /home/olga/data/figshare/choanoflagellates_richter2018/1_choanoflagellate_transcriptomes/*.fasta
 
 
     With SRA ids (requires nextflow v19.03-edge or greater):
 
-      nextflow run czbiohub/nf-kmer-similarity \
+      nextflow run nf-core/kmermaid \
         --outdir s3://olgabot-maca/nf-kmer-similarity/ --sra SRP016501
 
 
@@ -68,6 +66,12 @@ def helpMessage() {
       --fastas                      Path to FASTA sequence files. Can be semi-colon-separated
       --bam                         Path to 10x BAM file
       --save_fastas                 For bam files, Path relative to outdir to save unique barcodes to {CELL_BARCODE}.fasta
+      --save_intermediate_files     save temporary fastas and chunks of bam files
+                                    in the absolute path given by this flag
+                                    By default, they are saved in temp directory.
+                                    An important note is This might cause
+                                    not enough space on the device left depending on the size of your bam file and harddisk space allocated for tmp folder on your machine, so its better to specify a directory.
+                                    These files are deleted automatically at the end of the program.
       --sra                         SRR, ERR, SRP IDs representing a project. Only compatible with
                                     Nextflow 19.03-edge or greater
 
@@ -102,7 +106,17 @@ def helpMessage() {
       --rename_10x_barcodes         For bam files, Optional absolute path to a .tsv Tab-separated file mapping 10x barcode name
                                     to new name, e.g. with channel or cell annotation label
 
+    Extract protein-coding options:
+      --peptide_fasta               Path to a well-curated fasta file of protein sequences. Used to filter for coding reads
+      --bloomfilter_tablesize       Maximum table size for bloom filter creation
+
+    Other Options:
+      --email                       Set this parameter to your e-mail address to get a summary e-mail with details of the run sent to you when the workflow exits
+      -name                         Name for the pipeline run. If not specified, Nextflow will automatically generate a random mnemonic.
+
+
     """.stripIndent()
+
 }
 
 
@@ -112,6 +126,17 @@ if (params.help){
     helpMessage()
     exit 0
 }
+
+multiqc_config = file(params.multiqc_config)
+output_docs = file("$baseDir/docs/output.md")
+
+// Has the run name been specified by the user?
+//  this has the bonus effect of catching both -name and --name
+custom_runName = params.name
+if( !(workflow.runName ==~ /[a-z]+_[a-z]+/) ){
+  custom_runName = workflow.runName
+}
+
 
 /*
  * SET UP CONFIGURATION VARIABLES
@@ -172,7 +197,7 @@ if (params.read_paths) {
    // Provided fastq gz paired-end reads
    if (params.read_pairs){
      read_pairs_ch = Channel
-       .fromFilePairs(params.read_pairs?.toString()?.tokenize(';'))
+       .fromFilePairs(params.read_pairs?.toString()?.tokenize(';'), size: 2)
        .ifEmpty { exit 1, "params.read_pairs (${params.read_pairs}) was empty - no input files supplied" }
    }
    // Provided fastq gz single-end reads
@@ -219,6 +244,12 @@ if (params.read_paths) {
   }
 }
 
+if (params.peptide_fasta) {
+Channel.fromPath(params.peptide_fasta, checkIfExists: true)
+     .ifEmpty { exit 1, "Peptide fasta file not found: ${params.peptide_fasta}" }
+     .set{ ch_peptide_fasta }
+}
+
 if (params.subsample) {
   if (params.bam){
      exit 1, "Cannot provide both a bam file with --bam and specify --subsample"
@@ -238,7 +269,6 @@ if (params.subsample) {
 //   Do nothing - can't combine the fastq files and bam files (yet)
     }
 }
-
 
 
 // Has the run name been specified by the user?
@@ -269,11 +299,23 @@ if (params.splitKmer){
 // Parse the parameters
 
 ksizes = params.ksizes?.toString().tokenize(',')
-ksize = ksizes[0]
 molecules = params.molecules?.toString().tokenize(',')
-molecule = molecules[0]
+peptide_molecules = molecules.findAll { it != "dna" }
 log2_sketch_sizes = params.log2_sketch_sizes?.toString().tokenize(',')
-log2_sketch_size = log2_sketch_sizes[0]
+
+int bloomfilter_tablesize = Math.round(Float.valueOf(params.bloomfilter_tablesize))
+
+peptide_ksize = params.extract_coding_peptide_ksize
+peptide_molecule = params.extract_coding_peptide_molecule
+jaccard_threshold = params.extract_coding_jaccard_threshold
+track_abundance = params.track_abundance
+
+if (params.bam){
+  // Extract the fasta just once using sourmash
+  single_ksize = ksizes[0]
+  single_molecule = molecules[0]
+  single_log2_sketch_size = log2_sketch_sizes[0]
+}
 
 if (params.splitKmer && 'protein' in molecules){
   exit 1, "Cannot specify 'protein' in `--molecules` if --splitKmer is set"
@@ -331,7 +373,13 @@ summary['Track Abundance']        = params.track_abundance
 if(params.bam) summary["Bam chunk line count"] = params.line_count
 if(params.bam) summary['Count valid reads'] = params.min_umi_per_barcode
 if(params.bam) summary['Saved Fastas '] = params.save_fastas
+if(params.bam) summary['Saved intermediate files '] = params.save_intermediate_files
 if(params.bam) summary['Barcode umi read metadata'] = params.write_barcode_meta_csv
+// Extract coding parameters
+if(params.peptide_fasta) summary["Peptide fasta"] = params.peptide_fasta
+if(params.peptide_fasta) summary['Peptide ksize'] = params.extract_coding_peptide_ksize
+if(params.peptide_fasta) summary['Peptide molecule'] = params.extract_coding_peptide_molecule
+if(params.peptide_fasta) summary['Bloom filter table size'] = params.bloomfilter_tablesize
 // Resource information
 summary['Max Resources']    = "$params.max_memory memory, $params.max_cpus cpus, $params.max_time time per job"
 if(workflow.containerEngine) summary['Container'] = "$workflow.containerEngine - $workflow.container"
@@ -400,6 +448,35 @@ process get_software_versions {
     """
 }
 
+if (params.peptide_fasta){
+  process peptide_bloom_filter {
+    tag "${peptides}__${bloom_id}"
+    label "low_memory"
+
+    publishDir "${params.outdir}/bloom_filter", mode: 'copy'
+
+    input:
+    file(peptides) from ch_peptide_fasta
+    peptide_ksize
+    peptide_molecule
+
+    output:
+    set val(bloom_id), val(peptide_molecule), file("${peptides.simpleName}__${bloom_id}.bloomfilter") into ch_khtools_bloom_filter
+
+    script:
+    bloom_id = "molecule-${peptide_molecule}_ksize-${peptide_ksize}"
+    """
+    khtools bloom-filter \\
+      --tablesize ${bloomfilter_tablesize} \\
+      --molecule ${peptide_molecule} \\
+      --peptide-ksize ${peptide_ksize} \\
+      --save-as ${peptides.simpleName}__${bloom_id}.bloomfilter \\
+      ${peptides}
+    """
+  }
+}
+
+
 if (params.subsample) {
     process subsample_input {
 	tag "${id}_subsample"
@@ -455,6 +532,7 @@ if (params.bam) {
     line_count = params.line_count ? "--line-count ${params.line_count}" : ''
     metadata = params.write_barcode_meta_csv ? "--write-barcode-meta-csv ${params.write_barcode_meta_csv}": ''
     save_fastas = "--save-fastas ."
+    save_intermediate_files = "--save-intermediate-files ${params.save_intermediate_files}"   
     processes = "--processes ${params.max_cpus}"
 
     def barcodes_file = params.barcodes_file ? "--barcodes-file ${barcodes_file.baseName}.tsv": ''
@@ -467,11 +545,55 @@ if (params.bam) {
         $rename_10x_barcodes \\
         $barcodes_file \\
         $save_fastas \\
+        $save_intermediate_files \\
         $metadata \\
         --filename $bam
       find . -type f -name "*.fasta" | while read src; do if [[ \$src == *"|"* ]]; then mv "\$src" \$(echo "\$src" | tr "|" "_"); fi done
     """
   }
+}
+
+
+if (params.peptide_fasta){
+  process extract_coding {
+    tag "${sample_id}"
+    label "low_memory"
+    publishDir "${params.outdir}/extract_coding/", mode: 'copy'
+
+    input:
+    set bloom_id, molecule, file(bloom_filter) from ch_khtools_bloom_filter.collect()
+    set sample_id, file(reads) from reads_ch
+
+    output:
+    // TODO also extract nucleotide sequence of coding reads and do sourmash compute using only DNA on that?
+    set val(sample_id), file("${sample_id}__coding_reads_peptides.fasta") into ch_coding_peptides
+    set val(sample_id), file("${sample_id}__coding_reads_nucleotides.fasta") into ch_coding_nucleotides
+    set val(sample_id), file("${sample_id}__coding_scores.csv") into ch_coding_scores_csv
+    set val(sample_id), file("${sample_id}__coding_summary.json") into ch_coding_scores_json
+
+    script:
+    """
+    khtools extract-coding \\
+      --molecule ${molecule} \\
+      --coding-nucleotide-fasta ${sample_id}__coding_reads_nucleotides.fasta \\
+      --csv ${sample_id}__coding_scores.csv \\
+      --json-summary ${sample_id}__coding_summary.json \\
+      --jaccard-threshold ${jaccard_threshold} \\
+      --peptides-are-bloom-filter \\
+      ${bloom_filter} \\
+      ${reads} > ${sample_id}__coding_reads_peptides.fasta
+    """
+  }
+  // Remove empty files
+  // it[0] = sample id
+  // it[1] = sequence fasta file
+  ch_coding_nucleotides_nonempty = ch_coding_nucleotides.filter{ it[1].size() > 0 }
+  ch_coding_peptides_nonempty = ch_coding_peptides.filter{ it[1].size() > 0 }
+
+} else {
+  // Send reads directly into coding/noncoding
+  reads_ch
+    .set{ ch_coding_nucleotides_nonempty }
 }
 
 if (params.splitKmer){
@@ -508,39 +630,85 @@ if (params.splitKmer){
       """
 
     }
-} else {
-  process sourmash_compute_sketch_fastx {
+} 
+else {
+process sourmash_compute_sketch_fastx_nucleotide {
+  tag "${sample_id}_${sketch_id}"
+  label "mid_memory"
+  publishDir "${params.outdir}/sketches_nucleotide", mode: 'copy'
+
+  input:
+  each ksize from ksizes
+  each log2_sketch_size from log2_sketch_sizes
+  set sample_id, file(reads) from ch_coding_nucleotides_nonempty
+
+  output:
+  set val(sketch_id), val("dna"), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches_nucleotide
+
+  script:
+  // Don't calculate DNA signature if this is protein, to minimize disk,
+  // memory and IO requirements in the future
+  ksize = ksize
+  sketch_id = "molecule-dna_ksize-${ksize}_log2sketchsize-${log2_sketch_size}_trackabundance-${params.track_abundance}"
+  track_abundance_flag = track_abundance ? '--track-abundance' : ''
+
+  if ( params.one_signature_per_record ){
+    """
+    sourmash compute \\
+      --num-hashes \$((2**$log2_sketch_size)) \\
+      --ksizes $ksize \\
+      --dna \\
+      $track_abundance_flag \\
+      --output ${sample_id}_${sketch_id}.sig \\
+      $reads
+    """
+  }
+  else {
+    """
+    sourmash compute \\
+      --num-hashes \$((2**$log2_sketch_size)) \\
+      --ksizes $ksize \\
+      --dna \\
+      $track_abundance_flag \\
+      --output ${sample_id}_${sketch_id}.sig \\
+      --merge '$sample_id' \\
+      $reads
+    """
+    }
+  }
+}
+
+
+if (params.peptide_fasta){
+  process sourmash_compute_sketch_fastx_peptide {
     tag "${sample_id}_${sketch_id}"
     label "mid_memory"
-    publishDir "${params.outdir}/sourmash/sketches", mode: 'copy'
-
-    // If job fails, try again with more memory
-    // memory { 8.GB * task.attempt }
-    errorStrategy 'retry'
-    maxRetries 3
+    publishDir "${params.outdir}/sketches_peptide", mode: 'copy'
 
     input:
     each ksize from ksizes
-    each molecule from molecules
+    each molecule from peptide_molecules
     each log2_sketch_size from log2_sketch_sizes
-    set sample_id, file(reads) from reads_ch
+    set sample_id, file(reads) from ch_coding_peptides_nonempty
 
     output:
-    set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches
+    set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches_peptide
 
     script:
-    sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}"
+    sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}_trackabundance-${params.track_abundance}"
     molecule = molecule
-    not_dna = molecule == 'dna' ? '' : '--no-dna'
     ksize = ksize
+    track_abundance_flag = track_abundance ? '--track-abundance' : ''
 
     if ( params.one_signature_per_record ) {
       """
       sourmash compute \\
         --num-hashes \$((2**$log2_sketch_size)) \\
         --ksizes $ksize \\
+        --input-is-protein \\
         --$molecule \\
-        $not_dna \\
+        --no-dna \\
+        $track_abundance_flag \\
         --output ${sample_id}_${sketch_id}.sig \\
         $reads
       """
@@ -550,14 +718,18 @@ if (params.splitKmer){
       sourmash compute \\
         --num-hashes \$((2**$log2_sketch_size)) \\
         --ksizes $ksize \\
+        --input-is-protein \\
         --$molecule \\
-        $not_dna \\
+        --no-dna \\
+        $track_abundance_flag \\
         --output ${sample_id}_${sketch_id}.sig \\
         --merge '$sample_id' \\
         $reads
       """
     }
   }
+} else {
+  sourmash_sketches_peptide = Channel.empty()
 }
 
 
@@ -581,6 +753,8 @@ if (params.splitKmer){
     }
   } else {
   process sourmash_compare_sketches {
+    // Combine peptide and nucleotide sketches
+    sourmash_sketches = sourmash_sketches_peptide.concat(sourmash_sketches_nucleotide)
     tag "${sketch_id}"
     publishDir "${params.outdir}/sourmash/compare", mode: 'copy'
 
@@ -662,6 +836,7 @@ workflow.onComplete {
           if( params.plaintext_email ){ throw GroovyException('Send plaintext e-mail, not HTML') }
           // Try to send HTML e-mail using sendmail
           [ 'sendmail', '-t' ].execute() << sendmail_html
+
           log.info "[nf-core/kmermaid] Sent summary e-mail to $params.email (sendmail)"
         } catch (all) {
           // Catch failures and try with plaintext

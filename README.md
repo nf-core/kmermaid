@@ -60,16 +60,11 @@ nextflow run czbiohub/nf-kmer-similarity --outdir s3://olgabot-maca/nf-kmer-simi
   --bam 'possorted_genome_bam.bam'
 ```
 
-## Credits
-nf-core/kmermaid was originally written by Olga Botvinnik with contributions from Pranathi Vemuri.
+### With split kmer
 
-```bash
+```
 nextflow run czbiohub/nf-kmer-similarity --outdir s3://olgabot-maca/nf-kmer-similarity/ --samples samples.csv --splitKmer --subsample 1000
 ```
 
-### With bam file
-
-```
-nextflow run czbiohub/nf-kmer-similarity --outdir s3://olgabot-maca/nf-kmer-similarity/ \
-  --bam 'possorted_genome_bam.bam'
-```
+## Credits
+nf-core/kmermaid was originally written by Olga Botvinnik.

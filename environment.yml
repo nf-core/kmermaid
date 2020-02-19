@@ -10,8 +10,8 @@ dependencies:
   - bioconda::bioconductor-edger=3.28.0
   - conda-forge::gxx_linux-64=7.3.0
   - conda-forge::rust=1.40.0
-  - conda-forge::r-data.table=1.12.8
-  - conda-forge::r-gplots=3.0.1.2
+  - conda-forge::r-data.table=1.12.4
+  - conda-forge::r-gplots=3.0.1.1
   - conda-forge::r-markdown=1.1
   - alabaster=0.7.12
   - fastp=0.20.0
@@ -28,7 +28,5 @@ dependencies:
   - sphinx=2.3.1
   - pip:
     - git+https://github.com/czbiohub/bam2fasta.git@master#egg=bam2fasta
-    - git+https://github.com/czbiohub/kh-tools.git@olgabot/partition-coding-reads#egg=khtools==0.1.0
+    - git+https://github.com/czbiohub/kh-tools.git@master#egg=khtools==0.1.0
     - git+https://github.com/czbiohub/sourmash.git@master#egg=sourmash==3.2.0
-  # - conda-forge::gcc_linux-64
-  # - gcc

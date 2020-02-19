@@ -12,5 +12,7 @@ RUN conda env create -f /environment.yml && conda clean -a
 ENV PATH /opt/conda/envs/nf-core-kmermaid-1.0.0dev/bin:$PATH
 
 RUN sourmash info
+RUN bam2fasta info
+RUN khtools bloom-filter --help
+RUN khtools extract-coding --help
 COPY docker/sysctl.conf /etc/sysctl.conf
-
