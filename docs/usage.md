@@ -19,10 +19,24 @@
         * [`--csv_singles`](#--csv_singles)
         * [`--fastas`](#--fastas)
         * [`--sra`](#--sra)
+        * [`--bam`](#--bam)
+        * [`--barcodes_file`](#--barcodes_file)
+        * [`--rename_10x_barcodes`](#--rename_10x_barcodes)
+        * [`--save_fastas`](#--save_fastas)
+    * [K-merization/Sketching program options](#k-merization-sketching-program-options)
+        * [`--splitKmer`](#--splitKmer)
+
     * [Sketch parameters](#sketch-parameters)
         * [`--molecule`](#--molecule)
         * [`--ksize`](#--ksize)
         * [`--log2_sketch_size`](#--log2_sketch_size)
+        * [`--track_abundance`](#--track_abundance)
+    * [Bam optional parameters](#bam-optional-parameters)
+        * [`--min_umi_per_barcode`](#--min_umi_per_barcode)
+        * [`--write_barcode_meta_csv`](#--write_barcode_meta_csv)
+        * [`--line_count`](#--line_count)
+
+
 * [Job Resources](#job-resources)
 * [Automatic resubmission](#automatic-resubmission)
 * [Custom resource requests](#custom-resource-requests)
@@ -207,6 +221,59 @@ Please note the following requirements:
 
 If left unspecified, no samples are used.
 
+## K-merization/Sketching program Options
+
+By default, the k-merization and sketch creation program is [sourmash](https://sourmash.readthedocs.io).
+
+### `--splitKmer`
+
+If `--splitKmer` is specified, then the [Split K-mer Analysis (SKA)](https://github.com/simonrharris/SKA) program ([publication](https://www.biorxiv.org/content/10.1101/453142v1)) is used to obtain k-mers from the data. This allows for a SNP to be present in the middle of a k-mer which can be advantageous for metagenomic analyses or with single-cell ATAC-seq data.
+
+#### What does `--ksize` mean when `--splitKmer` is set
+
+The meaning of `ksize` is different with split k-mers, so now the value specified by `--ksize` is just under half of the total sampled sequence size, where the middle base can be any base (`N`) `[---ksize---]N[---ksize---]`. When `--splitKmer` is set, then the default k-mer sizes are 9 and 15, for a total sequence unit size of `2*15+1 = 31` and `2*9+1 = 19` which is as if you specified on the command line `--splitKmer --ksize 9,15`. Additionally k-mer sizes with `--splitKmer` must be divisible by 3 (yes, this is inconvenient) and between 3 and 60 (inclusive). So the "total" `2*k+1` sizes can be:
+
+* k = 3 --> 2*3 + 1 = 7 total length
+* k = 6 --> 2*6 + 1 = 13 total length
+* k = 9 --> 2*9 + 1 = 18 total length
+* k = 12 --> 2*12 + 1 = 25 total length
+* k = 15 --> 2*15 + 1 = 31 total length
+* ...
+* k = 60 --> 2*60 + 1 = 121 total length
+
+#### `--subsample` reads when `--splitKmer` is set
+
+The `subsample` command is often necessary because the `ska` tool uses ALL the reads rather than a MinHash subsampling of them. If your input files are rather big, then the `ska` sketching command (`ska fastq`) runs out of memory, or it takes so long that it's untenable. The `--subsample` command specifies the number of reads to be used. When e.g. `--subsample 1000` is set, then 1000 reads (or read pairs) are randomly subsampled from the data using [seqtk](https://github.com/lh3/seqtk).
+
+
+#### Which `--molecules` are valid when `--splitKmer` is set
+
+Currently, `--splitKmer` only works with DNA sequence and not protein sequence, and thus will fail if `protein` or `dayhoff` is specified in `--molecules`.
+
+### `--bam`
+For bam/10x files, Use this to specify the location of the bam file. For example:
+
+```bash
+--bam /path/to/data/10x-example/possorted_genome_bam
+```
+### `--barcodes_file`
+For bam/10x files, Use this to specify the location of tsv (tab separated file) containing cell barcodes. For example:
+
+```bash
+--barcodes_file /path/to/data/10x-example/barcodes.tsv
+```
+
+If left unspecified, barcodes are derived from bam are used.
+
+### `--rename_10x_barcodes`
+For bam/10x files, Use this to specify the location of your tsv (tab separated file) containing map of cell barcodes and their corresponding new names(e.g row in the tsv file: AAATGCCCAAACTGCT-1    lung_epithelial_cell|AAATGCCCAAACTGCT-1). 
+For example:
+
+```bash
+--rename_10x_barcodes /path/to/data/10x-example/barcodes_renamer.tsv
+```
+If left unspecified, barcodes in bam as given in barcodes_file are not renamed.
+
 ## Sketch parameters
 
 [K-mer](https://en.wikipedia.org/wiki/K-mer) [MinHash](https://en.wikipedia.org/wiki/MinHash) sketches are defined by three parameters:
@@ -253,6 +320,14 @@ The fundamental unit of the sketch is a [hashed](https://en.wikipedia.org/wiki/H
 * k-mer size of 21 only:
   * `--ksize 21`
 
+
+### `--track_abundance`
+
+* Tracking abundance - add this parameter if we want to keep track of the number of times a hashed kmer appears. 
+  * `--track_abundance`
+
+
+
 ### `--log2_sketch_size`
 
 The log2 sketch size specifies the number of k-mers to use for the sketch. We use the log2 of the sketch size instead of the raw number of k-mers to be compatible for comparison with [`dashing`](https://github.com/dnbaker/dashing) that uses HyperLogLog instead of MinHash.
@@ -265,10 +340,45 @@ The log2 sketch size specifies the number of k-mers to use for the sketch. We us
   * `--log2_sketch_size 8`
 
 
+### `--save_fastas`
+
+1. The [save_fastas ](#--save_fastas ) used to save the sequences of each unique barcode in the bam file. It is a path relative to outdir to save unique barcodes to files namely {CELL_BARCODE}.fasta. These fastas are computed once for one permutation of ksize, molecule, and log2_sketch_size, further used to compute the signatures and compare signature matrix for all permutations of ksizes, molecules, and log2_sketch_size. This is done to save the time on saving the computational time and storage in obtaining unique barcodes, sharding the bam file. 
+
 **Example parameters**
 
-* Tracking abundance - add this parameter if we want to keep track of the number of times a hashed kmer appears. 
-  * `--track_abundance`
+* Default: Save fastas in a directory called fastsas inside outdir:
+  * `--save_fastas "fastas"`
+
+
+## Bam optional parameters
+
+### `--write_barcode_meta_csv`
+This creates a CSV containing the number of reads and number of UMIs per barcode, written in a path relative to `${params.outdir}/barcode_metadata`. This csv file is empty with just header when the min_umi_per_barcode is zero i.e reads and UMIs per barcode are calculated only when the barcodes are filtered based on [min_umi_per_barcode](#--min_umi_per_barcode)
+
+**Example parameters**
+
+* Default: barcode metadata is not saved 
+* Save fastas in a file cinside outdir/barcode/metadata:
+  * `--write_barcode_meta_csv "barcodes_counts.csv"`
+
+
+### `--min_umi_per_barcode`
+The parameter `--min_umi_per_barcode` ensures that a barcode is only considered a valid barcode read and its sketch is written if number of unique molecular identifiers (UMIs, aka molecular barcodes) are greater than the value specified.
+
+**Example parameters**
+
+* Default: min_umi_per_barcode is 0
+* Set minimum UMI per cellular barcode as 10:
+  * `--min_umi_per_barcode 10`
+
+
+### `--line_count`
+The parameter `--line_count` specifies the number of alignments/lines in each bam shard.
+**Example parameters**
+
+* Default: line_count is 350
+* Save fastas in a directory called fastas inside outdir:
+  * `--line_count 400`
 
 
 ## Reference Genomes
@@ -374,7 +484,7 @@ Note - you can use this to override defaults. For example, you can specify a con
 
 ### `--max_memory`
 Use to set a top-limit for the default memory requirement for each process.
-Should be a string in the format integer-unit. eg. `--max_memory '8.GB'``
+Should be a string in the format integer-unit. eg. `--max_memory '8.GB'`
 
 Note - you can use this to override pipeline defaults.
 
