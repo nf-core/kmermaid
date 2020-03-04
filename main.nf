@@ -330,14 +330,6 @@ else {
   barcode_metadata_folder = "barcode_metadata"
 }
 
-// For bam files, set a folder name to save the optional barcode metadata csv
-if (!params.write_barcode_meta_csv) {
-  barcode_metadata_folder = ""
-}
-else {
-  barcode_metadata_folder = "barcode_metadata"
-}
-
 // For bam files, one_signature_per_record is true
 if (params.bam) {
   one_signature_per_record = true
