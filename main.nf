@@ -88,6 +88,7 @@ def helpMessage() {
                                     (Not typically used for raw sequencing data as this would create
                                     a k-mer signature for each read!)
       --track_abundance             Track abundance of each hashed k-mer, could be useful for cancer RNA-seq or ATAC-seq analyses
+      --skip_trimming               If provided, skip fastp trimming of reads
 
     Split K-mer options:
       --splitKmer                   If provided, use SKA to compute split k-mer sketches instead of
@@ -149,7 +150,7 @@ read_paths_ch = Channel.empty()
 sra_ch = Channel.empty()
 
 // R1, R2 pairs from a samples.csv file
-samples_ch = Channel.empty()
+csv_pairs_ch = Channel.empty()
 
 // Single-enede reads from a samples.csv file
 csv_singles_ch = Channel.empty()
@@ -178,7 +179,7 @@ if (params.read_paths) {
    }
    // Provided a samples.csv file of read pairs
    if (params.csv_pairs){
-     samples_ch = Channel
+     csv_pairs_ch = Channel
       .fromPath(params.csv_pairs)
       .splitCsv(header:true)
       .map{ row -> tuple(row[0], tuple(file(row[1]), file(row[2])))}
@@ -254,17 +255,26 @@ if (params.subsample) {
   if (params.bam){
      exit 1, "Cannot provide both a bam file with --bam and specify --subsample"
   } else {
-    sra_ch.concat(samples_ch, csv_singles_ch, read_pairs_ch,
+    sra_ch.concat(csv_pairs_ch, csv_singles_ch, read_pairs_ch,
       read_singles_ch, fastas_ch, read_paths_ch)
       .ifEmpty{ exit 1, "No reads provided! Check read input files"}
       .set{ subsample_reads_ch }
   }
 } else {
   if (!params.bam) {
-  sra_ch.concat(samples_ch, csv_singles_ch, read_pairs_ch,
-   read_singles_ch, fastas_ch, read_paths_ch)
-   .ifEmpty{ exit 1, "No reads provided! Check read input files"}
-   .set{ reads_ch }
+    if(params.skip_trimming){
+      sra_ch.concat(
+          csv_pairs_ch, csv_singles_ch, read_pairs_ch,
+          read_singles_ch, fastas_ch, read_paths_ch)
+       .ifEmpty{ exit 1, "No reads provided! Check read input files"}
+       .set{ reads_ch }
+    } else {
+      sra_ch.concat(
+          csv_pairs_ch, csv_singles_ch, read_pairs_ch,
+          read_singles_ch, read_paths_ch)
+       .ifEmpty{ exit 1, "No reads provided! Check read input files"}
+       .set{ ch_read_files_trimming }
+    }
   } else {
 //   Do nothing - can't combine the fastq files and bam files (yet)
     }
@@ -494,6 +504,47 @@ if (params.subsample) {
     }
 }
 
+if (!params.skip_trimming){
+  process fastp {
+      label 'process_low'
+      tag "$name"
+      publishDir "${params.outdir}/fastp", mode: 'copy'
+
+      input:
+      set val(name), file(reads) from ch_read_files_trimming
+
+      output:
+      set val(name), file("*trimmed.fastq.gz") into ch_reads_trimmed
+      file "*fastp.json" into ch_fastp_results
+      file "*fastp.html" into ch_fastp_html
+
+      script:
+      // One set of reads --> single end
+      if (reads.size() == 1) {
+          """
+          fastp \\
+              --in1 ${reads} \\
+              --out1 ${name}_R1_trimmed.fastq.gz \\
+              --json ${name}_fastp.json \\
+              --html ${name}_fastp.html
+          """
+      } else {
+        // multiple reads --> paired end
+          """
+          fastp \\
+              --in1 ${reads[0]} \\
+              --in2 ${reads[1]} \\
+              --out1 ${name}_R1_trimmed.fastq.gz \\
+              --out2 ${name}_R2_trimmed.fastq.gz \\
+              --json ${name}_fastp.json \\
+              --html ${name}_fastp.html
+          """
+      }
+  }
+  // Concatenat trimmed fastq files with fastas
+  reads_ch = ch_reads_trimmed.concat(fastas_ch)
+}
+
 
 if (params.bam) {
   process bam2fasta {
@@ -524,7 +575,7 @@ if (params.bam) {
     line_count = params.line_count ? "--line-count ${params.line_count}" : ''
     metadata = params.write_barcode_meta_csv ? "--write-barcode-meta-csv ${params.write_barcode_meta_csv}": ''
     save_fastas = "--save-fastas ."
-    save_intermediate_files = "--save-intermediate-files ${params.save_intermediate_files}"   
+    save_intermediate_files = "--save-intermediate-files ${params.save_intermediate_files}"
     processes = "--processes ${params.max_cpus}"
 
     def barcodes_file = params.barcodes_file ? "--barcodes-file ${barcodes_file.baseName}.tsv": ''
@@ -622,7 +673,7 @@ if (params.splitKmer){
       """
 
     }
-} 
+}
 else {
 process sourmash_compute_sketch_fastx_nucleotide {
   tag "${sample_id}_${sketch_id}"
