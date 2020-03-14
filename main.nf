@@ -300,6 +300,13 @@ if (workflow.profile == 'awsbatch') {
   if (workflow.tracedir.startsWith('s3:')) exit 1, "Specify a local tracedir or run without trace! S3 cannot be used for tracefiles."
 }
 
+// Define regular variables so that they can be overwritten
+clip_r1 = params.clip_r1
+clip_r2 = params.clip_r2
+three_prime_clip_r1 = params.three_prime_clip_r1
+three_prime_clip_r2 = params.three_prime_clip_r2
+
+
 if (params.splitKmer){
     params.ksizes = '15,9'
     params.molecules = 'dna'
@@ -368,6 +375,7 @@ if(params.barcodes_file)          summary["Barcodes"]              = params.barc
 if(params.rename_10x_barcodes)    summary["Renamer barcodes"]      = params.rename_10x_barcodes
 if(params.read_paths)   summary['Read paths (paired-end)']         = params.read_paths
 // Sketch parameters
+summary['Trimming'] = "5'R1: $clip_r1 / 5'R2: $clip_r2 / 3'R1: $three_prime_clip_r1 / 3'R2: $three_prime_clip_r2 / NextSeq Trim: $params.trim_nextseq"
 summary['K-mer sizes']            = params.ksizes
 summary['Molecule']               = params.molecules
 summary['Log2 Sketch Sizes']      = params.log2_sketch_sizes
