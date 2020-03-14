@@ -167,9 +167,10 @@ fastas_ch = Channel.empty()
 // Parameters for testing
 if (params.read_paths) {
      read_paths_ch = Channel
-         .from(params.read_paths)
-         .map { row -> [ row[0], [file(row[1][0]), file(row[1][1])]] }
-         .ifEmpty { exit 1, "params.read_paths (${params.read_paths}) was empty - no input files supplied" }
+        .from(params.read_paths)
+        .map { row -> if (row[1].size() == 2) [ row[0], [file(row[1][0]), file(row[1][1])]]
+              else [row[0], [file(row[1][0])]]}
+        .ifEmpty { exit 1, "params.read_paths (${params.read_paths}) was empty - no input files supplied" }
  } else {
    // Provided SRA ids
    if (params.sra){
@@ -272,8 +273,9 @@ if (params.subsample) {
       sra_ch.concat(
           csv_pairs_ch, csv_singles_ch, read_pairs_ch,
           read_singles_ch, read_paths_ch)
-       .ifEmpty{ exit 1, "No reads provided! Check read input files"}
-       .set{ ch_read_files_trimming }
+        .view()
+        .ifEmpty{ exit 1, "No reads provided! Check read input files"}
+        .set{ ch_read_files_trimming }
     }
   } else {
 //   Do nothing - can't combine the fastq files and bam files (yet)
@@ -489,7 +491,7 @@ if (params.subsample) {
 
 	output:
 
-	set val(id), file("*_${params.subsample}.fastq.gz") into reads_ch
+	set val(id), file("*_${params.subsample}.fastq.gz") into ch_reads_subsampled
 
 	script:
 	read1 = reads[0]
@@ -497,18 +499,29 @@ if (params.subsample) {
 	read1_prefix = read1.name.minus(".fastq.gz") // TODO: change to RE to match fasta as well?
 	read2_prefix = read2.name.minus(".fastq.gz")
 
-    """
-    seqtk sample -s100 ${read1} ${params.subsample} > ${read1_prefix}_${params.subsample}.fastq.gz
-    seqtk sample -s100 ${read2} ${params.subsample} > ${read2_prefix}_${params.subsample}.fastq.gz
-    """
-    }
+  """
+  seqtk sample -s100 ${read1} ${params.subsample} > ${read1_prefix}_${params.subsample}.fastq.gz
+  seqtk sample -s100 ${read2} ${params.subsample} > ${read2_prefix}_${params.subsample}.fastq.gz
+  """
+  }
+  if (params.skip_trimming){
+    reads_ch = ch_reads_subsampled
+  } else {
+    ch_read_files_trimming = ch_reads_subsampled
+  }
 }
 
 if (!params.skip_trimming){
   process fastp {
       label 'process_low'
       tag "$name"
-      publishDir "${params.outdir}/fastp", mode: 'copy'
+      publishDir "${params.outdir}/fastp", mode: 'copy',
+        saveAs: {filename ->
+                    if (filename.indexOf(".fastq.gz") == -1) "logs/$filename"
+                    else if (reads[1] == null) "single_end/$filename"
+                    else if (reads[1] != null)"paired_end/$filename"
+                    else null
+                }
 
       input:
       set val(name), file(reads) from ch_read_files_trimming
@@ -519,8 +532,9 @@ if (!params.skip_trimming){
       file "*fastp.html" into ch_fastp_html
 
       script:
+      println "${name}: ${reads.size()}"
       // One set of reads --> single end
-      if (reads.size() == 1) {
+      if (reads[1] == null) {
           """
           fastp \\
               --in1 ${reads} \\
@@ -528,8 +542,8 @@ if (!params.skip_trimming){
               --json ${name}_fastp.json \\
               --html ${name}_fastp.html
           """
-      } else {
-        // multiple reads --> paired end
+      } else if (reads[1] != null ){
+        // More than one set of reads --> paired end
           """
           fastp \\
               --in1 ${reads[0]} \\
@@ -539,12 +553,17 @@ if (!params.skip_trimming){
               --json ${name}_fastp.json \\
               --html ${name}_fastp.html
           """
+      } else {
+        """
+        echo name ${name}
+        echo reads: ${reads}
+        echo "Number of reads is not equal to 1 or 2 --> don't know how to trim non-paired-end and non-single-end reads"
+        """
       }
   }
-  // Concatenat trimmed fastq files with fastas
+  // Concatenate trimmed fastq files with fastas
   reads_ch = ch_reads_trimmed.concat(fastas_ch)
 }
-
 
 if (params.bam) {
   process bam2fasta {
