@@ -527,7 +527,7 @@ if (!params.skip_trimming){
         saveAs: {filename ->
                     if (filename.indexOf(".fastq.gz") == -1) "logs/$filename"
                     else if (reads[1] == null) "single_end/$filename"
-                    else if (reads[1] != null)"paired_end/$filename"
+                    else if (reads[1] != null) "paired_end/$filename"
                     else null
                 }
 
