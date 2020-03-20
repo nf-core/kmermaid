@@ -504,6 +504,7 @@ if (params.peptide_fasta){
 
 if (params.tenx_tgz) {
   process 10x_tgz_extract_bam {
+    tag "$sample_id"
     publishDir "${params.outdir}/${params.save_fastas}", pattern: '*.fasta', saveAs: { filename -> "${filename.replace("|", "-")}"}
     publishDir "${params.outdir}/${barcode_metadata_folder}", pattern: '*.csv', mode: 'copy'
 
@@ -514,6 +515,7 @@ if (params.tenx_tgz) {
     set val(sample_id), file(bam), file(bai) into tenx_bam_ch
 
     script:
+    sample_id = "${tenx_gz.simpleName}"
     bam = "${tenx_tgz}__possorted_genome_bam.bam"
     bai = "${tenx_tgz}__possorted_genome_bam.bam.bai"
     """
