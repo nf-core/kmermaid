@@ -519,7 +519,7 @@ if (params.subsample) {
   }
 }
 
-if (!params.skip_trimming){
+if (!params.skip_trimming && !params.bam){
   process fastp {
       label 'process_low'
       tag "$name"
