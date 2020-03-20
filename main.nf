@@ -256,10 +256,12 @@ if (params.subsample) {
   if (params.bam){
      exit 1, "Cannot provide both a bam file with --bam and specify --subsample"
   } else {
-    sra_ch.concat(csv_pairs_ch, csv_singles_ch, read_pairs_ch,
-      read_singles_ch, fastas_ch, read_paths_ch)
-      .ifEmpty{ exit 1, "No reads provided! Check read input files"}
-      .set{ subsample_reads_ch }
+    if (params.skip_trimming){
+      sra_ch.concat(csv_pairs_ch, csv_singles_ch, read_pairs_ch,
+        read_singles_ch, fastas_ch, read_paths_ch)
+        .ifEmpty{ exit 1, "No reads provided! Check read input files"}
+        .set{ subsample_reads_ch }
+    }
   }
 } else {
   if (!params.bam) {
@@ -570,7 +572,14 @@ if (!params.skip_trimming && !params.bam){
       }
   }
   // Concatenate trimmed fastq files with fastas
-  reads_ch = ch_reads_trimmed.concat(fastas_ch)
+  if (params.subsample){
+    // Concatenate trimmed reads with fastas for subsequent subsampling
+    subsample_reads_ch = ch_reads_trimmed.concat(fastas_ch)
+  } else {
+    // Concatenate trimmed reads with fastas for signature generation
+    reads_ch = ch_reads_trimmed.concat(fastas_ch)
+  }
+}
 }
 
 if (params.bam) {
