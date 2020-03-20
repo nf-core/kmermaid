@@ -490,37 +490,6 @@ if (params.peptide_fasta){
   }
 }
 
-
-if (params.subsample) {
-    process subsample_input {
-	tag "${id}_subsample"
-	publishDir "${params.outdir}/seqtk/", mode: 'copy'
-
-	input:
-	set id, file(reads) from subsample_reads_ch
-
-	output:
-
-	set val(id), file("*_${params.subsample}.fastq.gz") into ch_reads_subsampled
-
-	script:
-	read1 = reads[0]
-	read2 = reads[1]
-	read1_prefix = read1.name.minus(".fastq.gz") // TODO: change to RE to match fasta as well?
-	read2_prefix = read2.name.minus(".fastq.gz")
-
-  """
-  seqtk sample -s100 ${read1} ${params.subsample} > ${read1_prefix}_${params.subsample}.fastq.gz
-  seqtk sample -s100 ${read2} ${params.subsample} > ${read2_prefix}_${params.subsample}.fastq.gz
-  """
-  }
-  if (params.skip_trimming){
-    reads_ch = ch_reads_subsampled
-  } else {
-    ch_read_files_trimming = ch_reads_subsampled
-  }
-}
-
 if (!params.skip_trimming && !params.bam){
   process fastp {
       label 'process_low'
@@ -580,7 +549,37 @@ if (!params.skip_trimming && !params.bam){
     reads_ch = ch_reads_trimmed.concat(fastas_ch)
   }
 }
+
+if (params.subsample) {
+    process subsample_input {
+	tag "${id}_subsample"
+	publishDir "${params.outdir}/seqtk/", mode: 'copy'
+
+	input:
+	set id, file(reads) from subsample_reads_ch
+
+	output:
+
+	set val(id), file("*_${params.subsample}.fastq.gz") into ch_reads_subsampled
+
+	script:
+	read1 = reads[0]
+	read2 = reads[1]
+	read1_prefix = read1.name.minus(".fastq.gz") // TODO: change to RE to match fasta as well?
+	read2_prefix = read2.name.minus(".fastq.gz")
+
+  """
+  seqtk sample -s100 ${read1} ${params.subsample} > ${read1_prefix}_${params.subsample}.fastq.gz
+  seqtk sample -s100 ${read2} ${params.subsample} > ${read2_prefix}_${params.subsample}.fastq.gz
+  """
+  }
+  if (params.skip_trimming){
+    reads_ch = ch_reads_subsampled
+  } else {
+    ch_read_files_trimming = ch_reads_subsampled
+  }
 }
+
 
 if (params.bam) {
   process bam2fasta {
