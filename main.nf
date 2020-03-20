@@ -537,55 +537,49 @@ if (params.tenx_tgz) {
     mv ANTOINE_BLOOD/outs/possorted_genome_bam.bam ${bai}
     """
   }
-}
 
-if (params.bam) {
-  process bam2fasta {
-    tag "bam2fasta"
-    label "high_memory"
-    publishDir "${params.outdir}/${params.save_fastas}", pattern: '*.fasta', saveAs: { filename -> "${filename.replace("|", "-")}"}
-    publishDir "${params.outdir}/${barcode_metadata_folder}", pattern: '*.csv', mode: 'copy'
-
-
-    // If job fails, try again with more memory
-    // memory { 8.GB * task.attempt }
-    errorStrategy 'retry'
-    maxRetries 1
+  process samtools_fastq_aligned {
+    tag "$sample_id"
+    publishDir "${params.outdir}/per-run-fastqs/aligned", mode: 'copy'
+    label "mid_cpu"
 
     input:
-    file(barcodes_file) from barcodes_ch
-    set sample_id, file(bam) from bam_ch
-    file(rename_10x_barcodes) from rename_10x_barcodes_ch
+    val(sample_id), file(bam), file(bai) from tenx_bam_ch
 
     output:
-    set val(sample_id), file("*.fasta") into reads_ch
-    // https://github.com/nextflow-io/patterns/blob/master/docs/optional-output.adoc
-    file("${params.write_barcode_meta_csv}") optional true
+    set val(sample_id), file(fastq_gz) into tenx_reads_aligned_ch
 
     script:
-
-    min_umi_per_barcode = params.min_umi_per_barcode ? "--min-umi-per-barcode ${params.min_umi_per_barcode}" : ''
-    line_count = params.line_count ? "--line-count ${params.line_count}" : ''
-    metadata = params.write_barcode_meta_csv ? "--write-barcode-meta-csv ${params.write_barcode_meta_csv}": ''
-    save_fastas = "--save-fastas ."
-    save_intermediate_files = "--save-intermediate-files ${params.save_intermediate_files}"
-    processes = "--processes ${params.max_cpus}"
-
-    def barcodes_file = params.barcodes_file ? "--barcodes-file ${barcodes_file.baseName}.tsv": ''
-    def rename_10x_barcodes = params.rename_10x_barcodes ? "--rename-10x-barcodes ${rename_10x_barcodes.baseName}.tsv": ''
+    fastq_gz = "${sample_id}__aligned.fastq.gz"
     """
-      bam2fasta convert \\
-        $processes \\
-        $min_umi_per_barcode \\
-        $line_count \\
-        $rename_10x_barcodes \\
-        $barcodes_file \\
-        $save_fastas \\
-        $save_intermediate_files \\
-        $metadata \\
-        --filename $bam
-      find . -type f -name "*.fasta" | while read src; do if [[ \$src == *"|"* ]]; then mv "\$src" \$(echo "\$src" | tr "|" "_"); fi done
+    samtools view -ub -F 256 -q 255 possorted_genome_bam.bam \\
+        samtools fastq --threads ${task.cpus} -T ${tenx_tags} -s ${fastq_gz}
     """
+  }
+
+  process samtools_fastq_unaligned {
+    tag "$sample_id"
+    publishDir "${params.outdir}/per-run-fastqs/unaligned", mode: 'copy'
+    label "mid_cpu"
+
+    input:
+    val(sample_id), file(bam), file(bai) from tenx_bam_ch
+
+    output:
+    set val(sample_id), file(fastq_gz) into tenx_reads_unaligned_ch
+
+    script:
+    fastq_gz = "${sample_id}__unaligned.fastq.gz"
+    """
+    samtools view -f4 ${bam} \\
+      | grep '${tenx_cell_barcode_regex}' \\
+      | samtools fastq --threads ${task.cpus} -T ${tenx_tags} -s ${fastq_gz}
+    """
+  }
+  if (params.skip_trimming) {
+    reads_ch = ch_non_bam_reads.concat(tenx_reads_unaligned_ch, tenx_reads_aligned_ch)
+  } else {
+    ch_read_files_trimming = ch_non_bam_reads.concat(tenx_reads_unaligned_ch, tenx_reads_aligned_ch)
   }
 }
 
@@ -754,8 +748,7 @@ if (params.splitKmer){
       """
 
     }
-}
-else {
+} else {
 process sourmash_compute_sketch_fastx_nucleotide {
   tag "${sample_id}_${sketch_id}"
   label "mid_memory"
