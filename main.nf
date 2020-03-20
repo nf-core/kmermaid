@@ -503,10 +503,9 @@ if (params.peptide_fasta){
 
 
 if (params.tenx_tgz) {
-  process 10x_tgz_extract_bam {
+  process tenx_tgz_extract_bam {
     tag "$sample_id"
-    publishDir "${params.outdir}/${params.save_fastas}", pattern: '*.fasta', saveAs: { filename -> "${filename.replace("|", "-")}"}
-    publishDir "${params.outdir}/${barcode_metadata_folder}", pattern: '*.csv', mode: 'copy'
+    publishDir "${params.outdir}/bams", mode: 'copy'
 
     input:
     file(tenx_tgz) from tenx_tgz_ch
