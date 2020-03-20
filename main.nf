@@ -524,7 +524,7 @@ if (params.tenx_tgz) {
     file(tenx_tgz) from tenx_tgz_ch
 
     output:
-    set val(sample_id), file(bam), file(bai) into tenx_bam_ch
+    set val(sample_id), file(bam), file(bai) into tenx_bam_ch_for_unaligned_fastq, tenx_bam_ch_for_aligned_fastq
 
     script:
     sample_id = "${tenx_tgz.simpleName}"
@@ -543,7 +543,7 @@ if (params.tenx_tgz) {
     label "mid_cpu"
 
     input:
-    set val(sample_id), file(bam), file(bai) from tenx_bam_ch
+    set val(sample_id), file(bam), file(bai) from tenx_bam_ch_for_aligned_fastq
 
     output:
     set val(sample_id), file(fastq_gz) into tenx_reads_aligned_ch
@@ -562,7 +562,7 @@ if (params.tenx_tgz) {
     label "mid_cpu"
 
     input:
-    set val(sample_id), file(bam), file(bai) from tenx_bam_ch
+    set val(sample_id), file(bam), file(bai) from tenx_bam_ch_for_unaligned_fastq
 
     output:
     set val(sample_id), file(fastq_gz) into tenx_reads_unaligned_ch
