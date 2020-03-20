@@ -546,7 +546,7 @@ if (params.tenx_tgz) {
     set val(sample_id), file(bam), file(bai) from tenx_bam_ch_for_aligned_fastq
 
     output:
-    set val(sample_id), file(fastq_gz) into tenx_reads_aligned_ch
+    set val(sample_id), file(fastq_gz) into tenx_reads_aligned_counting_ch, tenx_reads_aligned_ch
 
     script:
     fastq_gz = "${sample_id}__aligned.fastq.gz"
@@ -575,6 +575,27 @@ if (params.tenx_tgz) {
       | samtools fastq --threads ${task.cpus} -T ${tenx_tags} -s ${fastq_gz}
     """
   }
+
+  process count_umis_per_cell {
+    tag "$sample_id"
+    publishDir "${params.outdir}/per-run-fastqs/", mode: 'copy'
+
+    input:
+    set set val(sample_id), file(fastq_gz) from tenx_reads_aligned_counting_ch
+
+    output:
+    set val(sample_id), file(fastq_gz) into tenx_reads_aligned_ch
+
+    script:
+    csv = "${sample_id}__n_umi_per_cell.csv"
+    """
+    count_umis_per_cell.py --reads ${fastq_gz} \\
+        --cell-barcode-pattern ${cell_barcode_pattern} \\
+        --molecular-barcode-patterh ${molecular_barcode_pattern}
+    """
+  }
+
+
   if (params.skip_trimming) {
     reads_ch = ch_non_bam_reads.concat(tenx_reads_unaligned_ch, tenx_reads_aligned_ch)
   } else {
