@@ -563,7 +563,7 @@ if (params.tenx_tgz) {
     label "mid_cpu"
 
     input:
-    val(sample_id), file(bam), file(bai) from tenx_bam_ch
+    set val(sample_id), file(bam), file(bai) from tenx_bam_ch
 
     output:
     set val(sample_id), file(fastq_gz) into tenx_reads_unaligned_ch
