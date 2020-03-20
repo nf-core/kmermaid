@@ -531,9 +531,9 @@ if (params.tenx_tgz) {
     bam = "${tenx_tgz}__possorted_genome_bam.bam"
     bai = "${tenx_tgz}__possorted_genome_bam.bam.bai"
     """
-    tar xzvf ${tenx_tgz} ANTOINE_BLOOD/outs/possorted_genome_bam.bam.bai ANTOINE_BLOOD/outs/possorted_genome_bam.bam
-    mv ANTOINE_BLOOD/outs/possorted_genome_bam.bam.bai ${bai}
-    mv ANTOINE_BLOOD/outs/possorted_genome_bam.bam ${bai}
+    tar xzvf ${tenx_tgz} ${sample_id}/outs/possorted_genome_bam.bam.bai ANTOINE_BLOOD/outs/possorted_genome_bam.bam
+    mv ${sample_id}/outs/possorted_genome_bam.bam.bai ${bai}
+    mv ${sample_id}/outs/possorted_genome_bam.bam ${bai}
     """
   }
 
