@@ -58,8 +58,8 @@ def main(reads, csv, cell_barcode_pattern=CELL_BARCODE_PATTERN,
                                                   molecular_barcode_pattern)
     umi_per_barcode = {k: len(v) for k, v in barcode_counter.items()}
     series = pd.Series(umi_per_barcode)
-    filtered = filtered[filtered >= min_umi_per_cell]
-    filtered.to_csv(csv)
+    cells_with_minimum_n_umi = series[series >= min_umi_per_cell]
+    cells_with_minimum_n_umi.to_csv(csv, header=False, index=True)
 
 
 if __name__ == "__main__":
