@@ -361,6 +361,8 @@ if (params.bam){
 // Tenx parameters
 tenx_tags = params.tenx_tags
 tenx_cell_barcode_pattern = params.tenx_cell_barcode_pattern
+tenx_molecular_barcode_pattern = params.tenx_molecular_barcode_pattern
+tenx_min_umi_per_cell = params.tenx_min_umi_per_cell
 
 if (params.splitKmer && 'protein' in molecules){
   exit 1, "Cannot specify 'protein' in `--molecules` if --splitKmer is set"
@@ -589,9 +591,12 @@ if (params.tenx_tgz) {
     script:
     csv = "${sample_id}__n_umi_per_cell.csv"
     """
-    count_umis_per_cell.py --reads ${fastq_gz} \\
-        --cell-barcode-pattern ${cell_barcode_pattern} \\
-        --molecular-barcode-patterh ${molecular_barcode_pattern}
+    count_umis_per_cell.py \\
+        --reads ${fastq_gz} \\
+        --min-umi-per-cell ${tenx_min_umi_per_cell} \\
+        --cell-barcode-pattern ${tenx_cell_barcode_pattern} \\
+        --molecular-barcode-patterh ${tenx_molecular_barcode_pattern} \\
+        --csv ${csv}
     """
   }
 
