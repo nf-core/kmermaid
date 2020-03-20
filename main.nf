@@ -248,6 +248,12 @@ if (params.read_paths) {
     Channel.from(false)
         .set{rename_10x_barcodes_ch}
   }
+
+  if (params.tenx_tgz) {
+    Channel.fromPath(params.tenx_tgz, checkIfExists: true)
+       .ifEmpty { exit 1, "10X .tgz file not found: ${params.tenx_tgz}" }
+       .set{ tenx_tgz_ch }
+  }
 }
 
 if (params.peptide_fasta) {
@@ -275,7 +281,7 @@ if (params.subsample) {
     }
   }
 } else {
-  if (!params.bam) {
+  if (!params.tenx_tgz) {
     if(params.skip_trimming){
       sra_ch.concat(
           csv_pairs_ch, csv_singles_ch, read_pairs_ch,
@@ -286,11 +292,11 @@ if (params.subsample) {
       sra_ch.concat(
           csv_pairs_ch, csv_singles_ch, read_pairs_ch,
           read_singles_ch, read_paths_ch)
-        .view()
         .ifEmpty{ exit 1, "No reads provided! Check read input files"}
         .set{ ch_read_files_trimming }
     }
   } else {
+    exit 1, "Cannot combine fastq/fasta/csv/SRA and bam files yet"
 //   Do nothing - can't combine the fastq files and bam files (yet)
     }
 }
@@ -514,7 +520,7 @@ if (params.tenx_tgz) {
     set val(sample_id), file(bam), file(bai) into tenx_bam_ch
 
     script:
-    sample_id = "${tenx_gz.simpleName}"
+    sample_id = "${tenx_tgz.simpleName}"
     bam = "${tenx_tgz}__possorted_genome_bam.bam"
     bai = "${tenx_tgz}__possorted_genome_bam.bam.bai"
     """
