@@ -355,6 +355,10 @@ if (params.bam){
   single_log2_sketch_size = log2_sketch_sizes[0]
 }
 
+// Tenx parameters
+tenx_tags = params.tenx_tags
+tenx_cell_barcode_regex = params.tenx_cell_barcode_regex
+
 if (params.splitKmer && 'protein' in molecules){
   exit 1, "Cannot specify 'protein' in `--molecules` if --splitKmer is set"
 }
