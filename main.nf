@@ -296,8 +296,12 @@ if (params.subsample) {
         .set{ ch_read_files_trimming }
     }
   } else {
-    // exit 1, "Cannot combine fastq/fasta/csv/SRA and bam files yet"
 //   Do nothing - can't combine the fastq files and bam files (yet)
+      sra_ch.concat(
+          csv_pairs_ch, csv_singles_ch, read_pairs_ch,
+          read_singles_ch, read_paths_ch)
+        .ifEmpty{ exit 1, "No reads provided! Check read input files"}
+        .set{ ch_non_bam_reads }
     }
 }
 
