@@ -360,7 +360,7 @@ if (params.bam){
 
 // Tenx parameters
 tenx_tags = params.tenx_tags
-tenx_cell_barcode_regex = params.tenx_cell_barcode_regex
+tenx_cell_barcode_pattern = params.tenx_cell_barcode_pattern
 
 if (params.splitKmer && 'protein' in molecules){
   exit 1, "Cannot specify 'protein' in `--molecules` if --splitKmer is set"
@@ -571,7 +571,7 @@ if (params.tenx_tgz) {
     fastq_gz = "${sample_id}__unaligned.fastq.gz"
     """
     samtools view -f4 ${bam} \\
-      | grep '${tenx_cell_barcode_regex}' \\
+      | grep -E '${tenx_cell_barcode_pattern}' \\
       | samtools fastq --threads ${task.cpus} -T ${tenx_tags} -s ${fastq_gz}
     """
   }
