@@ -164,6 +164,10 @@ read_singles_ch = Channel.empty()
 // vanilla fastas
 fastas_ch = Channel.empty()
 
+// 10X Genomics .tgz file containing possorted_genome_bam file
+tenx_tgz_ch = Channel.empty()
+
+
 // Parameters for testing
 if (params.read_paths) {
      read_paths_ch = Channel
@@ -497,7 +501,82 @@ if (params.peptide_fasta){
   }
 }
 
-if (!params.skip_trimming && !params.bam){
+
+if (params.tenx_tgz) {
+  process 10x_tgz_extract_bam {
+    publishDir "${params.outdir}/${params.save_fastas}", pattern: '*.fasta', saveAs: { filename -> "${filename.replace("|", "-")}"}
+    publishDir "${params.outdir}/${barcode_metadata_folder}", pattern: '*.csv', mode: 'copy'
+
+    input:
+    file(tenx_tgz) from tenx_tgz_ch
+
+    output:
+    set val(sample_id), file(bam), file(bai) into tenx_bam_ch
+
+    script:
+    bam = "${tenx_tgz}__possorted_genome_bam.bam"
+    bai = "${tenx_tgz}__possorted_genome_bam.bam.bai"
+    """
+    tar xzvf ${tenx_tgz} ANTOINE_BLOOD/outs/possorted_genome_bam.bam.bai ANTOINE_BLOOD/outs/possorted_genome_bam.bam
+    mv ANTOINE_BLOOD/outs/possorted_genome_bam.bam.bai ${bai}
+    mv ANTOINE_BLOOD/outs/possorted_genome_bam.bam ${bai}
+    """
+  }
+}
+
+if (params.bam) {
+  process bam2fasta {
+    tag "bam2fasta"
+    label "high_memory"
+    publishDir "${params.outdir}/${params.save_fastas}", pattern: '*.fasta', saveAs: { filename -> "${filename.replace("|", "-")}"}
+    publishDir "${params.outdir}/${barcode_metadata_folder}", pattern: '*.csv', mode: 'copy'
+
+
+    // If job fails, try again with more memory
+    // memory { 8.GB * task.attempt }
+    errorStrategy 'retry'
+    maxRetries 1
+
+    input:
+    file(barcodes_file) from barcodes_ch
+    set sample_id, file(bam) from bam_ch
+    file(rename_10x_barcodes) from rename_10x_barcodes_ch
+
+    output:
+    set val(sample_id), file("*.fasta") into reads_ch
+    // https://github.com/nextflow-io/patterns/blob/master/docs/optional-output.adoc
+    file("${params.write_barcode_meta_csv}") optional true
+
+    script:
+
+    min_umi_per_barcode = params.min_umi_per_barcode ? "--min-umi-per-barcode ${params.min_umi_per_barcode}" : ''
+    line_count = params.line_count ? "--line-count ${params.line_count}" : ''
+    metadata = params.write_barcode_meta_csv ? "--write-barcode-meta-csv ${params.write_barcode_meta_csv}": ''
+    save_fastas = "--save-fastas ."
+    save_intermediate_files = "--save-intermediate-files ${params.save_intermediate_files}"
+    processes = "--processes ${params.max_cpus}"
+
+    def barcodes_file = params.barcodes_file ? "--barcodes-file ${barcodes_file.baseName}.tsv": ''
+    def rename_10x_barcodes = params.rename_10x_barcodes ? "--rename-10x-barcodes ${rename_10x_barcodes.baseName}.tsv": ''
+    """
+      bam2fasta convert \\
+        $processes \\
+        $min_umi_per_barcode \\
+        $line_count \\
+        $rename_10x_barcodes \\
+        $barcodes_file \\
+        $save_fastas \\
+        $save_intermediate_files \\
+        $metadata \\
+        --filename $bam
+      find . -type f -name "*.fasta" | while read src; do if [[ \$src == *"|"* ]]; then mv "\$src" \$(echo "\$src" | tr "|" "_"); fi done
+    """
+  }
+}
+
+
+
+if (!params.skip_trimming){
   process fastp {
       label 'process_low'
       tag "$name"
@@ -582,56 +661,6 @@ if (params.subsample) {
   }
 }
 
-
-if (params.bam) {
-  process bam2fasta {
-    tag "bam2fasta"
-    label "high_memory"
-    publishDir "${params.outdir}/${params.save_fastas}", pattern: '*.fasta', saveAs: { filename -> "${filename.replace("|", "-")}"}
-    publishDir "${params.outdir}/${barcode_metadata_folder}", pattern: '*.csv', mode: 'copy'
-
-
-    // If job fails, try again with more memory
-    // memory { 8.GB * task.attempt }
-    errorStrategy 'retry'
-    maxRetries 1
-
-    input:
-    file(barcodes_file) from barcodes_ch
-    set sample_id, file(bam) from bam_ch
-    file(rename_10x_barcodes) from rename_10x_barcodes_ch
-
-    output:
-    set val(sample_id), file("*.fasta") into reads_ch
-    // https://github.com/nextflow-io/patterns/blob/master/docs/optional-output.adoc
-    file("${params.write_barcode_meta_csv}") optional true
-
-    script:
-
-    min_umi_per_barcode = params.min_umi_per_barcode ? "--min-umi-per-barcode ${params.min_umi_per_barcode}" : ''
-    line_count = params.line_count ? "--line-count ${params.line_count}" : ''
-    metadata = params.write_barcode_meta_csv ? "--write-barcode-meta-csv ${params.write_barcode_meta_csv}": ''
-    save_fastas = "--save-fastas ."
-    save_intermediate_files = "--save-intermediate-files ${params.save_intermediate_files}"
-    processes = "--processes ${params.max_cpus}"
-
-    def barcodes_file = params.barcodes_file ? "--barcodes-file ${barcodes_file.baseName}.tsv": ''
-    def rename_10x_barcodes = params.rename_10x_barcodes ? "--rename-10x-barcodes ${rename_10x_barcodes.baseName}.tsv": ''
-    """
-      bam2fasta convert \\
-        $processes \\
-        $min_umi_per_barcode \\
-        $line_count \\
-        $rename_10x_barcodes \\
-        $barcodes_file \\
-        $save_fastas \\
-        $save_intermediate_files \\
-        $metadata \\
-        --filename $bam
-      find . -type f -name "*.fasta" | while read src; do if [[ \$src == *"|"* ]]; then mv "\$src" \$(echo "\$src" | tr "|" "_"); fi done
-    """
-  }
-}
 
 
 if (params.peptide_fasta){
