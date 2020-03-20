@@ -261,6 +261,13 @@ if (params.subsample) {
         read_singles_ch, fastas_ch, read_paths_ch)
         .ifEmpty{ exit 1, "No reads provided! Check read input files"}
         .set{ subsample_reads_ch }
+    } else {
+      sra_ch.concat(
+          csv_pairs_ch, csv_singles_ch, read_pairs_ch,
+          read_singles_ch, read_paths_ch)
+        .view()
+        .ifEmpty{ exit 1, "No reads provided! Check read input files"}
+        .set{ ch_read_files_trimming }
     }
   }
 } else {
@@ -560,7 +567,7 @@ if (params.subsample) {
 
 	output:
 
-	set val(id), file("*_${params.subsample}.fastq.gz") into ch_reads_subsampled
+	set val(id), file("*_${params.subsample}.fastq.gz") into reads_ch
 
 	script:
 	read1 = reads[0]
@@ -572,11 +579,6 @@ if (params.subsample) {
   seqtk sample -s100 ${read1} ${params.subsample} > ${read1_prefix}_${params.subsample}.fastq.gz
   seqtk sample -s100 ${read2} ${params.subsample} > ${read2_prefix}_${params.subsample}.fastq.gz
   """
-  }
-  if (params.skip_trimming){
-    reads_ch = ch_reads_subsampled
-  } else {
-    ch_read_files_trimming = ch_reads_subsampled
   }
 }
 
