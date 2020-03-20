@@ -6,6 +6,8 @@ from itertools import groupby
 import argparse
 
 import pandas as pd
+from tqdm import tqdm
+import screed
 
 # Create a logger
 logging.basicConfig(format='%(name)s - %(asctime)s %(levelname)s: %(message)s')
