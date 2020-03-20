@@ -296,7 +296,7 @@ if (params.subsample) {
         .set{ ch_read_files_trimming }
     }
   } else {
-    exit 1, "Cannot combine fastq/fasta/csv/SRA and bam files yet"
+    // exit 1, "Cannot combine fastq/fasta/csv/SRA and bam files yet"
 //   Do nothing - can't combine the fastq files and bam files (yet)
     }
 }
