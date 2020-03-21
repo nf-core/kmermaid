@@ -607,7 +607,7 @@ if (params.tenx_tgz) {
 
   tenx_reads_ch
     .join(n_umis_per_cell_ch, remainder: true)
-    .dump(tag: )
+    .dump(tag: tenx_reads_with_counts_ch )
     .set{ tenx_reads_with_counts_ch }
 
   process extract_per_cell_fastqs {
