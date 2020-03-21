@@ -604,8 +604,7 @@ if (params.tenx_tgz) {
     .dump(tag: "tenx_reads_ch")
     .set{ tenx_reads_ch }
 
-  tenx_reads_ch
-    .join(n_umis_per_cell_ch, remainder: true)
+  tenx_reads_ch.join(n_umis_per_cell_ch, remainder: true)
     .dump(tag: "tenx_reads_with_counts_ch" )
     .set{ tenx_reads_with_counts_ch }
 
