@@ -639,14 +639,12 @@ if (params.tenx_tgz) {
     set val(sample_id), file('*.fastq.gz') into per_channel_cell_reads_ch
 
     script:
-    csv = "${sample_id}__n_umi_per_cell.csv"
     """
     make_per_cell_fastqs.py \\
         --reads ${reads} \\
-        --barcodes ${barcodes} \\
+        --good-barcodes ${barcodes} \\
         --cell-barcode-pattern ${tenx_cell_barcode_pattern} \\
-        --molecular-barcode-pattern ${tenx_molecular_barcode_pattern} \\
-        --umis-per-cell ${csv}
+        --channel-id ${channel_id}
     """
   }
 
