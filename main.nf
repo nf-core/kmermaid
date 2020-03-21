@@ -542,7 +542,7 @@ if (params.tenx_tgz) {
 
   process samtools_fastq_aligned {
     tag "$sample_id"
-    publishDir "${params.outdir}/per-run-fastqs/aligned", mode: 'copy'
+    publishDir "${params.outdir}/per-channel-fastqs/aligned", mode: 'copy'
     label "mid_cpu"
 
     input:
@@ -561,7 +561,7 @@ if (params.tenx_tgz) {
 
   process samtools_fastq_unaligned {
     tag "$sample_id"
-    publishDir "${params.outdir}/per-run-fastqs/unaligned", mode: 'copy'
+    publishDir "${params.outdir}/per-channel-fastqs/unaligned", mode: 'copy'
     label "mid_cpu"
 
     input:
@@ -581,7 +581,7 @@ if (params.tenx_tgz) {
 
   process count_umis_per_cell {
     tag "$sample_id"
-    publishDir "${params.outdir}/per-run-fastqs/", mode: 'copy'
+    publishDir "${params.outdir}/per-channel-fastqs/", mode: 'copy'
 
     input:
     set val(sample_id), file(fastq_gz) from tenx_reads_aligned_counting_ch
