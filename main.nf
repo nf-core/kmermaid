@@ -600,8 +600,7 @@ if (params.tenx_tgz) {
     """
   }
 
-  tenx_reads_unaligned_ch
-    .concat(tenx_reads_aligned_extraction_ch)
+  tenx_reads_unaligned_ch.concat(tenx_reads_aligned_extraction_ch)
     .dump(tag: tenx_reads_ch)
     .set{ tenx_reads_ch }
 
