@@ -553,7 +553,7 @@ if (params.tenx_tgz) {
     label "mid_cpu"
 
     input:
-    set val(channel_id), file(bam), file(bai) from tenx_bam_ch_for_aligned_fastq
+    set val(channel_id), file(bam), file(bai) from tenx_bam_for_unaligned_fastq_ch
 
     output:
     set val(channel_id), val("aligned"), file(reads) into tenx_reads_aligned_counting_ch, tenx_reads_aligned_extraction_ch
@@ -572,7 +572,7 @@ if (params.tenx_tgz) {
     label "mid_cpu"
 
     input:
-    set val(channel_id), file(bam), file(bai) from tenx_bam_ch_for_unaligned_fastq
+    set val(channel_id), file(bam), file(bai) from tenx_bam_for_aligned_fastq_ch
 
     output:
     set val(channel_id), val("unaligned"), file(reads) into tenx_reads_unaligned_ch
