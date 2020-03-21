@@ -530,10 +530,11 @@ if (params.tenx_tgz) {
 
     script:
     sample_id = "${tenx_tgz.simpleName}"
-    bam = "${tenx_tgz}__possorted_genome_bam.bam"
-    bai = "${tenx_tgz}__possorted_genome_bam.bam.bai"
+    bam = "${sample_id}__possorted_genome_bam.bam"
+    bai = "${sample_id}__possorted_genome_bam.bam.bai"
     """
     tar xzvf ${tenx_tgz} ${sample_id}/outs/possorted_genome_bam.bam.bai ${sample_id}/outs/possorted_genome_bam.bam
+    # Rename the files so there aren't conflicting duplicate filenames for the future
     mv ${sample_id}/outs/possorted_genome_bam.bam.bai ${bai}
     mv ${sample_id}/outs/possorted_genome_bam.bam ${bai}
     """
