@@ -548,7 +548,7 @@ if (params.tenx_tgz) {
   }
 
   process samtools_fastq_aligned {
-    tag "$channel_id"
+    tag "${channel_id}"
     publishDir "${params.outdir}/10x-fastqs/per-channel/aligned", mode: 'copy'
     label "mid_cpu"
 
@@ -561,13 +561,13 @@ if (params.tenx_tgz) {
     script:
     reads = "${channel_id}__aligned.fastq.gz"
     """
-    samtools view -ub -F 256 -q 255 possorted_genome_bam.bam \\
+    samtools view -ub -F 256 -q 255 ${bam} \\
         samtools fastq --threads ${task.cpus} -T ${tenx_tags} -s ${reads}
     """
   }
 
   process samtools_fastq_unaligned {
-    tag "$sample_id"
+    tag "${channel_id}"
     publishDir "${params.outdir}/10x-fastqs/per-channel/unaligned", mode: 'copy'
     label "mid_cpu"
 
@@ -586,47 +586,53 @@ if (params.tenx_tgz) {
     """
   }
 
+  // Concatenate fastqs from aligned and unaligned reads into a single channel
+  tenx_reads_unaligned_ch.concat(tenx_reads_aligned_extraction_ch)
+    .dump(tag: "tenx_reads_ch")
+    .set{ tenx_reads_ch }
+
   if (params.tenx_min_umi_per_cell > 0) {
     process count_umis_per_cell {
-      tag "$channel_id"
+      tag "${channel_id}"
       publishDir "${params.outdir}/10x-fastqs/umis-per-cell/", mode: 'copy'
 
       input:
       set val(channel_id), val(is_aligned), file(reads) from tenx_reads_aligned_counting_ch
 
       output:
-      set val(channel_id), file(csv) into n_umis_per_cell_ch
+      file(umis_per_cell)
+      set val(channel_id), file(good_barcodes) into good_barcodes_ch
 
       script:
-      csv = "${channel_id}__n_umi_per_cell.csv"
+      umis_per_cell = "${channel_id}__n_umi_per_cell.csv"
+      good_barcodes = "${channel_id}__barcodes.tsv"
       """
       count_umis_per_cell.py \\
           --reads ${reads} \\
           --min-umi-per-cell ${min_umi_per_cell} \\
           --cell-barcode-pattern ${tenx_cell_barcode_pattern} \\
           --molecular-barcode-pattern ${tenx_molecular_barcode_pattern} \\
-          --csv ${csv}
+          --umis-per-cell ${umis_per_cell} \\
+          --good-barcodes ${good_barcodes}
       """
     }
+  } else {
+    // Use barcodes extracted from the tenx .tgz file
+    good_barcodes_ch = tenx_bam_barcodes_ch
   }
-
-  tenx_reads_unaligned_ch.concat(tenx_reads_aligned_extraction_ch)
-    .dump(tag: "tenx_reads_ch")
-    .set{ tenx_reads_ch }
-
-  tenx_reads_ch.join(tenx_bam_barcodes_ch, remainder: true)
+  tenx_reads_ch.join(good_barcodes_ch, remainder: true)
     .dump(tag: "tenx_reads_with_counts_ch" )
-    .set{ tenx_reads_with_counts_ch }
+    .set{ tenx_reads_with_good_barcodes_ch }
 
   process extract_per_cell_fastqs {
     tag "${sample_id}_${is_aligned}"
     publishDir "${params.outdir}/10x-fastqs/per-cell/${channel_id}/", mode: 'copy'
 
     input:
-    set val(channel_id), file(reads), file(barcodes) from tenx_reads_with_counts_ch
+    set val(channel_id), file(reads), file(barcodes) from tenx_reads_with_good_barcodes_ch
 
     output:
-    set val(sample_id), file('*.fastq.gz') into per_cell_fastqs_ch
+    set val(sample_id), file('*.fastq.gz') into per_channel_cell_reads_ch
 
     script:
     csv = "${sample_id}__n_umi_per_cell.csv"
@@ -636,15 +642,15 @@ if (params.tenx_tgz) {
         --barcodes ${barcodes} \\
         --cell-barcode-pattern ${tenx_cell_barcode_pattern} \\
         --molecular-barcode-pattern ${tenx_molecular_barcode_pattern} \\
-        --csv ${csv}
+        --umis-per-cell ${csv}
     """
   }
 
 
   if (params.skip_trimming) {
-    reads_ch = ch_non_bam_reads.concat(tenx_reads_unaligned_ch, tenx_reads_aligned_ch)
+    reads_ch = ch_non_bam_reads.concat(per_cell_fastqs_ch)
   } else {
-    ch_read_files_trimming = ch_non_bam_reads.concat(tenx_reads_unaligned_ch, tenx_reads_aligned_ch)
+    ch_read_files_trimming = ch_non_bam_reads.concat(per_channel_cell_reads_ch)
   }
 }
 
