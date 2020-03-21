@@ -586,25 +586,28 @@ if (params.tenx_tgz) {
     """
   }
 
-  process count_umis_per_cell {
-    tag "$channel_id"
-    publishDir "${params.outdir}/10x-fastqs/umis-per-cell/", mode: 'copy'
+  if (params.tenx_min_umi_per_cell > 0) {
+    process count_umis_per_cell {
+      tag "$channel_id"
+      publishDir "${params.outdir}/10x-fastqs/umis-per-cell/", mode: 'copy'
 
-    input:
-    set val(channel_id), val(is_aligned), file(reads) from tenx_reads_aligned_counting_ch
+      input:
+      set val(channel_id), val(is_aligned), file(reads) from tenx_reads_aligned_counting_ch
 
-    output:
-    set val(channel_id), file(csv) into n_umis_per_cell_ch
+      output:
+      set val(channel_id), file(csv) into n_umis_per_cell_ch
 
-    script:
-    csv = "${channel_id}__n_umi_per_cell.csv"
-    """
-    count_umis_per_cell.py \\
-        --reads ${reads} \\
-        --cell-barcode-pattern ${tenx_cell_barcode_pattern} \\
-        --molecular-barcode-pattern ${tenx_molecular_barcode_pattern} \\
-        --csv ${csv}
-    """
+      script:
+      csv = "${channel_id}__n_umi_per_cell.csv"
+      """
+      count_umis_per_cell.py \\
+          --reads ${reads} \\
+          --min-umi-per-cell ${min_umi_per_cell} \\
+          --cell-barcode-pattern ${tenx_cell_barcode_pattern} \\
+          --molecular-barcode-pattern ${tenx_molecular_barcode_pattern} \\
+          --csv ${csv}
+      """
+    }
   }
 
   tenx_reads_unaligned_ch.concat(tenx_reads_aligned_extraction_ch)
