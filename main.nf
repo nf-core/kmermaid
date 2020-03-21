@@ -613,7 +613,7 @@ if (params.tenx_tgz) {
       """
       count_umis_per_cell.py \\
           --reads ${reads} \\
-          --min-umi-per-cell ${min_umi_per_cell} \\
+          --min-umi-per-cell ${tenx_min_umi_per_cell} \\
           --cell-barcode-pattern '${tenx_cell_barcode_pattern}' \\
           --molecular-barcode-pattern '${tenx_molecular_barcode_pattern}' \\
           --umis-per-cell ${umis_per_cell} \\
