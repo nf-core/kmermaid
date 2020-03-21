@@ -562,7 +562,7 @@ if (params.tenx_tgz) {
     reads = "${channel_id}__aligned.fastq.gz"
     """
     samtools view -ub -F 256 -q 255 ${bam} \\
-        | samtools fastq --threads ${task.cpus} -T ${tenx_tags} \\
+        | samtools fastq --threads ${task.cpus} -T ${tenx_tags} - \\
         | gzip -c - \\
           > ${reads}
     """
@@ -584,7 +584,7 @@ if (params.tenx_tgz) {
     """
     samtools view -f4 ${bam} \\
       | grep -E '${tenx_cell_barcode_pattern}' \\
-      | samtools fastq --threads ${task.cpus} -T ${tenx_tags} \\
+      | samtools fastq --threads ${task.cpus} -T ${tenx_tags} - \\
       | gzip -c - \\
         > ${reads}
     """
