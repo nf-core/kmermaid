@@ -410,11 +410,11 @@ summary['Log2 Sketch Sizes']      = params.log2_sketch_sizes
 summary['One Sig per Record']     = params.one_signature_per_record
 summary['Track Abundance']        = params.track_abundance
 // 10x parameters
-if(params.bam) summary["Bam chunk line count"] = params.line_count
-if(params.bam) summary['Count valid reads'] = params.min_umi_per_barcode
-if(params.bam) summary['Saved Fastas '] = params.save_fastas
-if(params.bam) summary['Saved intermediate files '] = params.save_intermediate_files
-if(params.bam) summary['Barcode umi read metadata'] = params.write_barcode_meta_csv
+if(params.tenx_tgz) summary["10x .tgz"] = params.tenx_tgz
+if(params.tenx_tgz) summary["10x SAM tags"] = params.tenx_tags
+if(params.tenx_tgz) summary["10x Cell pattern"] = params.tenx_cell_barcode_pattern
+if(params.tenx_tgz) summary["10x UMI pattern"] = params.tenx_molecular_barcode_pattern
+if(params.tenx_tgz) summary['Min UMI/cell'] = params.tenx_min_umi_per_cell
 // Extract coding parameters
 if(params.peptide_fasta) summary["Peptide fasta"] = params.peptide_fasta
 if(params.peptide_fasta) summary['Peptide ksize'] = params.extract_coding_peptide_ksize
