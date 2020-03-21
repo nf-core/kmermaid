@@ -21,14 +21,14 @@ matrix:
     env: NXF_VER='' SUITE=test_ska FLAGS=
   - name: "Latest Nextflow version, split k-mer test suite, test subsampling"
     env: NXF_VER='' SUITE=test_ska FLAGS=--subsample 10
-  - name: "Lint the pipeline code"
-    install:
-      # Install nf-core/tools
-      - pip install --upgrade pip
-      - pip install nf-core
-    script: nf-core lint ${TRAVIS_BUILD_DIR}
-    python: '3.6'
-    jdk: openjdk8
+  # - name: "Lint the pipeline code"
+  #   install:
+  #     # Install nf-core/tools
+  #     - pip install --upgrade pip
+  #     - pip install nf-core
+  #   script: nf-core lint ${TRAVIS_BUILD_DIR}
+  #   python: '3.6'
+  #   jdk: openjdk8
   # - name: "Lint the documentation"
   #   script: markdownlint ${TRAVIS_BUILD_DIR} -c ${TRAVIS_BUILD_DIR}/.github/markdownlint.yml
   - name: "Test nextflow kmermaid, with BAM"
