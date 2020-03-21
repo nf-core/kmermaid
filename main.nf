@@ -620,6 +620,9 @@ if (params.tenx_tgz) {
           --good-barcodes ${good_barcodes}
       """
     }
+    good_barcodes_ch.ifEmpty{
+      exit 1, "No cell barcodes found with at least ${tenx_min_umi_per_cell} molecular barcodes (UMIs) per cell"}
+
   } else {
     // Use barcodes extracted from the tenx .tgz file
     good_barcodes_ch = tenx_bam_barcodes_ch
