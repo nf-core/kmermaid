@@ -586,7 +586,7 @@ if (params.tenx_tgz) {
     set val(sample_id), file(fastq_gz) from tenx_reads_aligned_counting_ch
 
     output:
-    set val(sample_id), file(fastq_gz) into tenx_reads_aligned_ch
+    set val(sample_id), file(csv) into n_umis_per_cell_ch
 
     script:
     csv = "${sample_id}__n_umi_per_cell.csv"
