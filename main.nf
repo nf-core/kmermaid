@@ -520,7 +520,7 @@ if (params.peptide_fasta){
 if (params.tenx_tgz) {
   process tenx_tgz_extract_bam {
     tag "$sample_id"
-    publishDir "${params.outdir}/bams", mode: 'copy'
+    publishDir "${params.outdir}/10x-bams", mode: 'copy'
 
     input:
     file(tenx_tgz) from tenx_tgz_ch
@@ -542,14 +542,14 @@ if (params.tenx_tgz) {
 
   process samtools_fastq_aligned {
     tag "$sample_id"
-    publishDir "${params.outdir}/per-channel-fastqs/aligned", mode: 'copy'
+    publishDir "${params.outdir}/10x-fastqs/per-channel/aligned", mode: 'copy'
     label "mid_cpu"
 
     input:
     set val(sample_id), file(bam), file(bai) from tenx_bam_ch_for_aligned_fastq
 
     output:
-    set val(sample_id), file(fastq_gz) into tenx_reads_aligned_counting_ch, tenx_reads_aligned_ch
+    set val(sample_id), val("aligned"), file(fastq_gz) into tenx_reads_aligned_counting_ch, tenx_reads_aligned_ch
 
     script:
     fastq_gz = "${sample_id}__aligned.fastq.gz"
@@ -561,14 +561,14 @@ if (params.tenx_tgz) {
 
   process samtools_fastq_unaligned {
     tag "$sample_id"
-    publishDir "${params.outdir}/per-channel-fastqs/unaligned", mode: 'copy'
+    publishDir "${params.outdir}/10x-fastqs/per-channel/unaligned", mode: 'copy'
     label "mid_cpu"
 
     input:
     set val(sample_id), file(bam), file(bai) from tenx_bam_ch_for_unaligned_fastq
 
     output:
-    set val(sample_id), file(fastq_gz) into tenx_reads_unaligned_ch
+    set val(sample_id), val("unaligned"), file(fastq_gz) into tenx_reads_unaligned_ch
 
     script:
     fastq_gz = "${sample_id}__unaligned.fastq.gz"
