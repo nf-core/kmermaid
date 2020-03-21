@@ -53,12 +53,16 @@ def get_cell_barcode_umi_counts(reads,
 
 def main(reads, csv, cell_barcode_pattern=CELL_BARCODE_PATTERN,
          molecular_barcode_pattern=MOLECULAR_BARCODE_PATTERN,
-         min_umi_per_cell=MIN_UMI_PER_CELL):
+         good_barcodes=None, min_umi_per_cell=MIN_UMI_PER_CELL):
     barcode_counter = get_cell_barcode_umi_counts(reads, cell_barcode_pattern,
                                                   molecular_barcode_pattern)
     umi_per_barcode = {k: len(v) for k, v in barcode_counter.items()}
     series = pd.Series(umi_per_barcode)
     series.to_csv(csv, header=False, index=True)
+
+    if good_barcodes is not None:
+        filtered = series[series >= min_umi_per_cell]
+        filtered.to_csv(good_barcodes, header=False, index=False)
 
 
 if __name__ == "__main__":
@@ -74,10 +78,14 @@ if __name__ == "__main__":
                         help="Regular expressions for molecular barcodes. " \
                              "Default is 10x Genomics 'CB:Z' tag",
                         default=MOLECULAR_BARCODE_PATTERN)
-    parser.add_argument("-o", "--csv", type=str,
+    parser.add_argument("--csv", type=str,
                         default='n_umis_per_cell_barcode.csv',
+                        help="Number of UMIs counted per cell")
+    parser.add_argument("-o", "--good-barcodes", type=str,
+                        default='barcodes.tsv',
                         help="Number of UMIs counted per cell")
 
     args = parser.parse_args()
     main(args.reads, args.csv, args.cell_barcode_pattern,
-         args.molecular_barcode_pattern)
+         args.molecular_barcode_pattern, args.good_barcodes,
+         args.min_umi_per_cell)
