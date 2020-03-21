@@ -644,7 +644,7 @@ if (params.tenx_tgz) {
         --reads ${reads} \\
         --good-barcodes ${barcodes} \\
         --cell-barcode-pattern '${tenx_cell_barcode_pattern}' \\
-        --channel-id ${channel_id}
+        --channel-id ${channel_id}__${is_aligned}
     """
   }
 
