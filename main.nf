@@ -601,12 +601,12 @@ if (params.tenx_tgz) {
   }
 
   tenx_reads_unaligned_ch.concat(tenx_reads_aligned_extraction_ch)
-    .dump(tag: tenx_reads_ch)
+    .dump(tag: "tenx_reads_ch")
     .set{ tenx_reads_ch }
 
   tenx_reads_ch
     .join(n_umis_per_cell_ch, remainder: true)
-    .dump(tag: tenx_reads_with_counts_ch )
+    .dump(tag: "tenx_reads_with_counts_ch" )
     .set{ tenx_reads_with_counts_ch }
 
   process extract_per_cell_fastqs {
