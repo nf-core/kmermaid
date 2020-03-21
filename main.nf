@@ -605,7 +605,7 @@ if (params.tenx_tgz) {
 
       output:
       file(umis_per_cell)
-      set val(channel_id), file(good_barcodes) into good_barcodes_ch
+      set val(channel_id), file(good_barcodes) into good_barcodes_unfiltered_ch
 
       script:
       umis_per_cell = "${channel_id}__n_umi_per_cell.csv"
@@ -620,8 +620,12 @@ if (params.tenx_tgz) {
           --good-barcodes ${good_barcodes}
       """
     }
-    good_barcodes_ch.ifEmpty{
-      exit 1, "No cell barcodes found with at least ${tenx_min_umi_per_cell} molecular barcodes (UMIs) per cell"}
+    // Make sure good barcodes file is nonempty so next step doesn't start
+    // it[0] = channel id
+    // it[1] = good_barcodes file
+    good_barcodes_unfiltered_ch.filter{ it[1].size() > 0 }
+      .ifEmpty{exit 1, "No cell barcodes found with at least ${tenx_min_umi_per_cell} molecular barcodes (UMIs) per cell"}
+      .set{ good_barcodes_ch }
 
   } else {
     // Use barcodes extracted from the tenx .tgz file
