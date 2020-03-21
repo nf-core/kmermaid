@@ -97,11 +97,11 @@ def helpMessage() {
 
     Bam file options:
       --write_barcode_meta_csv      For bam files, Csv file name relative to outdir/barcode_metadata to write number of reads and number of umis per barcode.
-                                    This csv file is empty with just header when the min_umi_per_barcode is zero i.e
+                                    This csv file is empty with just header when the min_umi_per_cell is zero i.e
                                     Reads and umis per barcode are calculated only when the barcodes are filtered
-                                    based on min_umi_per_barcode
-      --min_umi_per_barcode         A barcode is only considered a valid barcode read
-                                    and its signature is written if number of umis are greater than min_umi_per_barcode
+                                    based on min_umi_per_cell
+      --min_umi_per_cell         A barcode is only considered a valid barcode read
+                                    and its signature is written if number of umis are greater than min_umi_per_cell
       --line_count                  Number of lines to contain in each sharded bam file
       --barcodes_file               For bam files, Optional absolute path to a .tsv barcodes file if the input is unfiltered 10x bam file
       --rename_10x_barcodes         For bam files, Optional absolute path to a .tsv Tab-separated file mapping 10x barcode name
