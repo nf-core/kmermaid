@@ -14,7 +14,7 @@ logging.basicConfig(format='%(name)s - %(asctime)s %(levelname)s: %(message)s')
 logger = logging.getLogger(__file__)
 logger.setLevel(logging.INFO)
 
-CELL_BARCODE_PATTERN = '(CB|XC):Z:([ACGT]+)\-1'
+CELL_BARCODE_PATTERN = r'(CB|XC):Z:([ACGT]+)\-1'
 MOLECULAR_BARCODE_PATTERN = '(UB|XB):Z:([ACGT]+)'
 MIN_UMI_PER_CELL = 100
 
