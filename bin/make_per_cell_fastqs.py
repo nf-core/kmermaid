@@ -9,7 +9,8 @@ import pandas as pd
 from tqdm import tqdm
 import screed
 
-from count_umis_per_cell import get_cell_barcode, get_molecular_barcode
+from count_umis_per_cell import get_cell_barcode, get_molecular_barcode, \
+    CELL_BARCODE_PATTERN
 
 # Create a logger
 logging.basicConfig(format='%(name)s - %(asctime)s %(levelname)s: %(message)s')
@@ -17,13 +18,13 @@ logger = logging.getLogger(__file__)
 logger.setLevel(logging.INFO)
 
 
-def get_good_cell_barcode_records(reads, cells_with_minimum_n_umi):
+def get_good_cell_barcode_records(reads, good_barcodes, cell_barcode_pattern):
     good_cell_barcode_records = defaultdict(list)
 
     with screed.open(reads) as f:
         for record in tqdm(f):
-            cell_barcode = get_cell_barcode(record)
-            if cell_barcode in cells_with_minimum_n_umi:
+            cell_barcode = get_cell_barcode(record, cell_barcode_pattern)
+            if cell_barcode in good_barcodes:
                 good_cell_barcode_records[cell_barcode].append(record)
     return good_cell_barcode_records
 
@@ -38,31 +39,44 @@ def write_records(records, filename):
         f.writelines([record_to_fastq_string(r) for r in records])
 
 
-def main(reads, csv, outdir, prefix):
-    cells_with_minimum_n_umi = pd.read_csv(csv, header=False, index_col=0,
-                                           squeeze=True)
+def main(reads, good_barcodes_filename, outdir, channel_id=None,
+         cell_barcode_pattern=CELL_BARCODE_PATTERN):
+    if channel_id is not None:
+        prefix = f"{channel_id}_"
+    else:
+        prefix = ''
+
+    good_barcodes = pd.read_csv(good_barcodes_filename, header=False,
+                                index_col=0, squeeze=True)
+    cells_with_minimum_umi = umi_per_cell[umi_per_cell >= min_umi_per_cell]
+
     good_cell_barcode_records = get_good_cell_barcode_records(
-        reads, cells_with_minimum_n_umi)
+        reads, cells_with_minimum_umi, cell_barcode_pattern)
 
     for cell_barcode, records in good_cell_barcode_records.items():
-        filename = f"{outdir}/{prefix}_{cell_barcode}.fastq"
+        filename = f"{outdir}/{prefix}_{cell_barcode}.fastq.gz"
         write_records(records, filename)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="""Count number of unique molecular identifiers per cell""")
+        description="""Extract reads for each cell barcode with sufficient 
+        UMIs""")
     parser.add_argument("--reads", type=str,
                         help="Reads file (fastq/fasta, can be gzipped or not)")
-    parser.add_argument("--min-umi-per-cell", type=int,
-                        default=MIN_UMI_PER_CELL,
-                        help="Minimum number of unique molecular identifiers "
-                             "(barcodes) per cell")
-    parser.add_argument("-o", "--csv", type=str,
-                        default='n_umis_per_cell_barcode.csv',
-                        help="Number of UMIs counted per cell")
+    parser.add_argument('-b', "--good-barcodes", type=str,
+                        default='barcodes.csv',
+                        help="QC-passing barcodes from 10x")
+    parser.add_argument("--cell-barcode-pattern", type=str,
+                        help="Regular expressions for cell barcodes. Default "
+                             "is 10x Genomics 'CB:Z' tag",
+                        default=CELL_BARCODE_PATTERN)
+    parser.add_argument("--outdir", type=str,
+                        default='.',
+                        help="Output directory for fastqs. Default is current"
+                             " directory")
+    parser.add_argument("--channel-id", type=str,
+                        help="Output prefix for fastqs")
 
     args = parser.parse_args()
-    main(args.reads, args.csv, args.cell_barcode_pattern,
-         args.molecular_barcode_pattern,
-         args.min_umi_per_cell)
+    main(args.reads, csv)
