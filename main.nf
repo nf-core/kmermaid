@@ -629,14 +629,14 @@ if (params.tenx_tgz) {
     .set{ tenx_reads_with_good_barcodes_ch }
 
   process extract_per_cell_fastqs {
-    tag "${sample_id}_${is_aligned}"
+    tag "${channel_id}_${is_aligned}"
     publishDir "${params.outdir}/10x-fastqs/per-cell/${channel_id}/", mode: 'copy'
 
     input:
     set val(channel_id), val(is_aligned), file(reads), file(barcodes) from tenx_reads_with_good_barcodes_ch
 
     output:
-    set val(sample_id), file('*.fastq.gz') into per_channel_cell_reads_ch
+    set val(channel_id), val(is_aligned), file('*.fastq.gz') into per_channel_cell_reads_ch
 
     script:
     """
