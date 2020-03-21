@@ -526,17 +526,24 @@ if (params.tenx_tgz) {
     file(tenx_tgz) from tenx_tgz_ch
 
     output:
-    set val(sample_id), file(bam), file(bai) into tenx_bam_ch_for_unaligned_fastq, tenx_bam_ch_for_aligned_fastq
+    set val(sample_id), file(bam) into tenx_bam_for_unaligned_fastq_ch, tenx_bam_for_aligned_fastq_ch
+    file(bai)
+    set val(sample_id), file(barcodes) into tenx_bam_barcodes_ch
 
     script:
     sample_id = "${tenx_tgz.simpleName}"
     bam = "${sample_id}__possorted_genome_bam.bam"
     bai = "${sample_id}__possorted_genome_bam.bam.bai"
+    barcodes = "${sample_id}__barcodes.tsv"
     """
-    tar xzvf ${tenx_tgz} ${sample_id}/outs/possorted_genome_bam.bam.bai ${sample_id}/outs/possorted_genome_bam.bam
+    tar xzvf ${tenx_tgz} \\
+      ${sample_id}/outs/possorted_genome_bam.bam.bai \\
+      ${sample_id}/outs/possorted_genome_bam.bam \\
+      ${sample_id}/outs/filtered_bc_matrices
     # Rename the files so there aren't conflicting duplicate filenames for the future
     mv ${sample_id}/outs/possorted_genome_bam.bam.bai ${bai}
     mv ${sample_id}/outs/possorted_genome_bam.bam ${bai}
+    mv ${sample_id}/outs/filtered_bc_matrices/*/barcodes.tsv ${barcodes}
     """
   }
 
