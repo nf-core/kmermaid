@@ -581,7 +581,31 @@ if (params.tenx_tgz) {
 
   process count_umis_per_cell {
     tag "$sample_id"
-    publishDir "${params.outdir}/per-channel-fastqs/", mode: 'copy'
+    publishDir "${params.outdir}/10x-fastqs/umis-per-cell/", mode: 'copy'
+
+    input:
+    set val(sample_id), val(is_aligned), file(fastq_gz) from tenx_reads_aligned_counting_ch
+
+    output:
+    set val(sample_id), file(csv) into n_umis_per_cell_ch
+
+    script:
+    csv = "${sample_id}__n_umi_per_cell.csv"
+    """
+    count_umis_per_cell.py \\
+        --reads ${fastq_gz} \\
+        --min-umi-per-cell ${tenx_min_umi_per_cell} \\
+        --cell-barcode-pattern ${tenx_cell_barcode_pattern} \\
+        --molecular-barcode-pattern ${tenx_molecular_barcode_pattern} \\
+        --csv ${csv}
+    """
+  }
+
+
+
+  process per_cell_fastqs {
+    tag "${sample_id}_${is_aligned}"
+    publishDir "${params.outdir}/10x-fastqs/per-cell/", mode: 'copy'
 
     input:
     set val(sample_id), file(fastq_gz) from tenx_reads_aligned_counting_ch
