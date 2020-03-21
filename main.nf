@@ -633,7 +633,7 @@ if (params.tenx_tgz) {
     publishDir "${params.outdir}/10x-fastqs/per-cell/${channel_id}/", mode: 'copy'
 
     input:
-    set val(channel_id), file(reads), file(barcodes) from tenx_reads_with_good_barcodes_ch
+    set val(channel_id), val(is_aligned), file(reads), file(barcodes) from tenx_reads_with_good_barcodes_ch
 
     output:
     set val(sample_id), file('*.fastq.gz') into per_channel_cell_reads_ch
