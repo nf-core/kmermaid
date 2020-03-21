@@ -614,7 +614,7 @@ if (params.tenx_tgz) {
     .dump(tag: "tenx_reads_ch")
     .set{ tenx_reads_ch }
 
-  tenx_reads_ch.join(n_umis_per_cell_ch, remainder: true)
+  tenx_reads_ch.join(tenx_bam_barcodes_ch, remainder: true)
     .dump(tag: "tenx_reads_with_counts_ch" )
     .set{ tenx_reads_with_counts_ch }
 
@@ -623,7 +623,7 @@ if (params.tenx_tgz) {
     publishDir "${params.outdir}/10x-fastqs/per-cell/${channel_id}/", mode: 'copy'
 
     input:
-    set val(channel_id), file(reads), file(csv), from tenx_reads_with_counts_ch
+    set val(channel_id), file(reads), file(barcodes), from tenx_reads_with_counts_ch
 
     output:
     set val(sample_id), file('*.fastq.gz') into per_cell_fastqs_ch
@@ -633,7 +633,7 @@ if (params.tenx_tgz) {
     """
     make_per_cell_fastqs.py \\
         --reads ${reads} \\
-        --min-umi-per-cell ${tenx_min_umi_per_cell} \\
+        --barcodes ${barcodes} \\
         --cell-barcode-pattern ${tenx_cell_barcode_pattern} \\
         --molecular-barcode-pattern ${tenx_molecular_barcode_pattern} \\
         --csv ${csv}
