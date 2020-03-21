@@ -4,7 +4,6 @@ from collections import defaultdict
 import logging
 from itertools import groupby
 import argparse
-import re
 
 import pandas as pd
 from tqdm import tqdm

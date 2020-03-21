@@ -8,6 +8,7 @@ import argparse
 import pandas as pd
 from tqdm import tqdm
 import screed
+import re
 
 # Create a logger
 logging.basicConfig(format='%(name)s - %(asctime)s %(levelname)s: %(message)s')
