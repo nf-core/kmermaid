@@ -541,8 +541,8 @@ if (params.tenx_tgz) {
       ${sample_id}/outs/possorted_genome_bam.bam \\
       ${sample_id}/outs/filtered_gene_bc_matrices
     # Rename the files so there aren't conflicting duplicate filenames for the future
+    mv ${sample_id}/outs/possorted_genome_bam.bam ${bam}
     mv ${sample_id}/outs/possorted_genome_bam.bam.bai ${bai}
-    mv ${sample_id}/outs/possorted_genome_bam.bam ${bai}
     mv ${sample_id}/outs/filtered_gene_bc_matrices/*/barcodes.tsv ${barcodes}
     """
   }
