@@ -636,7 +636,7 @@ if (params.tenx_tgz) {
     set val(channel_id), val(is_aligned), file(reads), file(barcodes) from tenx_reads_with_good_barcodes_ch
 
     output:
-    set val(channel_id), val(is_aligned), file('*.fastq.gz') into per_channel_cell_reads_ch
+    file('*.fastq.gz') into per_channel_cell_reads_ch
 
     script:
     """
@@ -647,12 +647,18 @@ if (params.tenx_tgz) {
         --channel-id ${channel_id}__${is_aligned}
     """
   }
+  per_channel_cell_reads_ch
+    .dump(tag: 'per_channel_cell_reads_ch')
+    .flatten()
+    .map{ it -> tuple(it.baseName, tuple(it))}
+    .dump(tag: 'per_cell_fastqs_ch')
+    .set{ per_cell_fastqs_ch }
 
 
   if (params.skip_trimming) {
     reads_ch = ch_non_bam_reads.concat(per_cell_fastqs_ch)
   } else {
-    ch_read_files_trimming = ch_non_bam_reads.concat(per_channel_cell_reads_ch)
+    ch_read_files_trimming = ch_non_bam_reads.concat(per_cell_fastqs_ch)
   }
 }
 
