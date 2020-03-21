@@ -35,7 +35,16 @@ def record_to_fastq_string(record):
 
 
 def write_records(records, filename):
-    with open(filename, 'w') as f:
+    """Write screed records to a file (compression auto-detected)"""
+    if filename.endswith('gz'):
+        import gzip
+        opener = gzip.open
+        mode = 'wb'
+    else:
+        opener = open
+        mode = 'w'
+
+    with opener(filename, mode) as f:
         f.writelines([record_to_fastq_string(r) for r in records])
 
 
