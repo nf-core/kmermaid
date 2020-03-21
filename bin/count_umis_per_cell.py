@@ -62,7 +62,7 @@ def main(reads, csv, cell_barcode_pattern=CELL_BARCODE_PATTERN,
     series.to_csv(csv, header=False, index=True)
 
     if good_barcodes is not None:
-        filtered = series[series >= min_umi_per_cell]
+        filtered = pd.Series(series[series >= min_umi_per_cell].index)
         filtered.to_csv(good_barcodes, header=False, index=False)
 
 
