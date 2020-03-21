@@ -82,6 +82,10 @@ if __name__ == "__main__":
     parser.add_argument("--csv", type=str,
                         default='n_umis_per_cell_barcode.csv',
                         help="Number of UMIs counted per cell")
+    parser.add_argument("--min-umi-per-cell", type=int,
+                        default=MIN_UMI_PER_CELL,
+                        help="Minimum number of unique molecular identifiers "
+                             "(barcodes) per cell")
     parser.add_argument("-o", "--good-barcodes", type=str,
                         default='barcodes.tsv',
                         help="Number of UMIs counted per cell")
