@@ -39,6 +39,17 @@ def write_records(records, filename):
         f.writelines([record_to_fastq_string(r) for r in records])
 
 
+def read_barcodes(filename):
+    """Read a barcodes.tsv filename, output set of unique barcodes
+
+    They should already be unique.. the "frozenset" datastructure is just for
+    quick checking of set membership
+    """
+    with open(filename) as f:
+        barcodes = frozenset(x.strip() for x in f.readlines())
+    return barcodes
+
+
 def main(reads, good_barcodes_filename, outdir, channel_id=None,
          cell_barcode_pattern=CELL_BARCODE_PATTERN):
     if channel_id is not None:
@@ -46,12 +57,10 @@ def main(reads, good_barcodes_filename, outdir, channel_id=None,
     else:
         prefix = ''
 
-    good_barcodes = pd.read_csv(good_barcodes_filename, header=False,
-                                index_col=0, squeeze=True)
-    cells_with_minimum_umi = umi_per_cell[umi_per_cell >= min_umi_per_cell]
+    good_barcodes = read_barcodes(good_barcodes_filename)
 
     good_cell_barcode_records = get_good_cell_barcode_records(
-        reads, cells_with_minimum_umi, cell_barcode_pattern)
+        reads, good_barcodes, cell_barcode_pattern)
 
     for cell_barcode, records in good_cell_barcode_records.items():
         filename = f"{outdir}/{prefix}_{cell_barcode}.fastq.gz"
