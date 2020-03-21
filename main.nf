@@ -583,7 +583,7 @@ if (params.tenx_tgz) {
     publishDir "${params.outdir}/per-run-fastqs/", mode: 'copy'
 
     input:
-    set set val(sample_id), file(fastq_gz) from tenx_reads_aligned_counting_ch
+    set val(sample_id), file(fastq_gz) from tenx_reads_aligned_counting_ch
 
     output:
     set val(sample_id), file(fastq_gz) into tenx_reads_aligned_ch
@@ -595,7 +595,7 @@ if (params.tenx_tgz) {
         --reads ${fastq_gz} \\
         --min-umi-per-cell ${tenx_min_umi_per_cell} \\
         --cell-barcode-pattern ${tenx_cell_barcode_pattern} \\
-        --molecular-barcode-patterh ${tenx_molecular_barcode_pattern} \\
+        --molecular-barcode-pattern ${tenx_molecular_barcode_pattern} \\
         --csv ${csv}
     """
   }
