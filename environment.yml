@@ -12,10 +12,7 @@ dependencies:
   - conda-forge::r-markdown=0.8
   - bioconda::khmer=2.1.2
   - bioconda::sourmash=2.0.1
-  - pytest
-  - sphinx
-  - matplotlib
-  - alabaster
+  - bioconda::samtools=1.10-2
   - conda-forge::gxx_linux-64
-  # - conda-forge::gcc_linux-64
-  # - gcc
+  - bioconda::screed=1.0.4-0
+  - conda-forge::tqdm=4.43.0
