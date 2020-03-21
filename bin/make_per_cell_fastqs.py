@@ -88,4 +88,5 @@ if __name__ == "__main__":
                         help="Output prefix for fastqs")
 
     args = parser.parse_args()
-    main(args.reads, csv)
+    main(args.reads, args.good_barcodes, args.outdir, args.channel_id,
+         args.cell_barcode_pattern)
