@@ -39,7 +39,7 @@ def write_records(records, filename):
     if filename.endswith('gz'):
         import gzip
         opener = gzip.open
-        mode = 'wb'
+        mode = 'wt'
     else:
         opener = open
         mode = 'w'
