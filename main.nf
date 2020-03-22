@@ -640,7 +640,7 @@ if (params.tenx_tgz) {
     publishDir "${params.outdir}/10x-fastqs/per-cell/${channel_id}/", mode: 'copy'
 
     input:
-    set val(channel_id), val(is_aligned), file(reads), file(barcodes) from tenx_reads_with_good_barcodes_ch
+    tuple(tuple(val(channel_id), val(is_aligned), file(reads)), tuple(val(channel_id, file(barcodes))) from tenx_reads_with_good_barcodes_ch
 
     output:
     file('*.fastq.gz') into per_channel_cell_reads_ch
@@ -654,6 +654,7 @@ if (params.tenx_tgz) {
         --channel-id ${channel_id}__${is_aligned}
     """
   }
+  // Make per-
   per_channel_cell_reads_ch
     .dump(tag: 'per_channel_cell_reads_ch')
     .flatten()
