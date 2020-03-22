@@ -251,8 +251,10 @@ if (params.read_paths) {
 
   if (params.tenx_tgz) {
     Channel.fromPath(params.tenx_tgz, checkIfExists: true)
+       .dump(tag: 'tenx_tgz_before_filter')
        .filter{ ~/.+[^mri]\.tgz/ }
        .ifEmpty { exit 1, "10X .tgz file not found: ${params.tenx_tgz}" }
+       .dump(tag: 'tenx_tgz_after_filter')
        .set{ tenx_tgz_ch }
   }
 }
