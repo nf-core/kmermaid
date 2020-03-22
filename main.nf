@@ -632,6 +632,7 @@ if (params.tenx_tgz) {
     good_barcodes_ch = tenx_bam_barcodes_ch
   }
   tenx_reads_ch.cross(good_barcodes_ch)
+    .map{ it --> tuple(it[0][0], it[0][1], it[0][2], it[1][1]) }
     .dump(tag: "tenx_reads_with_counts_ch" )
     .set{ tenx_reads_with_good_barcodes_ch }
 
@@ -643,18 +644,12 @@ if (params.tenx_tgz) {
     // Example output:
     // [[ANTOINE_TESTIS, 'aligned', ANTOINE_TESTIS__aligned.fastq.gz],
     //   [ANTOINE_TESTIS, ANTOINE_TESTIS__barcodes.tsv]]
-    tuple val(channel__is_aligned__reads), val(channel__barcodes) from tenx_reads_with_good_barcodes_ch
+    set val(channel_id), val(is_aligned), file(reads), file(barcodes) from tenx_reads_with_good_barcodes_ch
 
     output:
     file('*.fastq.gz') into per_channel_cell_reads_ch
 
     script:
-    channel_id = val(channel__is_aligned__reads[0])
-    is_aligned = val(channel__is_aligned__reads[1])
-    reads = file(channel__is_aligned__reads[2])
-
-    channel_id2 = val(channel__barcodes[0])
-    barcodes = val(channel__barcodes[1])
     """
     make_per_cell_fastqs.py \\
         --reads ${reads} \\
