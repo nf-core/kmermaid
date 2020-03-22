@@ -658,7 +658,7 @@ if (params.tenx_tgz) {
         --channel-id ${channel_id}__${is_aligned}
     """
   }
-  // Make per-
+  // Make per-cell fastqs into a flat channel that matches the read channels of yore
   per_channel_cell_reads_ch
     .dump(tag: 'per_channel_cell_reads_ch')
     .flatten()
