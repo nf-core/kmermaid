@@ -631,7 +631,7 @@ if (params.tenx_tgz) {
     // Use barcodes extracted from the tenx .tgz file
     good_barcodes_ch = tenx_bam_barcodes_ch
   }
-  tenx_reads_ch.join(good_barcodes_ch, remainder: true)
+  tenx_reads_ch.cross(good_barcodes_ch, remainder: true)
     .dump(tag: "tenx_reads_with_counts_ch" )
     .set{ tenx_reads_with_good_barcodes_ch }
 
