@@ -6,7 +6,7 @@ from itertools import groupby
 import argparse
 
 import pandas as pd
-from tqdm import tqdm
+from tqdm.auto import tqdm
 import screed
 import re
 
