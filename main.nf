@@ -643,7 +643,7 @@ if (params.tenx_tgz) {
     // Example output:
     // [[ANTOINE_TESTIS, 'aligned', ANTOINE_TESTIS__aligned.fastq.gz],
     //   [ANTOINE_TESTIS, ANTOINE_TESTIS__barcodes.tsv]]
-    set tuple(tuple(val(channel_id), val(is_aligned), file(reads)), tuple(val(channel_id2, file(barcodes)))) from tenx_reads_with_good_barcodes_ch
+    set tuple(tuple(val(channel_id), val(is_aligned), file(reads)), tuple(val(channel_id2), file(barcodes))) from tenx_reads_with_good_barcodes_ch
 
     output:
     file('*.fastq.gz') into per_channel_cell_reads_ch
