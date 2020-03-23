@@ -665,7 +665,7 @@ if (params.tenx_tgz) {
   per_channel_cell_reads_ch
     .dump(tag: 'per_channel_cell_reads_ch')
     .flatten()
-    .map{ it -> tuple(it.baseName, tuple(it))}
+    .map{ it -> tuple(it.simpleName, file(it))}
     .dump(tag: 'per_cell_fastqs_ch')
     .set{ per_cell_fastqs_ch }
 
