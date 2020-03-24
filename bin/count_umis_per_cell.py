@@ -77,7 +77,7 @@ if __name__ == "__main__":
                         default=CELL_BARCODE_PATTERN)
     parser.add_argument("--molecular-barcode-pattern", type=str,
                         help="Regular expressions for molecular barcodes. " \
-                             "Default is 10x Genomics 'CB:Z' tag",
+                             "Default is 10x Genomics 'UB:Z' tag",
                         default=MOLECULAR_BARCODE_PATTERN)
     parser.add_argument("--csv", '--umis-per-cell', type=str,
                         default='n_umis_per_cell_barcode.csv',
