@@ -601,6 +601,8 @@ if (params.tenx_tgz) {
   if (params.tenx_min_umi_per_cell > 0) {
     process count_umis_per_cell {
       tag "${channel_id}"
+      label 'low_memory_long'
+      
       publishDir "${params.outdir}/10x-fastqs/umis-per-cell/", mode: 'copy'
 
       input:
