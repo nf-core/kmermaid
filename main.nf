@@ -638,6 +638,8 @@ if (params.tenx_tgz) {
   }
   tenx_reads_ch.cross(good_barcodes_ch)
     .map{ it -> tuple(it[0][0], it[0][1], it[0][2], it[1][1]) }
+    // Filter for non-empty barcodes files
+    .filter{ it -> it[3].size() > 0}
     .dump(tag: "tenx_reads_with_counts_ch" )
     .set{ tenx_reads_with_good_barcodes_ch }
 
