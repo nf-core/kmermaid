@@ -31,24 +31,10 @@ matrix:
     jdk: openjdk8
   # - name: "Lint the documentation"
   #   script: markdownlint ${TRAVIS_BUILD_DIR} -c ${TRAVIS_BUILD_DIR}/.github/markdownlint.yml
-  - name: "Test nextflow kmermaid, with BAM"
-    env: NXF_VER='' SUITE=test_bam FLAGS='--barcodes_file false --rename_10x_barcodes false --save_fastas false --write_barcodes_meta_csv false'
-  - name: "Test nextflow kmermaid, with BAM, Barcodes"
-    env: NXF_VER='' SUITE=test_bam FLAGS='--rename_10x_barcodes false --write_barcodes_meta_csv false'
-  - name: "Test nextflow kmermaid, with BAM, Barcodes, Renamer"
-    env: NXF_VER='' SUITE=test_bam FLAGS='--write_barcodes_meta_csv false'
-  - name: "Test nextflow kmermaid, with BAM, write_barcodes_meta_csv"
-    env: NXF_VER='' SUITE=test_bam FLAGS='--barcodes_file false --rename_10x_barcodes false'
-  - name: "Test nextflow kmermaid, with BAM, Barcodes, write_barcodes_meta_csv"
-    env: NXF_VER='' SUITE=test_bam FLAGS='--rename_10x_barcodes false'
-  - name: "Test nextflow kmermaid, with BAM, Barcodes, Renamer, write_barcodes_meta_csv"
-    env: NXF_VER='' SUITE=test_bam FLAGS='--write_barcodes_meta_csv false'
-  - name: "Test nextflow kmermaid, with --track_abundance"
-    env: NXF_VER='' SUITE=test FLAGS='--track_abundance'
-  - name: "Test nextflow kmermaid, with extract coding on fastas"
-    env: NXF_VER='' SUITE=test_extract_coding, FLAGS='--barcodes_file false --rename_10x_barcodes false --save_fastas false --save_intermediate_files "temp_intermediate_files" --write_barcodes_meta_csv false '
-  - name: "Test nextflow kmermaid, with extract coding on bam"
-    env: NXF_VER='' SUITE=test_extract_coding_bam, FLAGS='--fastas false --save_fastas false --save_intermediate_files "." --write_barcodes_meta_csv false '
+  - name: "Test nextflow kmermaid, with 10x .tgz file"
+    env: NXF_VER='' SUITE=test_tenx_tgz FLAGS=
+  - name: "Test nextflow kmermaid, with 10x .tgz file"
+    env: NXF_VER='' SUITE=test_tenx_tgz FLAGS=--skip_trimming
 
 before_install:
   # PRs to master are only ok if coming from dev branch
