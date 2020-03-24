@@ -1,4 +1,6 @@
+
 .git/
+.pyc*
 .nextflow*
 .idea*
 work/
