@@ -8,7 +8,7 @@
 * Add `track_abundance` feature to keep track of hashed kmer frequency.
 * Add social preview image
 * Add `fastp` process for trimming reads
-* Add option to use compressed `.tgz` file containing output from 10X Genomics' `cellranger count` outputs
+* Add option to use compressed `.tgz` file containing output from 10X Genomics' `cellranger count` outputs, including `possorted_genome_bam.bam` and `barcodes.tsv` files
 
 ### Dependency updates
 
