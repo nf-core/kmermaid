@@ -1,5 +1,4 @@
-<<<<<<< HEAD
-# nf-core/nf-kmer-similarity: Usage
+# nf-core/kmermaid: Usage
 
 ## Table of contents
 
@@ -24,9 +23,9 @@
         * [`--molecule`](#--molecule)
         * [`--ksize`](#--ksize)
         * [`--log2_sketch_size`](#--log2_sketch_size)
-* [Job Resources](#job-resources)
-* [Automatic resubmission](#automatic-resubmission)
-* [Custom resource requests](#custom-resource-requests)
+* [Job resources](#job-resources)
+    * [Automatic resubmission](#automatic-resubmission)
+    * [Custom resource requests](#custom-resource-requests)
 * [AWS batch specific parameters](#aws-batch-specific-parameters)
     * [`-awsbatch`](#-awsbatch)
     * [`--awsqueue`](#--awsqueue)
@@ -34,63 +33,24 @@
 * [Other command line parameters](#other-command-line-parameters)
     * [`--outdir`](#--outdir)
     * [`--email`](#--email)
-    * [`-name`](#-name-single-dash)
-    * [`-resume`](#-resume-single-dash)
-    * [`-c`](#-c-single-dash)
+    * [`--email_on_fail`](#--email_on_fail)
+    * [`--max_multiqc_email_size`](#--max_multiqc_email_size)
+    * [`-name`](#-name)
+    * [`-resume`](#-resume)
+    * [`-c`](#-c)
+    * [`--custom_config_version`](#--custom_config_version)
+    * [`--custom_config_base`](#--custom_config_base)
     * [`--max_memory`](#--max_memory)
     * [`--max_time`](#--max_time)
     * [`--max_cpus`](#--max_cpus)
-    * [`--plaintext_emails`](#--plaintext_emails)
-    * [`--sampleLevel`](#--sampleLevel)
+    * [`--plaintext_email`](#--plaintext_email)
+    * [`--monochrome_logs`](#--monochrome_logs)
     * [`--multiqc_config`](#--multiqc_config)
 
 
+
 ## General Nextflow info
-=======
-# nf-core/kmermaid: Usage
 
-## Table of contents
-
-* [Table of contents](#table-of-contents)
-* [Introduction](#introduction)
-* [Running the pipeline](#running-the-pipeline)
-  * [Updating the pipeline](#updating-the-pipeline)
-  * [Reproducibility](#reproducibility)
-* [Main arguments](#main-arguments)
-  * [`-profile`](#-profile)
-  * [`--reads`](#--reads)
-  * [`--single_end`](#--single_end)
-* [Reference genomes](#reference-genomes)
-  * [`--genome` (using iGenomes)](#--genome-using-igenomes)
-  * [`--fasta`](#--fasta)
-  * [`--igenomes_ignore`](#--igenomes_ignore)
-* [Job resources](#job-resources)
-  * [Automatic resubmission](#automatic-resubmission)
-  * [Custom resource requests](#custom-resource-requests)
-* [AWS Batch specific parameters](#aws-batch-specific-parameters)
-  * [`--awsqueue`](#--awsqueue)
-  * [`--awsregion`](#--awsregion)
-  * [`--awscli`](#--awscli)
-* [Other command line parameters](#other-command-line-parameters)
-  * [`--outdir`](#--outdir)
-  * [`--email`](#--email)
-  * [`--email_on_fail`](#--email_on_fail)
-  * [`--max_multiqc_email_size`](#--max_multiqc_email_size)
-  * [`-name`](#-name)
-  * [`-resume`](#-resume)
-  * [`-c`](#-c)
-  * [`--custom_config_version`](#--custom_config_version)
-  * [`--custom_config_base`](#--custom_config_base)
-  * [`--max_memory`](#--max_memory)
-  * [`--max_time`](#--max_time)
-  * [`--max_cpus`](#--max_cpus)
-  * [`--plaintext_email`](#--plaintext_email)
-  * [`--monochrome_logs`](#--monochrome_logs)
-  * [`--multiqc_config`](#--multiqc_config)
-
-## Introduction
-
->>>>>>> upstream/TEMPLATE
 Nextflow handles job submissions on SLURM or other environments, and supervises running the jobs. Thus the Nextflow process must run until the pipeline is finished. We recommend that you put the process running in the background through `screen` / `tmux` or similar tool. Alternatively you can run nextflow within a cluster job submitted your job scheduler.
 
 It is recommended to limit the Nextflow Java virtual machines memory. We recommend adding the following line to your environment (typically in `~/.bashrc` or `~./bash_profile`):
@@ -99,21 +59,10 @@ It is recommended to limit the Nextflow Java virtual machines memory. We recomme
 NXF_OPTS='-Xms1g -Xmx4g'
 ```
 
-<<<<<<< HEAD
 ## Running the pipeline
 The typical command for running the pipeline is as follows:
 ```bash
-nextflow run nf-core/nf-kmer-similarity --reads '*_R{1,2}.fastq.gz' -profile standard,docker
-=======
-<!-- TODO nf-core: Document required command line parameters to run the pipeline-->
-
-## Running the pipeline
-
-The typical command for running the pipeline is as follows:
-
-```bash
-nextflow run nf-core/kmermaid --reads '*_R{1,2}.fastq.gz' -profile docker
->>>>>>> upstream/TEMPLATE
+nextflow run nf-core/kmermaid --reads '*_R{1,2}.fastq.gz' -profile standard,docker
 ```
 
 This will launch the pipeline with the `docker` configuration profile. See below for more information about profiles.
@@ -128,11 +77,10 @@ results         # Finished results (configurable, see below)
 ```
 
 ### Updating the pipeline
-<<<<<<< HEAD
 When you run the above command, Nextflow automatically pulls the pipeline code from GitHub and stores it as a cached version. When running the pipeline after this, it will always use the cached version if available - even if the pipeline has been updated since. To make sure that you're running the latest version of the pipeline, make sure that you regularly update the cached version of the pipeline:
 
 ```bash
-nextflow pull nf-core/nf-kmer-similarity
+nextflow pull nf-core/kmermaid
 ```
 
 ### Reproducibility
@@ -193,69 +141,12 @@ Use this to specify the location of your input *single-end* FastQ files.  Multip
 
 ```bash
 --read_singles 'path/to/data/sample_*.fastq;more/data/sample*.fastq.gz'
-=======
-
-When you run the above command, Nextflow automatically pulls the pipeline code from GitHub and stores it as a cached version. When running the pipeline after this, it will always use the cached version if available - even if the pipeline has been updated since. To make sure that you're running the latest version of the pipeline, make sure that you regularly update the cached version of the pipeline:
-
-```bash
-nextflow pull nf-core/kmermaid
-```
-
-### Reproducibility
-
-It's a good idea to specify a pipeline version when running the pipeline on your data. This ensures that a specific version of the pipeline code and software are used when you run your pipeline. If you keep using the same tag, you'll be running the same version of the pipeline, even if there have been changes to the code since.
-
-First, go to the [nf-core/kmermaid releases page](https://github.com/nf-core/kmermaid/releases) and find the latest version number - numeric only (eg. `1.3.1`). Then specify this when running the pipeline with `-r` (one hyphen) - eg. `-r 1.3.1`.
-
-This version number will be logged in reports when you run the pipeline, so that you'll know what you used when you look back in the future.
-
-## Main arguments
-
-### `-profile`
-
-Use this parameter to choose a configuration profile. Profiles can give configuration presets for different compute environments.
-
-Several generic profiles are bundled with the pipeline which instruct the pipeline to use software packaged using different methods (Docker, Singularity, Conda) - see below.
-
-> We highly recommend the use of Docker or Singularity containers for full pipeline reproducibility, however when this is not possible, Conda is also supported.
-
-The pipeline also dynamically loads configurations from [https://github.com/nf-core/configs](https://github.com/nf-core/configs) when it runs, making multiple config profiles for various institutional clusters available at run time. For more information and to see if your system is available in these configs please see the [nf-core/configs documentation](https://github.com/nf-core/configs#documentation).
-
-Note that multiple profiles can be loaded, for example: `-profile test,docker` - the order of arguments is important!
-They are loaded in sequence, so later profiles can overwrite earlier profiles.
-
-If `-profile` is not specified, the pipeline will run locally and expect all software to be installed and available on the `PATH`. This is _not_ recommended.
-
-* `docker`
-  * A generic configuration profile to be used with [Docker](http://docker.com/)
-  * Pulls software from dockerhub: [`nfcore/kmermaid`](http://hub.docker.com/r/nfcore/kmermaid/)
-* `singularity`
-  * A generic configuration profile to be used with [Singularity](http://singularity.lbl.gov/)
-  * Pulls software from DockerHub: [`nfcore/kmermaid`](http://hub.docker.com/r/nfcore/kmermaid/)
-* `conda`
-  * Please only use Conda as a last resort i.e. when it's not possible to run the pipeline with Docker or Singularity.
-  * A generic configuration profile to be used with [Conda](https://conda.io/docs/)
-  * Pulls most software from [Bioconda](https://bioconda.github.io/)
-* `test`
-  * A profile with a complete configuration for automated testing
-  * Includes links to test data so needs no other parameters
-
-<!-- TODO nf-core: Document required command line parameters -->
-
-### `--reads`
-
-Use this to specify the location of your input FastQ files. For example:
-
-```bash
---reads 'path/to/data/sample_*_{1,2}.fastq'
->>>>>>> upstream/TEMPLATE
 ```
 
 Please note the following requirements:
 
 1. The path must be enclosed in quotes
 2. The path must have at least one `*` wildcard character
-<<<<<<< HEAD
 
 If left unspecified, no reads are used.
 
@@ -379,31 +270,11 @@ The log2 sketch size specifies the number of k-mers to use for the sketch. We us
 
 
 ## Reference Genomes
-=======
-3. When using the pipeline with paired end data, the path must use `{1,2}` notation to specify read pairs.
-
-If left unspecified, a default pattern is used: `data/*{1,2}.fastq.gz`
-
-### `--single_end`
-
-By default, the pipeline expects paired-end data. If you have single-end data, you need to specify `--single_end` on the command line when you launch the pipeline. A normal glob pattern, enclosed in quotation marks, can then be used for `--reads`. For example:
-
-```bash
---single_end --reads '*.fastq'
-```
-
-It is not possible to run a mixture of single-end and paired-end files in one run.
-
-## Reference genomes
->>>>>>> upstream/TEMPLATE
 
 The pipeline config files come bundled with paths to the illumina iGenomes reference index files. If running with docker or AWS, the configuration is set up to use the [AWS-iGenomes](https://ewels.github.io/AWS-iGenomes/) resource.
 
 ### `--genome` (using iGenomes)
-<<<<<<< HEAD
-=======
 
->>>>>>> upstream/TEMPLATE
 There are 31 different species supported in the iGenomes references. To run the pipeline, you must specify which to use with the `--genome` flag.
 
 You can find the keys to specify the genomes in the [iGenomes config file](../conf/igenomes.config). Common genomes that are supported are:
@@ -423,11 +294,6 @@ Note that you can use the same configuration setup to save sets of reference fil
 
 The syntax for this reference configuration is as follows:
 
-<<<<<<< HEAD
-=======
-<!-- TODO nf-core: Update reference genome example according to what is needed -->
-
->>>>>>> upstream/TEMPLATE
 ```nextflow
 params {
   genomes {
@@ -439,35 +305,14 @@ params {
 }
 ```
 
-<<<<<<< HEAD
-### `--fasta`
-=======
-<!-- TODO nf-core: Describe reference path flags -->
-
 ### `--fasta`
 
->>>>>>> upstream/TEMPLATE
 If you prefer, you can specify the full path to your reference genome when you run the pipeline:
 
 ```bash
 --fasta '[path to Fasta reference]'
 ```
 
-<<<<<<< HEAD
-## Job Resources
-### Automatic resubmission
-Each step in the pipeline has a default set of requirements for number of CPUs, memory and time. For most of the steps in the pipeline, if the job exits with an error code of `143` (exceeded requested resources) it will automatically resubmit with higher requests (2 x original, then 3 x original). If it still fails after three times then the pipeline is stopped.
-
-### Custom resource requests
-Wherever process-specific requirements are set in the pipeline, the default value can be changed by creating a custom config file. See the files in [`conf`](../conf) for examples.
-
-## AWS Batch specific parameters
-Running the pipeline on AWS Batch requires a couple of specific parameters to be set according to your AWS Batch configuration. Please use the `-awsbatch` profile and then specify all of the following parameters.
-### `--awsqueue`
-The JobQueue that you intend to use on AWS Batch.
-### `--awsregion`
-The AWS region to run your job in. Default is set to `eu-west-1` but can be adjusted to your needs.
-=======
 ### `--igenomes_ignore`
 
 Do not load `igenomes.config` when running the pipeline. You may choose this option if you observe clashes between custom parameters and those supplied in `igenomes.config`.
@@ -501,21 +346,11 @@ The AWS region in which to run your job. Default is set to `eu-west-1` but can b
 ### `--awscli`
 
 The [AWS CLI](https://www.nextflow.io/docs/latest/awscloud.html#aws-cli-installation) path in your custom AMI. Default: `/home/ec2-user/miniconda/bin/aws`.
->>>>>>> upstream/TEMPLATE
 
 Please make sure to also set the `-w/--work-dir` and `--outdir` parameters to a S3 storage bucket of your choice - you'll get an error message notifying you if you didn't.
 
 ## Other command line parameters
 
-<<<<<<< HEAD
-### `--outdir`
-The output directory where the results will be saved.
-
-### `--email`
-Set this parameter to your e-mail address to get a summary e-mail with details of the run sent to you when the workflow exits. If set in your user config file (`~/.nextflow/config`) then you don't need to speicfy this on the command line for every run.
-
-### `-name`
-=======
 <!-- TODO nf-core: Describe any other command line flags here -->
 
 ### `--outdir`
@@ -536,7 +371,6 @@ Threshold size for MultiQC report to be attached in notification email. If file 
 
 ### `-name`
 
->>>>>>> upstream/TEMPLATE
 Name for the pipeline run. If not specified, Nextflow will automatically generate a random mnemonic.
 
 This is used in the MultiQC report (if not default) and in the summary HTML / e-mail (always).
@@ -544,10 +378,7 @@ This is used in the MultiQC report (if not default) and in the summary HTML / e-
 **NB:** Single hyphen (core Nextflow option)
 
 ### `-resume`
-<<<<<<< HEAD
-=======
 
->>>>>>> upstream/TEMPLATE
 Specify this when restarting a pipeline. Nextflow will used cached results from any pipeline steps where the inputs are the same, continuing from where it got to previously.
 
 You can also supply a run name to resume a specific run: `-resume [run-name]`. Use the `nextflow log` command to show previous run names.
@@ -555,27 +386,11 @@ You can also supply a run name to resume a specific run: `-resume [run-name]`. U
 **NB:** Single hyphen (core Nextflow option)
 
 ### `-c`
-<<<<<<< HEAD
-=======
 
->>>>>>> upstream/TEMPLATE
 Specify the path to a specific config file (this is a core NextFlow command).
 
 **NB:** Single hyphen (core Nextflow option)
 
-<<<<<<< HEAD
-Note - you can use this to override defaults. For example, you can specify a config file using `-c` that contains the following:
-
-```nextflow
-process.$multiqc.module = []
-```
-
-### `--max_memory`
-Use to set a top-limit for the default memory requirement for each process.
-Should be a string in the format integer-unit. eg. `--max_memory '8.GB'``
-
-### `--max_time`
-=======
 Note - you can use this to override pipeline defaults.
 
 ### `--custom_config_version`
@@ -615,24 +430,14 @@ Should be a string in the format integer-unit. eg. `--max_memory '8.GB'`
 
 ### `--max_time`
 
->>>>>>> upstream/TEMPLATE
 Use to set a top-limit for the default time requirement for each process.
 Should be a string in the format integer-unit. eg. `--max_time '2.h'`
 
 ### `--max_cpus`
-<<<<<<< HEAD
-=======
-
->>>>>>> upstream/TEMPLATE
 Use to set a top-limit for the default CPU requirement for each process.
 Should be a string in the format integer-unit. eg. `--max_cpus 1`
 
 ### `--plaintext_email`
-<<<<<<< HEAD
-Set to receive plain-text e-mails instead of HTML formatted.
-
-### `--multiqc_config`
-=======
 
 Set to receive plain-text e-mails instead of HTML formatted.
 
@@ -642,5 +447,4 @@ Set to disable colourful command line output and live life in monochrome.
 
 ### `--multiqc_config`
 
->>>>>>> upstream/TEMPLATE
 Specify a path to a custom MultiQC configuration file.
