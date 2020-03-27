@@ -523,7 +523,6 @@ if (!params.skip_trimming && !params.bam){
       file "*fastp.html" into ch_fastp_html
 
       script:
-      println "${name}: ${reads.size()}"
       // One set of reads --> single end
       if (reads[1] == null) {
           """
