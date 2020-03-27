@@ -1,22 +1,13 @@
 To: $email
 Subject: $subject
 Mime-Version: 1.0
-<<<<<<< HEAD
-Content-Type: multipart/related;boundary="nfmimeboundary"
-
---nfmimeboundary
-=======
 Content-Type: multipart/related;boundary="nfcoremimeboundary"
 
 --nfcoremimeboundary
->>>>>>> upstream/TEMPLATE
 Content-Type: text/html; charset=utf-8
 
 $email_html
 
-<<<<<<< HEAD
---nfmimeboundary--
-=======
 --nfcoremimeboundary
 Content-Type: image/png;name="nf-core-kmermaid_logo.png"
 Content-Transfer-Encoding: base64
@@ -60,4 +51,3 @@ ${mqcFileObj.
 %>
 
 --nfcoremimeboundary--
->>>>>>> upstream/TEMPLATE

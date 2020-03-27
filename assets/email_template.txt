@@ -1,15 +1,3 @@
-<<<<<<< HEAD
-========================================
- nf-core/demux v${version}
-========================================
-Run Name: $runName
-
-<% if (success){
-    out << "## nf-core/demux execution completed successfully! ##"
-} else {
-    out << """####################################################
-## nf-core/demux execution completed unsuccessfully! ##
-=======
 ----------------------------------------------------
                                         ,--./,-.
         ___     __   __   __   ___     /,-._.--~\\
@@ -26,7 +14,6 @@ Run Name: $runName
 } else {
     out << """####################################################
 ## nf-core/kmermaid execution completed unsuccessfully! ##
->>>>>>> upstream/TEMPLATE
 ####################################################
 The exit status of the task that caused the workflow execution to fail was: $exitStatus.
 The full error message was:
@@ -36,26 +23,6 @@ ${errorReport}
 } %>
 
 
-<<<<<<< HEAD
-<% if (!success){
-    out << """####################################################
-## nf-core/demux execution completed unsuccessfully! ##
-####################################################
-The exit status of the task that caused the workflow execution to fail was: $exitStatus.
-The full error message was:
-
-${errorReport}
-"""
-} else {
-    out << "## nf-core/demux execution completed successfully! ##"
-}
-%>
-
-
-
-
-=======
->>>>>>> upstream/TEMPLATE
 The workflow was completed at $dateComplete (duration: $duration)
 
 The command used to launch the workflow was as follows:
@@ -69,10 +36,5 @@ Pipeline Configuration:
 <% out << summary.collect{ k,v -> " - $k: $v" }.join("\n") %>
 
 --
-<<<<<<< HEAD
-nf-core/demux
-https://github.com/nf-core/demux
-=======
 nf-core/kmermaid
 https://github.com/nf-core/kmermaid
->>>>>>> upstream/TEMPLATE
