@@ -599,7 +599,7 @@ if (params.tenx_tgz) {
 
   if (params.tenx_min_umi_per_cell > 0) {
     process count_umis_per_cell {
-      tag "${channel_id}"
+      tag "${is_aligned_channel_id}"
       label 'low_memory_long'
 
       publishDir "${params.outdir}/10x-fastqs/umis-per-cell/", mode: 'copy'
@@ -612,8 +612,9 @@ if (params.tenx_tgz) {
       set val(channel_id), file(good_barcodes) into good_barcodes_ch
 
       script:
-      umis_per_cell = "${channel_id}__n_umi_per_cell.csv"
-      good_barcodes = "${channel_id}__barcodes.tsv"
+      is_aligned_channel_id = "${channel_id}_${is_aligned}"
+      umis_per_cell = "${is_aligned_channel_id}__n_umi_per_cell.csv"
+      good_barcodes = "${is_aligned_channel_id}__barcodes.tsv"
       """
       count_umis_per_cell.py \\
           --reads ${reads} \\
@@ -643,7 +644,7 @@ if (params.tenx_tgz) {
     .set{ tenx_reads_with_good_barcodes_ch }
 
   process extract_per_cell_fastqs {
-    tag "${channel_id}_${is_aligned}"
+    tag "${is_aligned_channel_id}"
     label "low_memory_long"
     publishDir "${params.outdir}/10x-fastqs/per-cell/${channel_id}/", mode: 'copy'
 
@@ -657,19 +658,20 @@ if (params.tenx_tgz) {
     file('*.fastq.gz') into per_channel_cell_reads_ch
 
     script:
+    is_aligned_channel_id = "${channel_id}_${is_aligned}"
     """
     make_per_cell_fastqs.py \\
         --reads ${reads} \\
         --good-barcodes ${barcodes} \\
         --cell-barcode-pattern '${tenx_cell_barcode_pattern}' \\
-        --channel-id ${channel_id}__${is_aligned}
+        --channel-id ${is_aligned_channel_id}
     """
   }
   // Make per-cell fastqs into a flat channel that matches the read channels of yore
   per_channel_cell_reads_ch
     .dump(tag: 'per_channel_cell_reads_ch')
     .flatten()
-    .map{ it -> tuple(it.simpleName, file(it))}
+    .map{ it -> tuple(it.simpleName, file(it)) }
     .dump(tag: 'per_cell_fastqs_ch')
     .set{ per_cell_fastqs_ch }
 
