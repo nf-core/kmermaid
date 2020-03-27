@@ -265,7 +265,6 @@ if (params.subsample) {
       sra_ch.concat(
           csv_pairs_ch, csv_singles_ch, read_pairs_ch,
           read_singles_ch, read_paths_ch)
-        .view()
         .ifEmpty{ exit 1, "No reads provided! Check read input files"}
         .set{ ch_read_files_trimming }
     }
