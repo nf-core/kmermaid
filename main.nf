@@ -644,6 +644,7 @@ if (params.tenx_tgz) {
 
   process extract_per_cell_fastqs {
     tag "${channel_id}_${is_aligned}"
+    label "low_memory_long"
     publishDir "${params.outdir}/10x-fastqs/per-cell/${channel_id}/", mode: 'copy'
 
     input:
