@@ -612,7 +612,7 @@ if (params.tenx_tgz) {
       set val(channel_id), file(good_barcodes) into good_barcodes_ch
 
       script:
-      is_aligned_channel_id = "${channel_id}_${is_aligned}"
+      is_aligned_channel_id = "${channel_id}__${is_aligned}"
       umis_per_cell = "${is_aligned_channel_id}__n_umi_per_cell.csv"
       good_barcodes = "${is_aligned_channel_id}__barcodes.tsv"
       """
@@ -658,7 +658,7 @@ if (params.tenx_tgz) {
     file('*.fastq.gz') into per_channel_cell_reads_ch
 
     script:
-    is_aligned_channel_id = "${channel_id}_${is_aligned}"
+    is_aligned_channel_id = "${channel_id}__${is_aligned}"
     """
     make_per_cell_fastqs.py \\
         --reads ${reads} \\
