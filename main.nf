@@ -224,7 +224,8 @@ if (params.read_paths) {
   Channel.fromPath(params.bam, checkIfExists: true)
        .map{ f -> tuple(f.baseName, tuple(file(f))) }
        .ifEmpty { exit 1, "Bam file not found: ${params.bam}" }
-       .set{ bam_ch }
+       .view()
+       .into{ tenx_bam_for_unaligned_fastq_ch; tenx_bam_for_aligned_fastq_ch }
   }
 
   // If barcodes is as expected, check if it exists and set channel
@@ -272,29 +273,29 @@ if (params.subsample) {
     if (params.skip_trimming){
       sra_ch.concat(csv_pairs_ch, csv_singles_ch, read_pairs_ch,
         read_singles_ch, fastas_ch, read_paths_ch)
-        .ifEmpty{ exit 1, "No reads provided! Check read input files"}
+        .ifEmpty{ exit 1, "No reads provided! Check read input files-1"}
         .set{ subsample_reads_ch }
     } else {
       sra_ch.concat(
           csv_pairs_ch, csv_singles_ch, read_pairs_ch,
           read_singles_ch, read_paths_ch)
-        .ifEmpty{ exit 1, "No reads provided! Check read input files"}
+        .ifEmpty{ exit 1, "No reads provided! Check read input files-2"}
         .set{ ch_read_files_trimming }
     }
   }
 } else {
-  if (!params.tenx_tgz) {
+  if (!params.tenx_tgz && !params.bam) {
     if(params.skip_trimming){
       sra_ch.concat(
           csv_pairs_ch, csv_singles_ch, read_pairs_ch,
           read_singles_ch, fastas_ch, read_paths_ch)
-       .ifEmpty{ exit 1, "No reads provided! Check read input files"}
+       .ifEmpty{ exit 1, "No reads provided! Check read input files-3"}
        .set{ reads_ch }
     } else {
       sra_ch.concat(
           csv_pairs_ch, csv_singles_ch, read_pairs_ch,
           read_singles_ch, read_paths_ch)
-        .ifEmpty{ exit 1, "No reads provided! Check read input files"}
+        .ifEmpty{ exit 1, "No reads provided! Check read input files-4"}
         .set{ ch_read_files_trimming }
     }
   } else {
@@ -518,7 +519,7 @@ if (params.peptide_fasta){
   }
 }
 
-
+// this process can be skipped for bam input
 if (params.tenx_tgz) {
   process tenx_tgz_extract_bam {
     tag "$sample_id"
@@ -548,7 +549,12 @@ if (params.tenx_tgz) {
     mv ${sample_id}/outs/filtered_gene_bc_matrices/*/barcodes.tsv ${barcodes}
     """
   }
+}
 
+if (params.tenx_tgz || params.bam) {
+
+
+//put bam into two inputs (one for samtools_fastq_aligned and samtools_fastq_unaligned as tenx_bam_for_unaligned_fastq_ch, tenx_bam_for_aligned_fastq_ch)
   process samtools_fastq_aligned {
     tag "${channel_id}"
     publishDir "${params.outdir}/10x-fastqs/per-channel/aligned", mode: 'copy'
@@ -571,9 +577,11 @@ if (params.tenx_tgz) {
   }
 
   process samtools_fastq_unaligned {
+
     tag "${channel_id}"
     publishDir "${params.outdir}/10x-fastqs/per-channel/unaligned", mode: 'copy'
     label "mid_cpu"
+    errorStrategy "ignore"
 
     input:
     set val(channel_id), file(bam) from tenx_bam_for_aligned_fastq_ch
@@ -633,8 +641,10 @@ if (params.tenx_tgz) {
     //   .set{ good_barcodes_ch }
 
   } else {
-    // Use barcodes extracted from the tenx .tgz file
-    good_barcodes_ch = tenx_bam_barcodes_ch
+    if (params.tenx_tgz) {
+      // Use barcodes extracted from the tenx .tgz file
+      good_barcodes_ch = tenx_bam_barcodes_ch
+    }
   }
   tenx_reads_ch.cross(good_barcodes_ch)
     .map{ it -> tuple(it[0][0], it[0][1], it[0][2], it[1][1]) }
