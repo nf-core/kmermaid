@@ -851,7 +851,7 @@ if (params.splitKmer){
 process sourmash_compute_sketch_fastx_nucleotide {
   tag "${sample_id}_${sketch_id}"
   label "mid_memory"
-  publishDir "${params.outdir}/sketches_nucleotide", mode: 'copy'
+  publishDir "${params.outdir}/sketches_nucleotide/${sketch_id}", mode: 'copy'
 
   input:
   each ksize from ksizes
@@ -899,7 +899,7 @@ if (params.peptide_fasta){
   process sourmash_compute_sketch_fastx_peptide {
     tag "${sample_id}_${sketch_id}"
     label "mid_memory"
-    publishDir "${params.outdir}/sketches_peptide", mode: 'copy'
+    publishDir "${params.outdir}/sketches_peptide/${sketch_id}", mode: 'copy'
 
     input:
     each ksize from ksizes
