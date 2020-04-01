@@ -10,4 +10,5 @@ jobs:
       - name: Build Docker images
         uses: docker/build-push-action@v1.0.1
         with:
+          repository: nfcore/kmermaid
           push: false
