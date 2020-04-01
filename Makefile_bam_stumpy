@@ -1,0 +1,19 @@
+DIR=/mnt/data_sm/michaelw/TARAnalysis/pipeline_major/ML_Stumpy_*/*.bam
+WORK=/mnt/data_lg/saba/nextflow-intermediates/ 
+OUT=/mnt/data_sm/olga/tabula-microcebus/analyses/kmermaid/tenx-bam--stumpy/
+PEPTIDE_FASTA=/home/olga/data_lg/czbiohub-reference/uniprot/releases/2019_11/manually_downloaded/uniprot-reviewed_yes+taxonomy_2759.fasta.gz
+
+
+run:
+	nextflow run \
+		nf-core/kmermaid \
+		-r snafees/10x_bam \
+		-latest \
+		-profile docker \
+		--bam ${DIR}/'**.bam' \
+		-work-dir ${WORK} \
+		--outdir ${OUT} \
+		-resume \
+		-with-tower \
+		--track_abundance \
+
