@@ -1,6 +1,6 @@
 name: Build Docker images
-# This workflow is triggered on PRs to master branch on the repository
-# It fails when someone tries to make a PR against the nf-core `master` branch instead of `dev`
+# This workflow tests building the docker image so I stop committing
+# bad Dockerfiles and breaking the build
 on: [push, pull_request]
 
 jobs:
