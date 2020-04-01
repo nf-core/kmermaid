@@ -1,0 +1,4 @@
+- name: Build Docker images
+  uses: docker/build-push-action@v1.0.1
+  with:
+    push: false
