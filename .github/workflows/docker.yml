@@ -1,4 +1,13 @@
-- name: Build Docker images
-  uses: docker/build-push-action@v1.0.1
-  with:
-    push: false
+name: Build Docker images
+# This workflow is triggered on PRs to master branch on the repository
+# It fails when someone tries to make a PR against the nf-core `master` branch instead of `dev`
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build Docker images
+        uses: docker/build-push-action@v1.0.1
+        with:
+          push: false
