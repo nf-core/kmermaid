@@ -601,7 +601,7 @@ if (params.tenx_tgz || params.bam) {
         > ${reads}
     """
   }
-  tenx_reads_unaligned_ch.dump(tag: "tex_reads_unaligned")
+  tenx_reads_unaligned_ch.dump(tag: "tenx_reads_unaligned")
 
 
   // Concatenate fastqs from aligned and unaligned reads into a single channel
@@ -650,7 +650,7 @@ if (params.tenx_tgz || params.bam) {
       good_barcodes_ch = tenx_bam_barcodes_ch
     }
   }
-  good_barcodes.dump(tag: "good_barcodes")
+  good_barcodes_ch.dump(tag: "good_barcodes")
 
   tenx_reads_ch.cross(good_barcodes_ch)
     .map{ it -> tuple(it[0][0], it[0][1], it[0][2], it[1][1]) }
