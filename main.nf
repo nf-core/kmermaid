@@ -575,6 +575,8 @@ if (params.tenx_tgz || params.bam) {
           > ${reads}
     """
   }
+  tenx_reads_aligned_counting_ch.dump(tag: "tex_reads_aligned_counting")
+  tenx_reads_aligned_extraction_ch.dump(tag: "tex_reads_aligned_extraction")
 
   process samtools_fastq_unaligned {
 
@@ -599,6 +601,8 @@ if (params.tenx_tgz || params.bam) {
         > ${reads}
     """
   }
+  tenx_reads_unaligned_ch.dump(tag: "tex_reads_unaligned")
+
 
   // Concatenate fastqs from aligned and unaligned reads into a single channel
   tenx_reads_unaligned_ch.concat(tenx_reads_aligned_extraction_ch)
