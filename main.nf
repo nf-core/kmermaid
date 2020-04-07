@@ -646,6 +646,8 @@ if (params.tenx_tgz || params.bam) {
       good_barcodes_ch = tenx_bam_barcodes_ch
     }
   }
+  good_barcodes.dump(tag: "good_barcodes")
+
   tenx_reads_ch.cross(good_barcodes_ch)
     .map{ it -> tuple(it[0][0], it[0][1], it[0][2], it[1][1]) }
     // Filter for non-empty barcodes files
