@@ -648,11 +648,11 @@ if (params.tenx_tgz) {
 
   process extract_per_cell_fastqs {
     tag "${is_aligned_channel_id}"
-    label "low_memory_long"
+    label "mid_memory_long"
     publishDir "${params.outdir}/10x-fastqs/per-cell/${channel_id}/", mode: 'copy'
 
     input:
-    // Example output:
+    // Example input:
     // [[ANTOINE_TESTIS, 'aligned', ANTOINE_TESTIS__aligned.fastq.gz],
     //   [ANTOINE_TESTIS, ANTOINE_TESTIS__barcodes.tsv]]
     set val(channel_id), val(is_aligned), file(reads), file(barcodes) from tenx_reads_with_good_barcodes_ch
