@@ -383,7 +383,7 @@ if(params.barcodes_file)          summary["Barcodes"]              = params.barc
 if(params.rename_10x_barcodes)    summary["Renamer barcodes"]      = params.rename_10x_barcodes
 if(params.read_paths)   summary['Read paths (paired-end)']         = params.read_paths
 // Sketch parameters
-summary['Trimming'] = "5'R1: $clip_r1 / 5'R2: $clip_r2 / 3'R1: $three_prime_clip_r1 / 3'R2: $three_prime_clip_r2 / NextSeq Trim: $params.trim_nextseq"
+summary['Skip trimming?'] = params.skip_trimming
 summary['K-mer sizes']            = params.ksizes
 summary['Molecule']               = params.molecules
 summary['Log2 Sketch Sizes']      = params.log2_sketch_sizes
