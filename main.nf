@@ -558,7 +558,7 @@ if (params.tenx_tgz) {
     set val(channel_id), file(bam) from tenx_bam_for_unaligned_fastq_ch
 
     output:
-    set val(channel_id), val("aligned"), file(reads) into tenx_reads_aligned_counting_ch, tenx_reads_aligned_extraction_ch
+    set val(channel_id), val("aligned"), file(reads) into tenx_reads_aligned_counting_ch, tenx_reads_aligned_concatenation_ch
 
     script:
     reads = "${channel_id}__aligned.fastq.gz"
@@ -593,7 +593,7 @@ if (params.tenx_tgz) {
   }
 
   // Concatenate fastqs from aligned and unaligned reads into a single channel
-  tenx_reads_aligned_extraction_ch.concat(tenx_reads_unaligned_ch)
+  tenx_reads_aligned_concatenation_ch.concat(tenx_reads_unaligned_ch)
     .dump(tag: "tenx_reads_ch")
     .set{ tenx_reads_ch }
 
