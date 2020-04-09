@@ -672,12 +672,17 @@ if (params.tenx_tgz) {
         --good-barcodes ${barcodes} \\
         --cell-barcode-pattern '${tenx_cell_barcode_pattern}' \\
         --channel-id ${is_aligned_channel_id}
+
+    # Decoy file just in case there are no reads found,
+    # to prevent this process from erroring out
+    touch empty.fastq.gz
     """
   }
   // Make per-cell fastqs into a flat channel that matches the read channels of yore
   per_channel_cell_reads_ch
     .dump(tag: 'per_channel_cell_reads_ch')
     .flatten()
+    .filter{ it -> it.size() > 0 }   // each item is just a single file, no need to do it[1]
     .map{ it -> tuple(it.simpleName, file(it)) }
     .dump(tag: 'per_cell_fastqs_ch')
     .set{ per_cell_fastqs_ch }
