@@ -579,7 +579,7 @@ if (params.tenx_tgz) {
     set val(channel_id), file(bam) from tenx_bam_for_aligned_fastq_ch
 
     output:
-    set val(channel_id), val("unaligned"), file(reads) into tenx_reads_unaligned_ch
+    set val(channel_id), val("unaligned"), file(reads) into tenx_reads_unaligned_unfiltered_ch
 
     script:
     reads = "${channel_id}__unaligned.fastq.gz"
@@ -588,9 +588,14 @@ if (params.tenx_tgz) {
       | grep -E '${tenx_cell_barcode_pattern}' \\
       | samtools fastq --threads ${task.cpus} -T ${tenx_tags} - \\
       | gzip -c - \\
-        > ${reads}
+        > ${reads} \\
+      || touch ${reads}
     """
+    // The '||' means that if anything in the previous step fails, do the next thing
   }
+  // Remove empty files
+  tenx_reads_unaligned_unfiltered_ch.filter{ it -> it[1].size() > 0 }
+    .set{ tenx_reads_unaligned_ch }
 
   // Concatenate fastqs from aligned and unaligned reads into a single channel
   tenx_reads_aligned_concatenation_ch.concat(tenx_reads_unaligned_ch)
