@@ -594,7 +594,11 @@ if (params.tenx_tgz) {
     // The '||' means that if anything in the previous step fails, do the next thing
   }
   // Remove empty files
-  tenx_reads_unaligned_unfiltered_ch.filter{ it -> it[1].size() > 0 }
+  // it[0] = channel_id
+  // it[1] = "unaligned"
+  // it[2] = read file
+  // gzipped files are 20 bytes when "empty" due to the header
+  tenx_reads_unaligned_unfiltered_ch.filter{ it -> it[2].size() > 20 }
     .set{ tenx_reads_unaligned_ch }
 
   // Concatenate fastqs from aligned and unaligned reads into a single channel
