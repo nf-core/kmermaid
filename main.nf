@@ -647,13 +647,8 @@ if (params.tenx_tgz) {
     good_barcodes_ch = tenx_bam_barcodes_ch
   }
 
-
-  tenx_reads_ch.cross(good_barcodes_ch)
-    .dump(tag: 'tenx_reads_ch__cross__good_barcodes_ch')
-    .map{ it -> tuple(it[0][0], it[0][1], it[0][2], it[1][1]) }
-    // Filter for non-empty barcodes files
-    .filter{ it -> it[3].size() > 0}
-    .dump(tag: "tenx_reads_with_counts_ch" )
+  tenx_reads_ch.combine(good_barcodes_ch, by: 0)
+    .dump(tag: 'tenx_reads_ch__combine__good_barcodes_ch')
     .set{ tenx_reads_with_good_barcodes_ch }
 
   process extract_per_cell_fastqs {
@@ -663,8 +658,7 @@ if (params.tenx_tgz) {
 
     input:
     // Example input:
-    // [[ANTOINE_TESTIS, 'aligned', ANTOINE_TESTIS__aligned.fastq.gz],
-    //   [ANTOINE_TESTIS, ANTOINE_TESTIS__barcodes.tsv]]
+    // ['mouse_lung', 'aligned', mouse_lung__aligned.fastq.gz, mouse_lung__aligned__barcodes.tsv]
     set val(channel_id), val(is_aligned), file(reads), file(barcodes) from tenx_reads_with_good_barcodes_ch
 
     output:
