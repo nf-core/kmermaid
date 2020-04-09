@@ -592,6 +592,7 @@ if (params.tenx_tgz) {
       || touch ${reads}
     """
     // The '||' means that if anything in the previous step fails, do the next thing
+    // It's bash magic from: https://stackoverflow.com/a/3822649/1628971
   }
   // Remove empty files
   // it[0] = channel_id
