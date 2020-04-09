@@ -35,7 +35,9 @@ matrix:
     env: NXF_VER='' SUITE=test_tenx_tgz FLAGS=
   - name: "Test nextflow kmermaid, with 10x .tgz file"
     env: NXF_VER='' SUITE=test_tenx_tgz FLAGS=--skip_trimming
-  - name: "Test nextflow kmermaid, with 10x .tgz file"
+  - name: "Test nextflow kmermaid, with 10x .tgz file and min 2 UMI per cell"
+    env: NXF_VER='' SUITE=test_tenx_tgz FLAGS=--tenx_min_umi_per_cell 2
+  - name: "Test nextflow kmermaid, with 10x .tgz file and min 5 UMI per cell (test extract_per_cell_fastqs failure)"
     env: NXF_VER='' SUITE=test_tenx_tgz FLAGS=--tenx_min_umi_per_cell 5
 before_install:
   # PRs to master are only ok if coming from dev branch
