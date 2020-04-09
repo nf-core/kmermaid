@@ -7,21 +7,16 @@
 ### Pipeline enhancements & Fixes
 
 * Add option to use Dayhoff encoding for sourmash
-
-### Dependency Updates
-
-* Add samtools, screed, tqdm to dependencies
-
-## v1.0 - 6 March 2019
-
 * Add option to use Dayhoff encoding for sourmash.
 * Add `bam2fasta` process to kmermaid pipeline and flags involved.
 * Add `extract_coding` and `peptide_bloom_filger` process and flags involved.
 * Add `track_abundance` feature to keep track of hashed kmer frequency.
 * Add social preview image
 
-### Dependency updates
 
+### Dependency Updates
+
+* Add samtools, screed, tqdm to dependencies
 * Add `ska` and `seqtk` to container dependencies
 * Add `fastp` to container requirements
 * Add `fastqc` to environment.yml

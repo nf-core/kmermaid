@@ -1,18 +1,14 @@
-FROM nfcore/base:1.7
-LABEL description="Docker image containing all requirements for nf-core/kmermaid pipeline"
+FROM nfcore/base:dev
+LABEL authors="Olga Botvinnik" \
+      description="Docker image containing all software requirements for the nf-core/kmermaid pipeline"
 
-# Suggested tags from https://microbadger.com/labels
-ARG VCS_REF
-ARG BUILD_DATE
-LABEL org.label-schema.vcs-ref=$VCS_REF \
-org.label-schema.vcs-url="e.g. https://github.com/nf-core/kmermaid"
-
+# Install the conda environment
 COPY environment.yml /
 RUN conda env create -f /environment.yml && conda clean -a
-ENV PATH /opt/conda/envs/nf-core-kmermaid-1.0.0dev/bin:$PATH
 
-RUN sourmash info
-RUN bam2fasta info
-RUN khtools bloom-filter --help
-RUN khtools extract-coding --help
+# Add conda installation dir to PATH (instead of doing 'conda activate')
+ENV PATH /opt/conda/envs/nf-core-kmermaid-1.0dev/bin:$PATH
+
+# Dump the details of the installed packages to a file for posterity
+RUN conda env export --name nf-core-kmermaid-1.0dev > nf-core-kmermaid-1.0dev.yml
 COPY docker/sysctl.conf /etc/sysctl.conf
