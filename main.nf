@@ -635,7 +635,7 @@ if (params.bam) {
 if (params.peptide_fasta){
   process translate {
     tag "${sample_id}"
-    label "low_memory"
+    label "low_memory_long"
     publishDir "${params.outdir}/translate/", mode: 'copy'
 
     input:
