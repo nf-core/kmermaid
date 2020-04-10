@@ -12,10 +12,6 @@ regexes = {
     'Bam2fasta': ['v_bam2fasta.txt', r"bam2fasta version (\S+)"],
 }
 results = OrderedDict()
-results['nf-core/kmermaid'] = '<span style="color:#999999;\">N/A</span>'
-results['Nextflow'] = '<span style="color:#999999;\">N/A</span>'
-results['FastQC'] = '<span style="color:#999999;\">N/A</span>'
-results['MultiQC'] = '<span style="color:#999999;\">N/A</span>'
 
 # Search each file using its regex
 for k, v in regexes.items():

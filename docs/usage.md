@@ -23,9 +23,10 @@
         * [`--barcodes_file`](#--barcodes_file)
         * [`--rename_10x_barcodes`](#--rename_10x_barcodes)
         * [`--save_fastas`](#--save_fastas)
+    * [Adapter Trimming][#adapter-trimming]
+        * [`--skip_trimming`](#--skip_trimming)
     * [K-merization/Sketching program options](#k-merization-sketching-program-options)
         * [`--splitKmer`](#--splitKmer)
-
     * [Sketch parameters](#sketch-parameters)
         * [`--molecule`](#--molecule)
         * [`--ksize`](#--ksize)
@@ -110,7 +111,7 @@ Use this parameter to choose a configuration profile. Profiles can give configur
     * Runs locally and expects all software to be installed and available on the `PATH`.
 * `docker`
     * A generic configuration profile to be used with [Docker](http://docker.com/)
-	* Pulls software from dockerhub: [`nfcore/kmermaid`](http://hub.docker.com/r/nfcore/kmermaid/)	
+	* Pulls software from dockerhub: [`nfcore/kmermaid`](http://hub.docker.com/r/nfcore/kmermaid/)
 * `singularity`
     * A generic configuration profile to be used with [Singularity](http://singularity.lbl.gov/)
     * Pulls software from singularity-hub
@@ -221,6 +222,16 @@ Please note the following requirements:
 
 If left unspecified, no samples are used.
 
+## Adapter Trimming
+
+If specific additional trimming is required (for example, from additional tags),
+you can use any of the following command line parameters. These affect the command
+used to launch fastp!
+
+### `--skip_trimming`
+
+This allows to skip the trimming process to save time when re-analyzing data that has been trimmed already.
+
 ## K-merization/Sketching program Options
 
 By default, the k-merization and sketch creation program is [sourmash](https://sourmash.readthedocs.io).
@@ -266,7 +277,7 @@ For bam/10x files, Use this to specify the location of tsv (tab separated file) 
 If left unspecified, barcodes are derived from bam are used.
 
 ### `--rename_10x_barcodes`
-For bam/10x files, Use this to specify the location of your tsv (tab separated file) containing map of cell barcodes and their corresponding new names(e.g row in the tsv file: AAATGCCCAAACTGCT-1    lung_epithelial_cell|AAATGCCCAAACTGCT-1). 
+For bam/10x files, Use this to specify the location of your tsv (tab separated file) containing map of cell barcodes and their corresponding new names(e.g row in the tsv file: AAATGCCCAAACTGCT-1    lung_epithelial_cell|AAATGCCCAAACTGCT-1).
 For example:
 
 ```bash
@@ -323,7 +334,7 @@ The fundamental unit of the sketch is a [hashed](https://en.wikipedia.org/wiki/H
 
 ### `--track_abundance`
 
-* Tracking abundance - add this parameter if we want to keep track of the number of times a hashed kmer appears. 
+* Tracking abundance - add this parameter if we want to keep track of the number of times a hashed kmer appears.
   * `--track_abundance`
 
 
@@ -342,7 +353,7 @@ The log2 sketch size specifies the number of k-mers to use for the sketch. We us
 
 ### `--save_fastas`
 
-1. The [save_fastas ](#--save_fastas ) used to save the sequences of each unique barcode in the bam file. It is a path relative to outdir to save unique barcodes to files namely {CELL_BARCODE}.fasta. These fastas are computed once for one permutation of ksize, molecule, and log2_sketch_size, further used to compute the signatures and compare signature matrix for all permutations of ksizes, molecules, and log2_sketch_size. This is done to save the time on saving the computational time and storage in obtaining unique barcodes, sharding the bam file. 
+1. The [save_fastas ](#--save_fastas ) used to save the sequences of each unique barcode in the bam file. It is a path relative to outdir to save unique barcodes to files namely {CELL_BARCODE}.fasta. These fastas are computed once for one permutation of ksize, molecule, and log2_sketch_size, further used to compute the signatures and compare signature matrix for all permutations of ksizes, molecules, and log2_sketch_size. This is done to save the time on saving the computational time and storage in obtaining unique barcodes, sharding the bam file.
 
 **Example parameters**
 
@@ -357,7 +368,7 @@ This creates a CSV containing the number of reads and number of UMIs per barcode
 
 **Example parameters**
 
-* Default: barcode metadata is not saved 
+* Default: barcode metadata is not saved
 * Save fastas in a file cinside outdir/barcode/metadata:
   * `--write_barcode_meta_csv "barcodes_counts.csv"`
 

@@ -19,6 +19,8 @@ matrix:
       - nextflow run ${TRAVIS_BUILD_DIR} -profile test,docker --splitKmer ; if [ $? -eq 0 ]; then echo "--splitKmer + --molecules protein should fail but did not" && exit 1 ; else echo "Correctly failed --splitKmer + --molecules protein" ; fi
   - name: "Latest Nextflow version, split k-mer test suite"
     env: NXF_VER='' SUITE=test_ska FLAGS=
+  - name: "Latest Nextflow version, split k-mer test suite"
+    env: NXF_VER='' SUITE=test_ska FLAGS=--skip_trimming
   - name: "Latest Nextflow version, split k-mer test suite, test subsampling"
     env: NXF_VER='' SUITE=test_ska FLAGS=--subsample 10
   # - name: "Lint the pipeline code"
