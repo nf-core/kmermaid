@@ -616,17 +616,16 @@ if (params.bam) {
     def barcodes_file = params.barcodes_file ? "--barcodes-file ${barcodes_file.baseName}.tsv": ''
     def rename_10x_barcodes = params.rename_10x_barcodes ? "--rename-10x-barcodes ${rename_10x_barcodes.baseName}.tsv": ''
     """
-      bam2fasta convert \\
+      bam2fasta percell \\
         $processes \\
         $min_umi_per_barcode \\
-        $line_count \\
         $rename_10x_barcodes \\
         $barcodes_file \\
         $save_fastas \\
         $save_intermediate_files \\
         $metadata \\
         --filename $bam
-      find . -type f -name "*.fasta" | while read src; do if [[ \$src == *"|"* ]]; then mv "\$src" \$(echo "\$src" | tr "|" "_"); fi done
+      find . -type f -name "*.fastq" | while read src; do if [[ \$src == *"|"* ]]; then mv "\$src" \$(echo "\$src" | tr "|" "_"); fi done
     """
   }
 }
