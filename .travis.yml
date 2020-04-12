@@ -13,6 +13,10 @@ matrix:
     jdk: openjdk8
   - name: "Latest Nextflow version, regular test suite"
     env: NXF_VER='' SUITE=test FLAGS=
+  - name: "Test nextflow kmermaid, with --track_abundance"
+    env: NXF_VER='' SUITE=test FLAGS='--track_abundance'
+  - name: "Test nextflow kmermaid, with extract coding on fastas"
+    env: NXF_VER='' SUITE=test_extract_coding
   - name: "Latest Nextflow version, regular test suite with splitKmers, ensure that `protein` can't be specified"
     # Check exit code to make sure it is nonzero for --splitKmer + --molecules protein
     script:
