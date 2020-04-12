@@ -24,9 +24,10 @@
         * [`--barcodes_file`](#--barcodes_file)
         * [`--rename_10x_barcodes`](#--rename_10x_barcodes)
         * [`--save_fastas`](#--save_fastas)
+    * [Adapter Trimming][#adapter-trimming]
+        * [`--skip_trimming`](#--skip_trimming)
     * [K-merization/Sketching program options](#k-merization-sketching-program-options)
         * [`--splitKmer`](#--splitKmer)
-
     * [Sketch parameters](#sketch-parameters)
         * [`--molecule`](#--molecule)
         * [`--ksize`](#--ksize)
@@ -232,6 +233,16 @@ Please note the following requirements:
 2. Any of the `SRR`, `SRP`, or `PRJNA` ids can be used
 
 If left unspecified, no samples are used.
+
+## Adapter Trimming
+
+If specific additional trimming is required (for example, from additional tags),
+you can use any of the following command line parameters. These affect the command
+used to launch fastp!
+
+### `--skip_trimming`
+
+This allows to skip the trimming process to save time when re-analyzing data that has been trimmed already.
 
 ## K-merization/Sketching program Options
 

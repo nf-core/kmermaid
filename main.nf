@@ -87,6 +87,7 @@ def helpMessage() {
                                     (Not typically used for raw sequencing data as this would create
                                     a k-mer signature for each read!)
       --track_abundance             Track abundance of each hashed k-mer, could be useful for cancer RNA-seq or ATAC-seq analyses
+      --skip_trimming               If provided, skip fastp trimming of reads
 
     Split K-mer options:
       --splitKmer                   If provided, use SKA to compute split k-mer sketches instead of
@@ -137,7 +138,7 @@ read_paths_ch = Channel.empty()
 sra_ch = Channel.empty()
 
 // R1, R2 pairs from a samples.csv file
-samples_ch = Channel.empty()
+csv_pairs_ch = Channel.empty()
 
 // Single-enede reads from a samples.csv file
 csv_singles_ch = Channel.empty()
@@ -154,9 +155,10 @@ fastas_ch = Channel.empty()
 // Parameters for testing
 if (params.read_paths) {
      read_paths_ch = Channel
-         .from(params.read_paths)
-         .map { row -> [ row[0], [file(row[1][0]), file(row[1][1])]] }
-         .ifEmpty { exit 1, "params.read_paths (${params.read_paths}) was empty - no input files supplied" }
+        .from(params.read_paths)
+        .map { row -> if (row[1].size() == 2) [ row[0], [file(row[1][0]), file(row[1][1])]]
+              else [row[0], [file(row[1][0])]]}
+        .ifEmpty { exit 1, "params.read_paths (${params.read_paths}) was empty - no input files supplied" }
  } else {
    // Provided SRA ids
    if (params.sra){
@@ -166,7 +168,7 @@ if (params.read_paths) {
    }
    // Provided a samples.csv file of read pairs
    if (params.csv_pairs){
-     samples_ch = Channel
+     csv_pairs_ch = Channel
       .fromPath(params.csv_pairs)
       .splitCsv(header:true)
       .map{ row -> tuple(row[0], tuple(file(row[1]), file(row[2])))}
@@ -242,17 +244,41 @@ if (params.subsample) {
   if (params.bam){
      exit 1, "Cannot provide both a bam file with --bam and specify --subsample"
   } else {
-    sra_ch.concat(samples_ch, csv_singles_ch, read_pairs_ch,
-      read_singles_ch, fastas_ch, read_paths_ch)
-      .ifEmpty{ exit 1, "No reads provided! Check read input files"}
-      .set{ subsample_reads_ch }
+    if (params.skip_trimming){
+      sra_ch.concat(csv_pairs_ch, csv_singles_ch, read_pairs_ch,
+        read_singles_ch, fastas_ch, read_paths_ch)
+        .ifEmpty{ exit 1, "No reads provided! Check read input files"}
+        .set{ subsample_reads_ch }
+    } else {
+      sra_ch.concat(
+          csv_pairs_ch, csv_singles_ch, read_pairs_ch,
+          read_singles_ch, read_paths_ch)
+        .ifEmpty{ exit 1, "No reads provided! Check read input files"}
+        .set{ ch_read_files_trimming }
+    }
   }
 } else {
   if (!params.bam) {
-  sra_ch.concat(samples_ch, csv_singles_ch, read_pairs_ch,
-   read_singles_ch, fastas_ch, read_paths_ch)
-   .ifEmpty{ exit 1, "No reads provided! Check read input files"}
-   .set{ reads_ch }
+    if(params.skip_trimming){
+      sra_ch.concat(
+          csv_pairs_ch, csv_singles_ch, read_pairs_ch,
+          read_singles_ch, fastas_ch, read_paths_ch)
+       .ifEmpty{ exit 1, "No reads provided! Check read input files"}
+       .set{ reads_ch }
+    } else {
+      if (params.fastas) {
+        sra_ch.concat(
+            csv_pairs_ch, csv_singles_ch, read_pairs_ch,
+            read_singles_ch, read_paths_ch)
+          .set{ ch_read_files_trimming }
+      } else {
+        sra_ch.concat(
+            csv_pairs_ch, csv_singles_ch, read_pairs_ch,
+            read_singles_ch, read_paths_ch)
+          .ifEmpty{ exit 1, "No reads provided! Check read input files"}
+          .set{ ch_read_files_trimming }
+      }
+    }
   } else {
 //   Do nothing - can't combine the fastq files and bam files (yet)
     }
@@ -276,11 +302,6 @@ if (workflow.profile.contains('awsbatch')) {
     if (params.tracedir.startsWith('s3:')) exit 1, "Specify a local tracedir or run without trace! S3 cannot be used for tracefiles."
 }
 
-// Stage config files
-ch_multiqc_config = file("$baseDir/assets/multiqc_config.yaml", checkIfExists: true)
-ch_multiqc_custom_config = params.multiqc_config ? Channel.fromPath(params.multiqc_config, checkIfExists: true) : Channel.empty()
-ch_output_docs = file("$baseDir/docs/output.md", checkIfExists: true)
-
 
 if (params.splitKmer){
     params.ksizes = '15,9'
@@ -299,9 +320,9 @@ log2_sketch_sizes = params.log2_sketch_sizes?.toString().tokenize(',')
 
 int bloomfilter_tablesize = Math.round(Float.valueOf(params.bloomfilter_tablesize))
 
-peptide_ksize = params.extract_coding_peptide_ksize
-peptide_molecule = params.extract_coding_peptide_molecule
-jaccard_threshold = params.extract_coding_jaccard_threshold
+peptide_ksize = params.translate_peptide_ksize
+peptide_molecule = params.translate_peptide_molecule
+jaccard_threshold = params.translate_jaccard_threshold
 track_abundance = params.track_abundance
 
 if (params.bam){
@@ -350,6 +371,7 @@ if(params.barcodes_file)          summary["Barcodes"]              = params.barc
 if(params.rename_10x_barcodes)    summary["Renamer barcodes"]      = params.rename_10x_barcodes
 if(params.read_paths)   summary['Read paths (paired-end)']         = params.read_paths
 // Sketch parameters
+summary['Skip trimming?'] = params.skip_trimming
 summary['K-mer sizes']            = params.ksizes
 summary['Molecule']               = params.molecules
 summary['Log2 Sketch Sizes']      = params.log2_sketch_sizes
@@ -363,8 +385,8 @@ if(params.bam) summary['Saved intermediate files '] = params.save_intermediate_f
 if(params.bam) summary['Barcode umi read metadata'] = params.write_barcode_meta_csv
 // Extract coding parameters
 if(params.peptide_fasta) summary["Peptide fasta"] = params.peptide_fasta
-if(params.peptide_fasta) summary['Peptide ksize'] = params.extract_coding_peptide_ksize
-if(params.peptide_fasta) summary['Peptide molecule'] = params.extract_coding_peptide_molecule
+if(params.peptide_fasta) summary['Peptide ksize'] = params.translate_peptide_ksize
+if(params.peptide_fasta) summary['Peptide molecule'] = params.translate_peptide_molecule
 if(params.peptide_fasta) summary['Bloom filter table size'] = params.bloomfilter_tablesize
 // Resource information
 summary['Max Resources']    = "$params.max_memory memory, $params.max_cpus cpus, $params.max_time time per job"
@@ -435,11 +457,11 @@ process get_software_versions {
 }
 
 if (params.peptide_fasta){
-  process peptide_bloom_filter {
+  process make_protein_index {
     tag "${peptides}__${bloom_id}"
     label "low_memory"
 
-    publishDir "${params.outdir}/bloom_filter", mode: 'copy'
+    publishDir "${params.outdir}/protein_index", mode: 'copy'
 
     input:
     file(peptides) from ch_peptide_fasta
@@ -452,7 +474,7 @@ if (params.peptide_fasta){
     script:
     bloom_id = "molecule-${peptide_molecule}_ksize-${peptide_ksize}"
     """
-    khtools bloom-filter \\
+    khtools index \\
       --tablesize ${bloomfilter_tablesize} \\
       --molecule ${peptide_molecule} \\
       --peptide-ksize ${peptide_ksize} \\
@@ -462,6 +484,64 @@ if (params.peptide_fasta){
   }
 }
 
+if (!params.skip_trimming && !params.bam){
+  process fastp {
+      label 'process_low'
+      tag "$name"
+      publishDir "${params.outdir}/fastp", mode: 'copy',
+        saveAs: {filename ->
+                    if (filename.indexOf(".fastq.gz") == -1) "logs/$filename"
+                    else if (reads[1] == null) "single_end/$filename"
+                    else if (reads[1] != null) "paired_end/$filename"
+                    else null
+                }
+
+      input:
+      set val(name), file(reads) from ch_read_files_trimming
+
+      output:
+      set val(name), file("*trimmed.fastq.gz") into ch_reads_trimmed
+      file "*fastp.json" into ch_fastp_results
+      file "*fastp.html" into ch_fastp_html
+
+      script:
+      // One set of reads --> single end
+      if (reads[1] == null) {
+          """
+          fastp \\
+              --in1 ${reads} \\
+              --out1 ${name}_R1_trimmed.fastq.gz \\
+              --json ${name}_fastp.json \\
+              --html ${name}_fastp.html
+          """
+      } else if (reads[1] != null ){
+        // More than one set of reads --> paired end
+          """
+          fastp \\
+              --in1 ${reads[0]} \\
+              --in2 ${reads[1]} \\
+              --out1 ${name}_R1_trimmed.fastq.gz \\
+              --out2 ${name}_R2_trimmed.fastq.gz \\
+              --json ${name}_fastp.json \\
+              --html ${name}_fastp.html
+          """
+      } else {
+        """
+        echo name ${name}
+        echo reads: ${reads}
+        echo "Number of reads is not equal to 1 or 2 --> don't know how to trim non-paired-end and non-single-end reads"
+        """
+      }
+  }
+  // Concatenate trimmed fastq files with fastas
+  if (params.subsample){
+    // Concatenate trimmed reads with fastas for subsequent subsampling
+    subsample_reads_ch = ch_reads_trimmed.concat(fastas_ch)
+  } else {
+    // Concatenate trimmed reads with fastas for signature generation
+    reads_ch = ch_reads_trimmed.concat(fastas_ch)
+  }
+}
 
 if (params.subsample) {
     process subsample_input {
@@ -481,11 +561,11 @@ if (params.subsample) {
 	read1_prefix = read1.name.minus(".fastq.gz") // TODO: change to RE to match fasta as well?
 	read2_prefix = read2.name.minus(".fastq.gz")
 
-    """
-    seqtk sample -s100 ${read1} ${params.subsample} > ${read1_prefix}_${params.subsample}.fastq.gz
-    seqtk sample -s100 ${read2} ${params.subsample} > ${read2_prefix}_${params.subsample}.fastq.gz
-    """
-    }
+  """
+  seqtk sample -s100 ${read1} ${params.subsample} > ${read1_prefix}_${params.subsample}.fastq.gz
+  seqtk sample -s100 ${read2} ${params.subsample} > ${read2_prefix}_${params.subsample}.fastq.gz
+  """
+  }
 }
 
 
@@ -541,10 +621,10 @@ if (params.bam) {
 
 
 if (params.peptide_fasta){
-  process extract_coding {
+  process translate {
     tag "${sample_id}"
     label "low_memory"
-    publishDir "${params.outdir}/extract_coding/", mode: 'copy'
+    publishDir "${params.outdir}/translate/", mode: 'copy'
 
     input:
     set bloom_id, molecule, file(bloom_filter) from ch_khtools_bloom_filter.collect()
@@ -559,7 +639,7 @@ if (params.peptide_fasta){
 
     script:
     """
-    khtools extract-coding \\
+    khtools translate \\
       --molecule ${molecule} \\
       --coding-nucleotide-fasta ${sample_id}__coding_reads_nucleotides.fasta \\
       --csv ${sample_id}__coding_scores.csv \\
@@ -669,7 +749,7 @@ if (params.peptide_fasta){
   process sourmash_compute_sketch_fastx_peptide {
     tag "${sample_id}_${sketch_id}"
     label "mid_memory"
-    publishDir "${params.outdir}/sketches_peptide", mode: 'copy'
+    publishDir "${params.outdir}/sketches_peptide/${sketch_id}", mode: 'copy'
 
     input:
     each ksize from ksizes

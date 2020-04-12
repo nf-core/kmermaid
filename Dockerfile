@@ -11,4 +11,8 @@ ENV PATH /opt/conda/envs/nf-core-kmermaid-1.0dev/bin:$PATH
 
 # Dump the details of the installed packages to a file for posterity
 RUN conda env export --name nf-core-kmermaid-1.0dev > nf-core-kmermaid-1.0dev.yml
+RUN sourmash info
+RUN bam2fasta info
+RUN khtools index --help
+RUN khtools translate --help
 COPY docker/sysctl.conf /etc/sysctl.conf
