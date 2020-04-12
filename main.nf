@@ -558,15 +558,13 @@ if (params.tenx_tgz) {
     set val(channel_id), file(bam) from tenx_bam_for_unaligned_fastq_ch
 
     output:
-    set val(channel_id), val("aligned"), file(reads) into tenx_reads_aligned_counting_ch, tenx_reads_aligned_concatenation_ch
+    set val(channel_id), val("aligned"), file(reads) into tenx_bam_aligned_counting_ch, tenx_bam_aligned_concatenation_ch
 
     script:
-    reads = "${channel_id}__aligned.fastq.gz"
+    out_bam = "${channel_id}__aligned.bam"
     """
-    samtools view -ub -F 256 -q 255 ${bam} \\
-        | samtools fastq --threads ${task.cpus} -T ${tenx_tags} - \\
-        | gzip -c - \\
-          > ${reads}
+    samtools view -ubh -F 256 -q 255 ${bam} \\
+        > ${out_bam}
     """
   }
 
@@ -579,17 +577,17 @@ if (params.tenx_tgz) {
     set val(channel_id), file(bam) from tenx_bam_for_aligned_fastq_ch
 
     output:
-    set val(channel_id), val("unaligned"), file(reads) into tenx_reads_unaligned_unfiltered_ch
+    set val(channel_id), val("unaligned"), file(reads) into tenx_bam_unaligned_unfiltered_ch
 
     script:
-    reads = "${channel_id}__unaligned.fastq.gz"
+    out_bam = "${channel_id}__unaligned.bam"
     """
     samtools view -f4 ${bam} \\
       | grep -E '${tenx_cell_barcode_pattern}' \\
-      | samtools fastq --threads ${task.cpus} -T ${tenx_tags} - \\
-      | gzip -c - \\
-        > ${reads} \\
-      || touch ${reads}
+      | samtools view -Sb no_header.bam
+    # TODO: Header is (probably?) the same across the whole dataset --> could use the same one
+    samtools -H ${bam} > header.sam
+    samtools reheader header.sam no_header.bam > ${out_bam}
     """
     // The '||' means that if anything in the previous step fails, do the next thing
     // It's bash magic from: https://stackoverflow.com/a/3822649/1628971
@@ -667,7 +665,7 @@ if (params.tenx_tgz) {
     script:
     is_aligned_channel_id = "${channel_id}__${is_aligned}"
     """
-    make_per_cell_fastqs.py \\
+    bam2fasta percell \\
         --reads ${reads} \\
         --good-barcodes ${barcodes} \\
         --cell-barcode-pattern '${tenx_cell_barcode_pattern}' \\
