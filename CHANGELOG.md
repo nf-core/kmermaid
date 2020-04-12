@@ -2,6 +2,18 @@
 
 ## v1.0.0dev
 
+### Documentation updates
+
+### Pipeline enhancements & Fixes
+
+* Add option to use Dayhoff encoding for sourmash
+
+### Dependency Updates
+
+* Add samtools, screed, tqdm to dependencies
+
+## v1.0 - 6 March 2019
+
 * Add option to use Dayhoff encoding for sourmash.
 * Add `bam2fasta` process to kmermaid pipeline and flags involved.
 * Add `extract_coding` and `peptide_bloom_filger` process and flags involved.
@@ -24,7 +36,3 @@
 ## v0.1.0 - 6 March 2019
 
 Initial release of nf-core/kmermaid, created with the [nf-core](http://nf-co.re/) template.
-
-## v1.0dev - 6 March 2019
-
-Initial release of nf-core/nf-kmer-similarity, created with the [nf-core](http://nf-co.re/) template.

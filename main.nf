@@ -224,7 +224,7 @@ if (params.read_paths) {
   Channel.fromPath(params.bam, checkIfExists: true)
        .map{ f -> tuple(f.baseName, tuple(file(f))) }
        .ifEmpty { exit 1, "Bam file not found: ${params.bam}" }
-       .set{ bam_ch }
+       .into{ tenx_bam_for_unaligned_fastq_ch; tenx_bam_for_aligned_fastq_ch }
   }
 
   // If barcodes is as expected, check if it exists and set channel
@@ -333,12 +333,6 @@ if (workflow.profile == 'awsbatch') {
   if (workflow.tracedir.startsWith('s3:')) exit 1, "Specify a local tracedir or run without trace! S3 cannot be used for tracefiles."
 }
 
-// Define regular variables so that they can be overwritten
-clip_r1 = params.clip_r1
-clip_r2 = params.clip_r2
-three_prime_clip_r1 = params.three_prime_clip_r1
-three_prime_clip_r2 = params.three_prime_clip_r2
-
 
 if (params.splitKmer){
     params.ksizes = '15,9'
@@ -357,9 +351,9 @@ log2_sketch_sizes = params.log2_sketch_sizes?.toString().tokenize(',')
 
 int bloomfilter_tablesize = Math.round(Float.valueOf(params.bloomfilter_tablesize))
 
-peptide_ksize = params.extract_coding_peptide_ksize
-peptide_molecule = params.extract_coding_peptide_molecule
-jaccard_threshold = params.extract_coding_jaccard_threshold
+peptide_ksize = params.translate_peptide_ksize
+peptide_molecule = params.translate_peptide_molecule
+jaccard_threshold = params.translate_jaccard_threshold
 track_abundance = params.track_abundance
 
 if (params.bam){
@@ -414,7 +408,7 @@ if(params.barcodes_file)          summary["Barcodes"]              = params.barc
 if(params.rename_10x_barcodes)    summary["Renamer barcodes"]      = params.rename_10x_barcodes
 if(params.read_paths)   summary['Read paths (paired-end)']         = params.read_paths
 // Sketch parameters
-summary['Trimming'] = "5'R1: $clip_r1 / 5'R2: $clip_r2 / 3'R1: $three_prime_clip_r1 / 3'R2: $three_prime_clip_r2 / NextSeq Trim: $params.trim_nextseq"
+summary['Skip trimming?'] = params.skip_trimming
 summary['K-mer sizes']            = params.ksizes
 summary['Molecule']               = params.molecules
 summary['Log2 Sketch Sizes']      = params.log2_sketch_sizes
@@ -428,8 +422,8 @@ if(params.tenx_tgz) summary["10x UMI pattern"] = params.tenx_molecular_barcode_p
 if(params.tenx_tgz) summary['Min UMI/cell'] = params.tenx_min_umi_per_cell
 // Extract coding parameters
 if(params.peptide_fasta) summary["Peptide fasta"] = params.peptide_fasta
-if(params.peptide_fasta) summary['Peptide ksize'] = params.extract_coding_peptide_ksize
-if(params.peptide_fasta) summary['Peptide molecule'] = params.extract_coding_peptide_molecule
+if(params.peptide_fasta) summary['Peptide ksize'] = params.translate_peptide_ksize
+if(params.peptide_fasta) summary['Peptide molecule'] = params.translate_peptide_molecule
 if(params.peptide_fasta) summary['Bloom filter table size'] = params.bloomfilter_tablesize
 // Resource information
 summary['Max Resources']    = "$params.max_memory memory, $params.max_cpus cpus, $params.max_time time per job"
@@ -500,11 +494,11 @@ process get_software_versions {
 }
 
 if (params.peptide_fasta){
-  process peptide_bloom_filter {
+  process make_protein_index {
     tag "${peptides}__${bloom_id}"
     label "low_memory"
 
-    publishDir "${params.outdir}/bloom_filter", mode: 'copy'
+    publishDir "${params.outdir}/protein_index", mode: 'copy'
 
     input:
     file(peptides) from ch_peptide_fasta
@@ -517,7 +511,7 @@ if (params.peptide_fasta){
     script:
     bloom_id = "molecule-${peptide_molecule}_ksize-${peptide_ksize}"
     """
-    khtools bloom-filter \\
+    khtools index \\
       --tablesize ${bloomfilter_tablesize} \\
       --molecule ${peptide_molecule} \\
       --peptide-ksize ${peptide_ksize} \\
@@ -557,7 +551,9 @@ if (params.tenx_tgz) {
     mv ${sample_id}/outs/filtered_gene_bc_matrices/*/barcodes.tsv ${barcodes}
     """
   }
+}
 
+if (params.bam || params.tenx_tgz) {
   process samtools_fastq_aligned {
     tag "${channel_id}"
     publishDir "${params.outdir}/10x-fastqs/per-channel/aligned", mode: 'copy'
@@ -793,10 +789,10 @@ if (params.subsample) {
 
 
 if (params.peptide_fasta){
-  process extract_coding {
+  process translate {
     tag "${sample_id}"
     label "low_memory"
-    publishDir "${params.outdir}/extract_coding/", mode: 'copy'
+    publishDir "${params.outdir}/translate/", mode: 'copy'
 
     input:
     set bloom_id, molecule, file(bloom_filter) from ch_khtools_bloom_filter.collect()
@@ -811,7 +807,7 @@ if (params.peptide_fasta){
 
     script:
     """
-    khtools extract-coding \\
+    khtools translate \\
       --molecule ${molecule} \\
       --coding-nucleotide-fasta ${sample_id}__coding_reads_nucleotides.fasta \\
       --csv ${sample_id}__coding_scores.csv \\

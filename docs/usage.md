@@ -228,26 +228,6 @@ If specific additional trimming is required (for example, from additional tags),
 you can use any of the following command line parameters. These affect the command
 used to launch fastp!
 
-### `--clip_r1 [int]`
-
-Instructs fastp to remove bp from the 5' end of read 1 (or single-end reads).
-
-### `--clip_r2 [int]`
-
-Instructs fastp to remove bp from the 5' end of read 2 (paired-end reads only).
-
-### `--three_prime_clip_r1 [int]`
-
-Instructs fastp to remove bp from the 3' end of read 1 _AFTER_ adapter/quality trimming has been performed.
-
-### `--three_prime_clip_r2 [int]`
-
-Instructs fastp to remove bp from the 3' end of read 2 _AFTER_ adapter/quality trimming has been performed.
-
-### `--trim_nextseq [int]`
-
-This enables the option --nextseq-trim=3'CUTOFF within Cutadapt in Trim Galore, which will set a quality cutoff (that is normally given with -q instead), but qualities of G bases are ignored. This trimming is in common for the NextSeq- and NovaSeq-platforms, where basecalls without any signal are called as high-quality G bases.
-
 ### `--skip_trimming`
 
 This allows to skip the trimming process to save time when re-analyzing data that has been trimmed already.
