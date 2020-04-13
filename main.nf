@@ -97,11 +97,11 @@ def helpMessage() {
 
     Bam file options:
       --write_barcode_meta_csv      For bam files, Csv file name relative to outdir/barcode_metadata to write number of reads and number of umis per barcode.
-                                    This csv file is empty with just header when the min_umi_per_cell is zero i.e
+                                    This csv file is empty with just header when the tenx_min_umi_per_cell is zero i.e
                                     Reads and umis per barcode are calculated only when the barcodes are filtered
-                                    based on min_umi_per_cell
-      --min_umi_per_cell         A barcode is only considered a valid barcode read
-                                    and its signature is written if number of umis are greater than min_umi_per_cell
+                                    based on tenx_min_umi_per_cell
+      --tenx_min_umi_per_cell         A barcode is only considered a valid barcode read
+                                    and its signature is written if number of umis are greater than tenx_min_umi_per_cell
       --shard_size                  Number of alignment to contain in each sharded bam file
       --barcodes_file               For bam files, Optional absolute path to a .tsv barcodes file if the input is unfiltered 10x bam file
       --rename_10x_barcodes         For bam files, Optional absolute path to a .tsv Tab-separated file mapping 10x barcode name
@@ -367,7 +367,7 @@ if (params.bam){
 tenx_tags = params.tenx_tags
 tenx_cell_barcode_pattern = params.tenx_cell_barcode_pattern
 tenx_molecular_barcode_pattern = params.tenx_molecular_barcode_pattern
-tenx_min_umi_per_cell = params.tenx_min_umi_per_cell
+tenx_tenx_min_umi_per_cell = params.tenx_tenx_min_umi_per_cell
 
 if (params.splitKmer && 'protein' in molecules){
   exit 1, "Cannot specify 'protein' in `--molecules` if --splitKmer is set"
@@ -419,7 +419,7 @@ if(params.tenx_tgz) summary["10x .tgz"] = params.tenx_tgz
 if(params.tenx_tgz) summary["10x SAM tags"] = params.tenx_tags
 if(params.tenx_tgz) summary["10x Cell pattern"] = params.tenx_cell_barcode_pattern
 if(params.tenx_tgz) summary["10x UMI pattern"] = params.tenx_molecular_barcode_pattern
-if(params.tenx_tgz) summary['Min UMI/cell'] = params.tenx_min_umi_per_cell
+if(params.tenx_tgz) summary['Min UMI/cell'] = params.tenx_tenx_min_umi_per_cell
 // Extract coding parameters
 if(params.peptide_fasta) summary["Peptide fasta"] = params.peptide_fasta
 if(params.peptide_fasta) summary['Peptide ksize'] = params.translate_peptide_ksize
@@ -612,7 +612,7 @@ if (params.bam || params.tenx_tgz) {
     .dump(tag: "tenx_reads_ch")
     .set{ tenx_reads_ch }
 
-  if (params.tenx_min_umi_per_cell > 0 || !params.barcodes_file) {
+  if (params.tenx_tenx_min_umi_per_cell > 0 || !params.barcodes_file) {
     process count_umis_per_cell {
       tag "${is_aligned_channel_id}"
       label 'low_memory_long'
@@ -633,7 +633,7 @@ if (params.bam || params.tenx_tgz) {
       """
       bam2fasta count_umis_percell \\
           --filename ${reads} \\
-          --min-umi-per-cell ${tenx_min_umi_per_cell} \\
+          --min-umi-per-cell ${tenx_tenx_min_umi_per_cell} \\
           --cell-barcode-pattern '${tenx_cell_barcode_pattern}' \\
           --molecular-barcode-pattern '${tenx_molecular_barcode_pattern}' \\
           --write-barcode-meta-csv ${umis_per_cell} \\
@@ -644,7 +644,7 @@ if (params.bam || params.tenx_tgz) {
     // it[0] = channel id
     // it[1] = good_barcodes file
     good_barcodes_unfiltered_ch.filter{ it -> it[1].size() > 0 }
-      .ifEmpty{ it -> log.info "No cell barcodes in ${it[0]} found with at least ${tenx_min_umi_per_cell} molecular barcodes (UMIs) per cell"}
+      .ifEmpty{ it -> log.info "No cell barcodes in ${it[0]} found with at least ${tenx_tenx_min_umi_per_cell} molecular barcodes (UMIs) per cell"}
       .set{ good_barcodes_ch }
 
   } else {
