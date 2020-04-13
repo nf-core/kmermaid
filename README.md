@@ -1,6 +1,6 @@
 # ![nf-core/kmermaid](docs/images/nf-core-kmermaid_logo.png)
 
-** k-mer similarity analysis pipeline**.
+**k-mer similarity analysis pipeline**.
 
 [![GitHub Actions CI Status](https://github.com/nf-core/kmermaid/workflows/nf-core%20CI/badge.svg)](https://github.com/nf-core/kmermaid/actions)
 [![GitHub Actions Linting Status](https://github.com/nf-core/kmermaid/workflows/nf-core%20linting/badge.svg)](https://github.com/nf-core/kmermaid/actions)
@@ -52,42 +52,42 @@ The nf-core/kmermaid pipeline comes with documentation about the pipeline, found
 
 ## Usage
 
-### With a samples.csv file:
+### With a samples.csv file
 
-```
+```bash
 nextflow run nf-core/kmermaid --outdir s3://olgabot-maca/nf-kmer-similarity/ --samples samples.csv
 ```
 
-### With R1, R2 read pairs:
+### With R1, R2 read pairs
 
-```
+```bash
 nextflow run nf-core/kmermaid --outdir s3://olgabot-maca/nf-kmer-similarity/ \
   --read_pairs 's3://olgabot-maca/sra/homo_sapiens/smartseq2_quartzseq/*{R1,R2}*.fastq.gz,s3://olgabot-maca/sra/danio_rerio/smart-seq/whole_kidney_marrow_prjna393431/*{1,2}.fastq.gz'
 ```
 
-### With SRA ids:
+### With SRA ids
 
-```
+```bash
 nextflow run nf-core/kmermaid --outdir s3://olgabot-maca/nf-kmer-similarity/ --sra SRP016501
 ```
 
-### With fasta files:
+### With fasta files
 
-```
+```bash
 nextflow run nf-core/kmermaid --outdir s3://olgabot-maca/nf-kmer-similarity/ \
   --fastas '*.fasta'
 ```
 
 ### With bam file
 
-```
+```bash
 nextflow run czbiohub/nf-kmer-similarity --outdir s3://olgabot-maca/nf-kmer-similarity/ \
   --bam 'possorted_genome_bam.bam'
 ```
 
 ### With split kmer
 
-```
+```bash
 nextflow run czbiohub/nf-kmer-similarity --outdir s3://olgabot-maca/nf-kmer-similarity/ --samples samples.csv --splitKmer --subsample 1000
 ```
 

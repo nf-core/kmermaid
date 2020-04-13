@@ -14,7 +14,6 @@
 * Add social preview image
 * Add `fastp` process for trimming reads
 
-
 ### Dependency Updates
 
 * Add samtools, screed, tqdm to dependencies

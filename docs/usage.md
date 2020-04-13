@@ -8,35 +8,35 @@
   * [Updating the pipeline](#updating-the-pipeline)
   * [Reproducibility](#reproducibility)
 * [Main arguments](#main-arguments)
-    * [`-profile`](#-profile-single-dash)
-        * [`docker`](#docker)
-        * [`awsbatch`](#awsbatch)
-        * [`standard`](#standard)
-        * [`none`](#none)
-    * [Read inputs](#read-inputs)
-        * [`--read_pairs`](#--read_pairs)
-        * [`--read_singles`](#--read_singles)
-        * [`--csv_pairs`](#--csv_pairs)
-        * [`--csv_singles`](#--csv_singles)
-        * [`--fastas`](#--fastas)
-        * [`--sra`](#--sra)
-        * [`--bam`](#--bam)
-        * [`--barcodes_file`](#--barcodes_file)
-        * [`--rename_10x_barcodes`](#--rename_10x_barcodes)
-        * [`--save_fastas`](#--save_fastas)
-    * [Adapter Trimming][#adapter-trimming]
-        * [`--skip_trimming`](#--skip_trimming)
-    * [K-merization/Sketching program options](#k-merization-sketching-program-options)
-        * [`--splitKmer`](#--splitKmer)
-    * [Sketch parameters](#sketch-parameters)
-        * [`--molecule`](#--molecule)
-        * [`--ksize`](#--ksize)
-        * [`--log2_sketch_size`](#--log2_sketch_size)
-        * [`--track_abundance`](#--track_abundance)
-    * [Bam optional parameters](#bam-optional-parameters)
-        * [`--min_umi_per_barcode`](#--min_umi_per_barcode)
-        * [`--write_barcode_meta_csv`](#--write_barcode_meta_csv)
-        * [`--line_count`](#--line_count)
+  * [`-profile`](#-profile-single-dash)
+    * [`docker`](#docker)
+    * [`awsbatch`](#awsbatch)
+    * [`standard`](#standard)
+    * [`none`](#none)
+  * [Read inputs](#read-inputs)
+    * [`--read_pairs`](#--read_pairs)
+    * [`--read_singles`](#--read_singles)
+    * [`--csv_pairs`](#--csv_pairs)
+    * [`--csv_singles`](#--csv_singles)
+    * [`--fastas`](#--fastas)
+    * [`--sra`](#--sra)
+    * [`--bam`](#--bam)
+    * [`--barcodes_file`](#--barcodes_file)
+    * [`--rename_10x_barcodes`](#--rename_10x_barcodes)
+    * [`--save_fastas`](#--save_fastas)
+  * [Adapter Trimming][#adapter-trimming]
+    * [`--skip_trimming`](#--skip_trimming)
+  * [K-merization/Sketching program options](#k-merization-sketching-program-options)
+    * [`--splitKmer`](#--splitKmer)
+  * [Sketch parameters](#sketch-parameters)
+    * [`--molecule`](#--molecule)
+    * [`--ksize`](#--ksize)
+    * [`--log2_sketch_size`](#--log2_sketch_size)
+    * [`--track_abundance`](#--track_abundance)
+  * [Bam optional parameters](#bam-optional-parameters)
+    * [`--min_umi_per_barcode`](#--min_umi_per_barcode)
+    * [`--write_barcode_meta_csv`](#--write_barcode_meta_csv)
+    * [`--line_count`](#--line_count)
 * [Job Resources](#job-resources)
 * [Automatic resubmission](#automatic-resubmission)
 * [Custom resource requests](#custom-resource-requests)
@@ -106,7 +106,6 @@ First, go to the [nf-core/kmermaid releases page](https://github.com/nf-core/kme
 
 This version number will be logged in reports when you run the pipeline, so that you'll know what you used when you look back in the future.
 
-
 ## Main arguments
 
 ### `-profile`
@@ -143,6 +142,7 @@ If `-profile` is not specified, the pipeline will run locally and expect all sof
 This pipeline can take a large variety of input data, ranging from single-end or paired-end FASTQ files (`fastq.gz` totally cool, too), [SRA](https://www.ncbi.nlm.nih.gov/sra) ids or fasta files.
 
 ### `--read_pairs`
+
 Use this to specify the location of your input *paired-end* FastQ files. Multiple paths can be separated by seimcolons (`;`). For example:
 
 ```bash
@@ -174,6 +174,7 @@ Please note the following requirements:
 If left unspecified, no reads are used.
 
 ### `--csv_pairs`
+
 Use this to specify the location of a csv containing the columns `sample_id`, `read1`, `read2` to your input *paired-end* FastQ files. For example:
 
 ```bash
@@ -190,6 +191,7 @@ Please note the following requirements:
 If left unspecified, no reads are used.
 
 ### `--csv_singles`
+
 Use this to specify the location of a csv containing the columns `sample_id`, `read1` to your input *single-end* FastQ files. For example:
 
 ```bash
@@ -268,18 +270,20 @@ The meaning of `ksize` is different with split k-mers, so now the value specifie
 
 The `subsample` command is often necessary because the `ska` tool uses ALL the reads rather than a MinHash subsampling of them. If your input files are rather big, then the `ska` sketching command (`ska fastq`) runs out of memory, or it takes so long that it's untenable. The `--subsample` command specifies the number of reads to be used. When e.g. `--subsample 1000` is set, then 1000 reads (or read pairs) are randomly subsampled from the data using [seqtk](https://github.com/lh3/seqtk).
 
-
 #### Which `--molecules` are valid when `--splitKmer` is set
 
 Currently, `--splitKmer` only works with DNA sequence and not protein sequence, and thus will fail if `protein` or `dayhoff` is specified in `--molecules`.
 
 ### `--bam`
+
 For bam/10x files, Use this to specify the location of the bam file. For example:
 
 ```bash
 --bam /path/to/data/10x-example/possorted_genome_bam
 ```
+
 ### `--barcodes_file`
+
 For bam/10x files, Use this to specify the location of tsv (tab separated file) containing cell barcodes. For example:
 
 ```bash
@@ -289,12 +293,14 @@ For bam/10x files, Use this to specify the location of tsv (tab separated file) 
 If left unspecified, barcodes are derived from bam are used.
 
 ### `--rename_10x_barcodes`
+
 For bam/10x files, Use this to specify the location of your tsv (tab separated file) containing map of cell barcodes and their corresponding new names(e.g row in the tsv file: AAATGCCCAAACTGCT-1    lung_epithelial_cell|AAATGCCCAAACTGCT-1).
 For example:
 
 ```bash
 --rename_10x_barcodes /path/to/data/10x-example/barcodes_renamer.tsv
 ```
+
 If left unspecified, barcodes in bam as given in barcodes_file are not renamed.
 
 ## Sketch parameters
@@ -322,13 +328,12 @@ The molecule can be either `dna`, `protein`, or `dayhoff`, and if all of them ar
 | I, L, M, V    | Hydrophobic           | e       |
 | F, W, Y       | Aromatic              | f       |
 
-**Example parameters**
+Example parameters:
 
 * Default:
   * `--molecule dna,protein,dayhoff`
 * DNA only:
   * `--molecule dna`
-
 
 ### `--ksize`
 
@@ -336,73 +341,69 @@ The fundamental unit of the sketch is a [hashed](https://en.wikipedia.org/wiki/H
 
 *NB: if either `protein` or `dayhoff` is specified, the k-mer size must be divisible by 3*
 
-**Example parameters**
+Example parameters:
 
 * Default:
   * `--ksize 21,27,33,51`
 * k-mer size of 21 only:
   * `--ksize 21`
 
-
 ### `--track_abundance`
 
 * Tracking abundance - add this parameter if we want to keep track of the number of times a hashed kmer appears.
   * `--track_abundance`
 
-
-
 ### `--log2_sketch_size`
 
 The log2 sketch size specifies the number of k-mers to use for the sketch. We use the log2 of the sketch size instead of the raw number of k-mers to be compatible for comparison with [`dashing`](https://github.com/dnbaker/dashing) that uses HyperLogLog instead of MinHash.
 
-**Example parameters**
+Example parameters:
 
 * Default:
   * `--log2_sketch_size 10,12,14,16`
 * Only a log2 sketch size of 8 (2^8 = 256):
   * `--log2_sketch_size 8`
 
-
 ### `--save_fastas`
 
-1. The [save_fastas ](#--save_fastas ) used to save the sequences of each unique barcode in the bam file. It is a path relative to outdir to save unique barcodes to files namely {CELL_BARCODE}.fasta. These fastas are computed once for one permutation of ksize, molecule, and log2_sketch_size, further used to compute the signatures and compare signature matrix for all permutations of ksizes, molecules, and log2_sketch_size. This is done to save the time on saving the computational time and storage in obtaining unique barcodes, sharding the bam file.
+1. The [save_fastas](#--save_fastas ) used to save the sequences of each unique barcode in the bam file. It is a path relative to outdir to save unique barcodes to files namely {CELL_BARCODE}.fasta. These fastas are computed once for one permutation of ksize, molecule, and log2_sketch_size, further used to compute the signatures and compare signature matrix for all permutations of ksizes, molecules, and log2_sketch_size. This is done to save the time on saving the computational time and storage in obtaining unique barcodes, sharding the bam file.
 
-**Example parameters**
+Example parameters:
 
 * Default: Save fastas in a directory called fastsas inside outdir:
   * `--save_fastas "fastas"`
 
-
 ## Bam optional parameters
 
 ### `--write_barcode_meta_csv`
+
 This creates a CSV containing the number of reads and number of UMIs per barcode, written in a path relative to `${params.outdir}/barcode_metadata`. This csv file is empty with just header when the min_umi_per_barcode is zero i.e reads and UMIs per barcode are calculated only when the barcodes are filtered based on [min_umi_per_barcode](#--min_umi_per_barcode)
 
-**Example parameters**
+Example parameters:
 
 * Default: barcode metadata is not saved
 * Save fastas in a file cinside outdir/barcode/metadata:
   * `--write_barcode_meta_csv "barcodes_counts.csv"`
 
-
 ### `--min_umi_per_barcode`
+
 The parameter `--min_umi_per_barcode` ensures that a barcode is only considered a valid barcode read and its sketch is written if number of unique molecular identifiers (UMIs, aka molecular barcodes) are greater than the value specified.
 
-**Example parameters**
+Example parameters:
 
 * Default: min_umi_per_barcode is 0
 * Set minimum UMI per cellular barcode as 10:
   * `--min_umi_per_barcode 10`
 
-
 ### `--line_count`
+
 The parameter `--line_count` specifies the number of alignments/lines in each bam shard.
-**Example parameters**
+
+Example parameters:
 
 * Default: line_count is 350
 * Save fastas in a directory called fastas inside outdir:
   * `--line_count 400`
-
 
 ## Job resources
 

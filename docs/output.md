@@ -4,6 +4,7 @@
 This document describes the output produced by the pipeline. Most of the plots are taken from the MultiQC report, which summarises results at the end of the pipeline.
 
 ## Pipeline overview
+
 The pipeline is built using [Nextflow](https://www.nextflow.io/)
 and processes data using the following steps:
 
@@ -39,7 +40,7 @@ For each sample and provided `molecule`, `ksize` and `log2_sketch_size`, a file 
 
 For example:
 
-```
+```bash
 SRR4050379_molecule-dayhoff_ksize-3_log2sketchsize-2.sig
 SRR4050379_molecule-dayhoff_ksize-3_log2sketchsize-4.sig
 SRR4050379_molecule-dayhoff_ksize-9_log2sketchsize-2.sig
@@ -64,7 +65,7 @@ For each provided `molecule`, `ksize` and `log2_sketch_size`, a file is created 
 
 For example,
 
-```
+```bash
 similarities_molecule-dna_ksize-3_log2sketchsize-2.csv
 similarities_molecule-dna_ksize-3_log2sketchsize-4.csv
 similarities_molecule-dna_ksize-9_log2sketchsize-2.csv
