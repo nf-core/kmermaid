@@ -16,7 +16,7 @@ matrix:
   - name: "Test nextflow kmermaid, with --track_abundance"
     env: NXF_VER='' SUITE=test FLAGS='--track_abundance'
   - name: "Test nextflow kmermaid, with extract coding on fastas"
-    env: NXF_VER='' SUITE=test_extract_coding
+    env: NXF_VER='' SUITE=test_translate
   - name: "Latest Nextflow version, regular test suite with splitKmers, ensure that `protein` can't be specified"
     # Check exit code to make sure it is nonzero for --splitKmer + --molecules protein
     script:
@@ -61,8 +61,6 @@ matrix:
     env: NXF_VER='' SUITE=test_bam FLAGS='--write_barcodes_meta_csv false'
   - name: "Test nextflow kmermaid, with --track_abundance"
     env: NXF_VER='' SUITE=test FLAGS='--track_abundance'
-  - name: "Test nextflow kmermaid, with extract coding on fastas"
-    env: NXF_VER='' SUITE=test_translate, FLAGS='--barcodes_file false --rename_10x_barcodes false --save_fastas false --save_intermediate_files "temp_intermediate_files" --write_barcodes_meta_csv false '
   - name: "Test nextflow kmermaid, with extract coding on bam"
     env: NXF_VER='' SUITE=test_translate_bam, FLAGS='--fastas false --save_fastas false --save_intermediate_files "." --write_barcodes_meta_csv false '
 
