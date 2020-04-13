@@ -607,8 +607,8 @@ if (params.bam || params.tenx_tgz) {
   tenx_reads_unaligned_unfiltered_ch.filter{ it -> it[2].size() > 20 }
     .set{ tenx_reads_unaligned_ch }
 
-  // Concatenate fastqs from aligned and unaligned reads into a single channel
-  tenx_reads_aligned_concatenation_ch.concat(tenx_reads_unaligned_ch)
+  // Put fastqs from aligned and unaligned reads into a single channel
+  tenx_reads_aligned_concatenation_ch.mix(tenx_reads_unaligned_ch)
     .dump(tag: "tenx_reads_ch")
     .set{ tenx_reads_ch }
 
