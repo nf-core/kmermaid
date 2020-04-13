@@ -102,7 +102,7 @@ def helpMessage() {
                                     based on min_umi_per_cell
       --min_umi_per_cell         A barcode is only considered a valid barcode read
                                     and its signature is written if number of umis are greater than min_umi_per_cell
-      --line_count                  Number of lines to contain in each sharded bam file
+      --shard_size                  Number of alignment to contain in each sharded bam file
       --barcodes_file               For bam files, Optional absolute path to a .tsv barcodes file if the input is unfiltered 10x bam file
       --rename_10x_barcodes         For bam files, Optional absolute path to a .tsv Tab-separated file mapping 10x barcode name
                                     to new name, e.g. with channel or cell annotation label
@@ -631,13 +631,13 @@ if (params.bam || params.tenx_tgz) {
       umis_per_cell = "${is_aligned_channel_id}__n_umi_per_cell.csv"
       good_barcodes = "${is_aligned_channel_id}__barcodes.tsv"
       """
-      count_umis_per_cell.py \\
-          --reads ${reads} \\
+      bam2fasta count_umis_percell \\
+          --filename ${reads} \\
           --min-umi-per-cell ${tenx_min_umi_per_cell} \\
           --cell-barcode-pattern '${tenx_cell_barcode_pattern}' \\
           --molecular-barcode-pattern '${tenx_molecular_barcode_pattern}' \\
-          --umis-per-cell ${umis_per_cell} \\
-          --good-barcodes ${good_barcodes}
+          --write-barcode-meta-csv ${umis_per_cell} \\
+          --barcodes-significant-umis-file ${good_barcodes}
       """
     }
     // Make sure good barcodes file is nonempty so next step doesn't start
@@ -659,7 +659,7 @@ if (params.bam || params.tenx_tgz) {
   process extract_per_cell_fastqs {
     tag "${is_aligned_channel_id}"
     label "high_memory_long"
-    publishDir "${params.outdir}/10x-fastqs/per-cell/${channel_id}/", mode: 'copy'
+    publishDir "${params.outdir}/10x-fastqs/per-cell/${channel_id}/", mode: 'copy', pattern: '*.fastq', saveAs: { filename -> "${filename.replace("|", "-")}"}
 
     input:
     // Example input:
@@ -672,11 +672,12 @@ if (params.bam || params.tenx_tgz) {
     script:
     is_aligned_channel_id = "${channel_id}__${is_aligned}"
     """
-    make_per_cell_fastqs.py \\
-        --reads ${reads} \\
-        --good-barcodes ${barcodes} \\
+    bam2fasta make_fastqs_percell \\
+        --filename ${reads} \\
+        --barcodes-significant-umis-fil ${barcodes} \\
         --cell-barcode-pattern '${tenx_cell_barcode_pattern}' \\
         --channel-id ${is_aligned_channel_id}
+        --output-format 'fastq.gz'
 
     # Decoy file just in case there are no reads found,
     # to prevent this process from erroring out

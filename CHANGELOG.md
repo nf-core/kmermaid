@@ -31,7 +31,7 @@
 * Update Dockerfile with sourmash compute bam input dependencies
 * Add `track_abundance` feature to keep track of hashed kmer frequency.
 * Add [czbiohub/khtools](https://github.com/czbiohub/kh-tools/) repo to environment.yml
-* ~Add [`czbiohub/bam2fasta`](https://github.com/czbiohub/bam2fasta/) repo to environment.yml~ --> Remove bam2fasta dependency
+* Add [`czbiohub/bam2fasta`](https://github.com/czbiohub/bam2fasta/) repo to environment.yml
 
 ## v0.1.0 - 6 March 2019
 

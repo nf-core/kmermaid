@@ -35,8 +35,7 @@
     * [Bam optional parameters](#bam-optional-parameters)
         * [`--min_umi_per_barcode`](#--min_umi_per_barcode)
         * [`--write_barcode_meta_csv`](#--write_barcode_meta_csv)
-        * [`--line_count`](#--line_count)
-
+        * [`--shard_size`](#--shard_size)
 
 * [Job Resources](#job-resources)
 * [Automatic resubmission](#automatic-resubmission)
@@ -383,13 +382,13 @@ The parameter `--min_umi_per_barcode` ensures that a barcode is only considered 
   * `--min_umi_per_barcode 10`
 
 
-### `--line_count`
-The parameter `--line_count` specifies the number of alignments/lines in each bam shard.
+### `--shard_size`
+The parameter `--shard_size` specifies the number of alignments/lines in each bam shard.
 **Example parameters**
 
-* Default: line_count is 350
+* Default: shard_size is 350
 * Save fastas in a directory called fastas inside outdir:
-  * `--line_count 400`
+  * `--shard_size 400`
 
 
 ## Reference Genomes

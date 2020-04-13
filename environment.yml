@@ -33,5 +33,6 @@ dependencies:
   - jupyter=1.0.0
   - conda-forge::s3fs=0.4.2
   - pip:
+    - git+https://github.com/czbiohub/bam2fasta.git@master#egg=bam2fasta
     - git+https://github.com/czbiohub/kh-tools.git@master#egg=khtools==0.1.0
     - git+https://github.com/czbiohub/sourmash.git@master#egg=sourmash==3.2.0
