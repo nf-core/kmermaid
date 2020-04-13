@@ -633,7 +633,7 @@ if (params.bam || params.tenx_tgz) {
       """
       bam2fasta count_umis_percell \\
           --filename ${reads} \\
-          --min-umi-per-cell ${tenx_tenx_min_umi_per_cell} \\
+          --min-umi-per-barcode ${tenx_tenx_min_umi_per_cell} \\
           --cell-barcode-pattern '${tenx_cell_barcode_pattern}' \\
           --molecular-barcode-pattern '${tenx_molecular_barcode_pattern}' \\
           --write-barcode-meta-csv ${umis_per_cell} \\
