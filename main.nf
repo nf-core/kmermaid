@@ -623,7 +623,7 @@ if (params.bam) {
 if (params.peptide_fasta){
   process translate {
     tag "${sample_id}"
-    label "low_memory"
+    label "low_memory_long"
     publishDir "${params.outdir}/translate/", mode: 'copy'
 
     input:
@@ -700,7 +700,7 @@ if (params.splitKmer){
 else {
 process sourmash_compute_sketch_fastx_nucleotide {
   tag "${sample_id}_${sketch_id}"
-  label "mid_memory"
+  label "low_memory"
   publishDir "${params.outdir}/sketches_nucleotide", mode: 'copy'
 
   input:
@@ -748,7 +748,7 @@ process sourmash_compute_sketch_fastx_nucleotide {
 if (params.peptide_fasta){
   process sourmash_compute_sketch_fastx_peptide {
     tag "${sample_id}_${sketch_id}"
-    label "mid_memory"
+    label "low_memory"
     publishDir "${params.outdir}/sketches_peptide/${sketch_id}", mode: 'copy'
 
     input:
