@@ -18,7 +18,6 @@ dependencies:
   - bioconda::khmer=3.0.0a3
   - conda-forge::gxx_linux-64=7.3.0
   - conda-forge::rust=1.40.0
-  - alabaster=0.7.12
   - fastp=0.20.0
   - fastqc=0.11.9
   - matplotlib=3.1.1 # don't upgrade, multiqc conflict
