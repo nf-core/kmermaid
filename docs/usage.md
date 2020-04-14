@@ -33,7 +33,7 @@
         * [`--log2_sketch_size`](#--log2_sketch_size)
         * [`--track_abundance`](#--track_abundance)
     * [Bam optional parameters](#bam-optional-parameters)
-        * [`--tenx_tenx_min_umi_per_cell`](#--tenx_tenx_min_umi_per_cell)
+        * [`--tenx_min_umi_per_cell`](#--tenx_min_umi_per_cell)
         * [`--write_barcode_meta_csv`](#--write_barcode_meta_csv)
         * [`--shard_size`](#--shard_size)
 
@@ -363,7 +363,7 @@ The log2 sketch size specifies the number of k-mers to use for the sketch. We us
 ## Bam optional parameters
 
 ### `--write_barcode_meta_csv`
-This creates a CSV containing the number of reads and number of UMIs per barcode, written in a path relative to `${params.outdir}/barcode_metadata`. This csv file is empty with just header when the tenx_tenx_min_umi_per_cell is zero i.e reads and UMIs per barcode are calculated only when the barcodes are filtered based on [tenx_tenx_min_umi_per_cell](#--tenx_tenx_min_umi_per_cell)
+This creates a CSV containing the number of reads and number of UMIs per barcode, written in a path relative to `${params.outdir}/barcode_metadata`. This csv file is empty with just header when the tenx_min_umi_per_cell is zero i.e reads and UMIs per barcode are calculated only when the barcodes are filtered based on [tenx_min_umi_per_cell](#--tenx_min_umi_per_cell)
 
 **Example parameters**
 
@@ -372,14 +372,14 @@ This creates a CSV containing the number of reads and number of UMIs per barcode
   * `--write_barcode_meta_csv "barcodes_counts.csv"`
 
 
-### `--tenx_tenx_min_umi_per_cell`
-The parameter `--tenx_tenx_min_umi_per_cell` ensures that a barcode is only considered a valid barcode read and its sketch is written if number of unique molecular identifiers (UMIs, aka molecular barcodes) are greater than the value specified.
+### `--tenx_min_umi_per_cell`
+The parameter `--tenx_min_umi_per_cell` ensures that a barcode is only considered a valid barcode read and its sketch is written if number of unique molecular identifiers (UMIs, aka molecular barcodes) are greater than the value specified.
 
 **Example parameters**
 
-* Default: tenx_tenx_min_umi_per_cell is 0
+* Default: tenx_min_umi_per_cell is 0
 * Set minimum UMI per cellular barcode as 10:
-  * `--tenx_tenx_min_umi_per_cell 10`
+  * `--tenx_min_umi_per_cell 10`
 
 
 ### `--shard_size`
