@@ -644,7 +644,7 @@ if (params.bam || params.tenx_tgz) {
     // it[0] = channel id
     // it[1] = good_barcodes file
     good_barcodes_unfiltered_ch.filter{ it -> it[1].size() > 0 }
-      .ifEmpty{ it -> log.info "No cell barcodes in ${it[0]} found with at least ${tenx_min_umi_per_cell} molecular barcodes (UMIs) per cell"}
+      .ifEmpty{ exit 1, "No cell barcodes found with at least ${tenx_min_umi_per_cell} molecular barcodes (UMIs) per cell"}
       .set{ good_barcodes_ch }
 
   } else {
