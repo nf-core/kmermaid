@@ -224,6 +224,7 @@ if (params.read_paths) {
   Channel.fromPath(params.bam, checkIfExists: true)
        .map{ f -> tuple(f.baseName, tuple(file(f))) }
        .ifEmpty { exit 1, "Bam file not found: ${params.bam}" }
+       .dump( tag: 'bam' )
        .into{ tenx_bam_for_unaligned_fastq_ch; tenx_bam_for_aligned_fastq_ch }
   }
 
