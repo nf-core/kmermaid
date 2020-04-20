@@ -222,10 +222,9 @@ if (params.read_paths) {
 
   if (params.bam) {
   Channel.fromPath(params.bam, checkIfExists: true)
-       .map{ f -> tuple(f.baseName, tuple(file(f))) }
        .ifEmpty { exit 1, "Bam file not found: ${params.bam}" }
        .dump( tag: 'bam' )
-       .into{ tenx_bam_for_unaligned_fastq_ch; tenx_bam_for_aligned_fastq_ch }
+       .set{ tenx_bam_for_unaligned_fastq_ch}
   }
 
   // If barcodes is as expected, check if it exists and set channel
@@ -524,8 +523,9 @@ if (params.peptide_fasta){
 
 if (params.bam) {
   process bam2fasta {
+    tag "$sample_id"
     label "high_memory"
-    publishDir "${params.outdir}/${params.save_fastas}/${sample_id}__*", pattern: '*.fastq.gz', mode: 'copy'
+    publishDir "${params.outdir}/${params.save_fastas}/", pattern: '*.fastq.gz', mode: 'copy'
     publishDir "${params.outdir}/${barcode_metadata_folder}", pattern: '*.csv', mode: 'copy'
 
 
@@ -536,16 +536,16 @@ if (params.bam) {
 
     input:
     file(barcodes_file) from barcodes_ch
-    set sample_id, file(bam) from tenx_bam_for_unaligned_fastq_ch
+    file(bam) from tenx_bam_for_unaligned_fastq_ch
     file(rename_10x_barcodes) from rename_10x_barcodes_ch
 
     output:
-    set val(sample_id), file("${params.save_fastas}/${sample_id}__*/*.fastq.gz") into per_cell_fastqs_ch
+    set val(sample_id), file("${params.save_fastas}/*.fastq.gz") into per_cell_fastqs_ch
     // https://github.com/nextflow-io/patterns/blob/master/docs/optional-output.adoc
     file("${params.write_barcode_meta_csv}") optional true
 
     script:
-
+    sample_id = "${bam.simpleName}"
     tenx_min_umi_per_cell = params.tenx_min_umi_per_cell ? "--min-umi-per-barcode ${params.tenx_min_umi_per_cell}" : ''
     shard_size = params.shard_size ? "--shard-size ${params.shard_size}" : ''
     metadata = params.write_barcode_meta_csv ? "--write-barcode-meta-csv ${params.write_barcode_meta_csv}": ''
@@ -554,7 +554,6 @@ if (params.bam) {
     processes = "--processes ${params.max_cpus}"
     output_format = "--output-format fastq.gz"
     channel_id = "--channel-id ${sample_id}"
-    sample_id = "${sample_id}"
 
     def barcodes_file = params.barcodes_file ? "--barcodes-file ${barcodes_file.baseName}.tsv": ''
     def rename_10x_barcodes = params.rename_10x_barcodes ? "--rename-10x-barcodes ${rename_10x_barcodes.baseName}.tsv": ''
@@ -570,8 +569,8 @@ if (params.bam) {
         $channel_id \\
         $save_intermediate_files \\
         $metadata \\
-        --filename $bam
-        find ${params.save_fastas}/${sample_id}__*/ -type f -name "*.fastq.gz" | while read src; do if [[ \$src == *"|"* ]]; then mv "\$src" \$(echo "\$src" | tr "|" "_"); fi done
+        --filename ${bam}
+        find ${params.save_fastas}/ -type f -name "*.fastq.gz" | while read src; do if [[ \$src == *"|"* ]]; then mv "\$src" \$(echo "\$src" | tr "|" "_"); fi done
     """
   }
 
