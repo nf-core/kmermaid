@@ -613,7 +613,7 @@ if (params.bam || params.tenx_tgz) {
     .dump(tag: "tenx_reads_ch")
     .set{ tenx_reads_ch }
 
-  if (params.tenx_min_umi_per_cell > 0 || !params.barcodes_file) {
+  if ((params.tenx_min_umi_per_cell > 0) || !params.barcodes_file) {
     process count_umis_per_cell {
       tag "${is_aligned_channel_id}"
       label 'low_memory_long'
