@@ -224,6 +224,7 @@ if (params.read_paths) {
   Channel.fromPath(params.bam, checkIfExists: true)
        .map{ f -> tuple(f.baseName, tuple(file(f))) }
        .ifEmpty { exit 1, "Bam file not found: ${params.bam}" }
+       .dump( tag: 'bam' )
        .into{ tenx_bam_for_unaligned_fastq_ch; tenx_bam_for_aligned_fastq_ch }
   }
 
@@ -671,7 +672,7 @@ if (params.tenx_tgz) {
     .dump(tag: "tenx_reads_ch")
     .set{ tenx_reads_ch }
 
-  if (params.tenx_min_umi_per_cell > 0 || !params.barcodes_file) {
+  if ((params.tenx_min_umi_per_cell > 0) || !params.barcodes_file) {
     process count_umis_per_cell {
       tag "${is_aligned_channel_id}"
       label 'low_memory_long'
@@ -703,7 +704,7 @@ if (params.tenx_tgz) {
     // it[0] = channel id
     // it[1] = good_barcodes file
     good_barcodes_unfiltered_ch.filter{ it -> it[1].size() > 0 }
-      .ifEmpty{ it -> log.info "No cell barcodes in ${it[0]} found with at least ${tenx_min_umi_per_cell} molecular barcodes (UMIs) per cell"}
+      .ifEmpty{ exit 1, "No cell barcodes found with at least ${tenx_min_umi_per_cell} molecular barcodes (UMIs) per cell"}
       .set{ good_barcodes_ch }
 
   } else {
