@@ -16,7 +16,7 @@
 
 * Add option to use Dayhoff encoding for sourmash.
 * Add `bam2fasta` process to kmermaid pipeline and flags involved.
-* Add `extract_coding` and `peptide_bloom_filger` process and flags involved.
+* Add `extract_coding` and `peptide_bloom_filter` process and flags involved.
 * Add `track_abundance` feature to keep track of hashed kmer frequency.
 * Add social preview image
 * Add `fastp` process for trimming reads
@@ -32,6 +32,7 @@
 * Add `track_abundance` feature to keep track of hashed kmer frequency.
 * Add [czbiohub/khtools](https://github.com/czbiohub/kh-tools/) repo to environment.yml
 * Add [`czbiohub/bam2fasta`](https://github.com/czbiohub/bam2fasta/) repo to environment.yml
+* Update sourmash to version 3.2.2
 
 ## v0.1.0 - 6 March 2019
 

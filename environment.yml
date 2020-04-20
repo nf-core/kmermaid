@@ -10,7 +10,7 @@ dependencies:
   - conda-forge::r-gplots=3.0.1.1
   - bioconda::bioconductor-edger=3.28.0
   - conda-forge::r-markdown=1.1
-  - bioconda::sourmash=2.0.1
+  - bioconda::sourmash=3.2.2
   - bioconda::samtools=1.10
   - conda-forge::gxx_linux-64
   - bioconda::screed=1.0.4
@@ -35,4 +35,3 @@ dependencies:
   - pip:
     - git+https://github.com/czbiohub/bam2fasta.git@master#egg=bam2fasta # master
     - git+https://github.com/czbiohub/kh-tools.git@master#egg=khtools==0.1.0
-    - git+https://github.com/czbiohub/sourmash.git@master#egg=sourmash==3.2.0
