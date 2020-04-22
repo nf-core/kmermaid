@@ -521,65 +521,6 @@ if (params.peptide_fasta){
   }
 }
 
-if (params.bam) {
-  process bam2fasta {
-    tag "$sample_id"
-    label "high_memory"
-    publishDir "${params.outdir}/${params.save_fastas}/", pattern: '*.fastq.gz', mode: 'copy'
-    publishDir "${params.outdir}/${barcode_metadata_folder}", pattern: '*.csv', mode: 'copy'
-
-
-    // If job fails, try again with more memory
-    // memory { 8.GB * task.attempt }
-    errorStrategy 'retry'
-    maxRetries 1
-
-    input:
-    file(barcodes_file) from barcodes_ch
-    file(bam) from tenx_bam_for_unaligned_fastq_ch
-    file(rename_10x_barcodes) from rename_10x_barcodes_ch
-
-    output:
-    set val(sample_id), file("${params.save_fastas}/*.fastq.gz") into per_cell_fastqs_ch
-    // https://github.com/nextflow-io/patterns/blob/master/docs/optional-output.adoc
-    file("${params.write_barcode_meta_csv}") optional true
-
-    script:
-    sample_id = "${bam.simpleName}"
-    tenx_min_umi_per_cell = params.tenx_min_umi_per_cell ? "--min-umi-per-barcode ${params.tenx_min_umi_per_cell}" : ''
-    shard_size = params.shard_size ? "--shard-size ${params.shard_size}" : ''
-    metadata = params.write_barcode_meta_csv ? "--write-barcode-meta-csv ${params.write_barcode_meta_csv}": ''
-    save_fastas = "--save-fastas ${params.save_fastas}"
-    save_intermediate_files = "--save-intermediate-files ${params.save_intermediate_files}"
-    processes = "--processes ${params.max_cpus}"
-    output_format = "--output-format fastq.gz"
-    channel_id = "--channel-id ${sample_id}"
-
-    def barcodes_file = params.barcodes_file ? "--barcodes-file ${barcodes_file.baseName}.tsv": ''
-    def rename_10x_barcodes = params.rename_10x_barcodes ? "--rename-10x-barcodes ${rename_10x_barcodes.baseName}.tsv": ''
-    """
-      bam2fasta percell \\
-        $processes \\
-        $tenx_min_umi_per_cell \\
-        $shard_size \\
-        $rename_10x_barcodes \\
-        $barcodes_file \\
-        $save_fastas \\
-        $output_format \\
-        $channel_id \\
-        $save_intermediate_files \\
-        $metadata \\
-        --filename ${bam}
-        find ${params.save_fastas}/ -type f -name "*.fastq.gz" | while read src; do if [[ \$src == *"|"* ]]; then mv "\$src" \$(echo "\$src" | tr "|" "_"); fi done
-    """
-  }
-
-  if (params.skip_trimming) {
-    reads_ch = ch_non_bam_reads.concat(per_cell_fastqs_ch)
-  } else {
-    ch_read_files_trimming = ch_non_bam_reads.concat(per_cell_fastqs_ch)
-  }
-}
 
 if (params.tenx_tgz) {
   process tenx_tgz_extract_bam {
@@ -612,7 +553,7 @@ if (params.tenx_tgz) {
   }
 }
 
-if (params.tenx_tgz) {
+if (params.tenx_tgz || params.bam) {
   process samtools_fastq_aligned {
     tag "${channel_id}"
     publishDir "${params.outdir}/10x-fastqs/per-channel/aligned", mode: 'copy'
