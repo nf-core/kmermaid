@@ -222,9 +222,10 @@ if (params.read_paths) {
 
   if (params.bam) {
   Channel.fromPath(params.bam, checkIfExists: true)
+        .map{ f -> tuple(f.baseName, tuple(file(f))) }
        .ifEmpty { exit 1, "Bam file not found: ${params.bam}" }
        .dump( tag: 'bam' )
-       .set{ tenx_bam_for_unaligned_fastq_ch}
+       .into{ tenx_bam_for_unaligned_fastq_ch; tenx_bam_for_aligned_fastq_ch}
   }
 
   // If barcodes is as expected, check if it exists and set channel
@@ -659,7 +660,7 @@ if (params.tenx_tgz || params.bam) {
   process extract_per_cell_fastqs {
     tag "${is_aligned_channel_id}"
     label "high_memory_long"
-    publishDir "${params.outdir}/10x-fastqs/per-cell/${channel_id}/", mode: 'copy', pattern: '*.fastq', saveAs: { filename -> "${filename.replace("|", "-")}"}
+    publishDir "${params.outdir}/10x-fastqs/per-cell/${channel_id}/", mode: 'copy', pattern: '*.fastq.gz', saveAs: { filename -> "${filename.replace("|", "-")}"}
 
     input:
     // Example input:
@@ -670,7 +671,7 @@ if (params.tenx_tgz || params.bam) {
     file('*.fastq.gz') into per_channel_cell_reads_ch
 
     script:
-    is_aligned_channel_id = "${channel_id}__${is_aligned}"
+    is_aligned_channel_id = "${channel_id}__${is_aligned}__"
     """
     bam2fasta make_fastqs_percell \\
         --filename ${reads} \\
