@@ -34,5 +34,5 @@ dependencies:
   - conda-forge::s3fs=0.4.2
   - pip:
     - git+https://github.com/czbiohub/bam2fasta.git@master#egg=bam2fasta # master
-    - git+https://github.com/czbiohub/kh-tools.git@master#egg=khtools
+    - git+https://github.com/czbiohub/kh-tools.git@master#egg=khtools # master
     - git+https://github.com/czbiohub/sourmash.git@master#egg=sourmash==3.2.0
