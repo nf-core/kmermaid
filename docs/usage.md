@@ -33,10 +33,9 @@
         * [`--log2_sketch_size`](#--log2_sketch_size)
         * [`--track_abundance`](#--track_abundance)
     * [Bam optional parameters](#bam-optional-parameters)
-        * [`--min_umi_per_barcode`](#--min_umi_per_barcode)
+        * [`--tenx_min_umi_per_cell`](#--tenx_min_umi_per_cell)
         * [`--write_barcode_meta_csv`](#--write_barcode_meta_csv)
-        * [`--line_count`](#--line_count)
-
+        * [`--shard_size`](#--shard_size)
 
 * [Job Resources](#job-resources)
 * [Automatic resubmission](#automatic-resubmission)
@@ -364,7 +363,7 @@ The log2 sketch size specifies the number of k-mers to use for the sketch. We us
 ## Bam optional parameters
 
 ### `--write_barcode_meta_csv`
-This creates a CSV containing the number of reads and number of UMIs per barcode, written in a path relative to `${params.outdir}/barcode_metadata`. This csv file is empty with just header when the min_umi_per_barcode is zero i.e reads and UMIs per barcode are calculated only when the barcodes are filtered based on [min_umi_per_barcode](#--min_umi_per_barcode)
+This creates a CSV containing the number of reads and number of UMIs per barcode, written in a path relative to `${params.outdir}/barcode_metadata`. This csv file is empty with just header when the tenx_min_umi_per_cell is zero i.e reads and UMIs per barcode are calculated only when the barcodes are filtered based on [tenx_min_umi_per_cell](#--tenx_min_umi_per_cell)
 
 **Example parameters**
 
@@ -373,23 +372,23 @@ This creates a CSV containing the number of reads and number of UMIs per barcode
   * `--write_barcode_meta_csv "barcodes_counts.csv"`
 
 
-### `--min_umi_per_barcode`
-The parameter `--min_umi_per_barcode` ensures that a barcode is only considered a valid barcode read and its sketch is written if number of unique molecular identifiers (UMIs, aka molecular barcodes) are greater than the value specified.
+### `--tenx_min_umi_per_cell`
+The parameter `--tenx_min_umi_per_cell` ensures that a barcode is only considered a valid barcode read and its sketch is written if number of unique molecular identifiers (UMIs, aka molecular barcodes) are greater than the value specified.
 
 **Example parameters**
 
-* Default: min_umi_per_barcode is 0
+* Default: tenx_min_umi_per_cell is 0
 * Set minimum UMI per cellular barcode as 10:
-  * `--min_umi_per_barcode 10`
+  * `--tenx_min_umi_per_cell 10`
 
 
-### `--line_count`
-The parameter `--line_count` specifies the number of alignments/lines in each bam shard.
+### `--shard_size`
+The parameter `--shard_size` specifies the number of alignments/lines in each bam shard.
 **Example parameters**
 
-* Default: line_count is 350
+* Default: shard_size is 350
 * Save fastas in a directory called fastas inside outdir:
-  * `--line_count 400`
+  * `--shard_size 400`
 
 
 ## Reference Genomes

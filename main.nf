@@ -97,12 +97,12 @@ def helpMessage() {
 
     Bam file options:
       --write_barcode_meta_csv      For bam files, Csv file name relative to outdir/barcode_metadata to write number of reads and number of umis per barcode.
-                                    This csv file is empty with just header when the min_umi_per_barcode is zero i.e
+                                    This csv file is empty with just header when the tenx_min_umi_per_cell is zero i.e
                                     Reads and umis per barcode are calculated only when the barcodes are filtered
-                                    based on min_umi_per_barcode
-      --min_umi_per_barcode         A barcode is only considered a valid barcode read
-                                    and its signature is written if number of umis are greater than min_umi_per_barcode
-      --line_count                  Number of lines to contain in each sharded bam file
+                                    based on tenx_min_umi_per_cell
+      --tenx_min_umi_per_cell         A barcode is only considered a valid barcode read
+                                    and its signature is written if number of umis are greater than tenx_min_umi_per_cell
+      --shard_size                  Number of alignment to contain in each sharded bam file
       --barcodes_file               For bam files, Optional absolute path to a .tsv barcodes file if the input is unfiltered 10x bam file
       --rename_10x_barcodes         For bam files, Optional absolute path to a .tsv Tab-separated file mapping 10x barcode name
                                     to new name, e.g. with channel or cell annotation label
@@ -164,6 +164,10 @@ read_singles_ch = Channel.empty()
 // vanilla fastas
 fastas_ch = Channel.empty()
 
+// 10X Genomics .tgz file containing possorted_genome_bam file
+tenx_tgz_ch = Channel.empty()
+
+
 // Parameters for testing
 if (params.read_paths) {
      read_paths_ch = Channel
@@ -218,9 +222,10 @@ if (params.read_paths) {
 
   if (params.bam) {
   Channel.fromPath(params.bam, checkIfExists: true)
-       .map{ f -> tuple(f.baseName, tuple(file(f))) }
+        .map{ f -> tuple(f.baseName, tuple(file(f))) }
        .ifEmpty { exit 1, "Bam file not found: ${params.bam}" }
-       .set{ bam_ch }
+       .dump( tag: 'bam' )
+       .into{ tenx_bam_for_unaligned_fastq_ch; tenx_bam_for_aligned_fastq_ch}
   }
 
   // If barcodes is as expected, check if it exists and set channel
@@ -243,6 +248,15 @@ if (params.read_paths) {
   else {
     Channel.from(false)
         .set{rename_10x_barcodes_ch}
+  }
+
+  if (params.tenx_tgz) {
+    Channel.fromPath(params.tenx_tgz, checkIfExists: true)
+       .dump(tag: 'tenx_tgz_before_mri_filter')
+       .filter{ ~/.+[^mri]\.tgz/ }
+       .ifEmpty { exit 1, "10X .tgz file not found: ${params.tenx_tgz}" }
+       .dump(tag: 'tenx_tgz_after_mri_filter')
+       .set{ tenx_tgz_ch }
   }
 }
 
@@ -270,7 +284,7 @@ if (params.subsample) {
     }
   }
 } else {
-  if (!params.bam) {
+  if (!(params.tenx_tgz || params.bam)) {
     if(params.skip_trimming){
       sra_ch.concat(
           csv_pairs_ch, csv_singles_ch, read_pairs_ch,
@@ -279,11 +293,13 @@ if (params.subsample) {
        .set{ reads_ch }
     } else {
       if (params.fastas) {
+        // With fasta files - combine everything that can be trimmed
         sra_ch.concat(
             csv_pairs_ch, csv_singles_ch, read_pairs_ch,
             read_singles_ch, read_paths_ch)
           .set{ ch_read_files_trimming }
       } else {
+        // No fasta files - combine everything and error out
         sra_ch.concat(
             csv_pairs_ch, csv_singles_ch, read_pairs_ch,
             read_singles_ch, read_paths_ch)
@@ -293,6 +309,10 @@ if (params.subsample) {
     }
   } else {
 //   Do nothing - can't combine the fastq files and bam files (yet)
+      sra_ch.concat(
+          csv_pairs_ch, csv_singles_ch, read_pairs_ch,
+          read_singles_ch, read_paths_ch)
+        .set{ ch_non_bam_reads }
     }
 }
 
@@ -344,6 +364,12 @@ if (params.bam){
   single_log2_sketch_size = log2_sketch_sizes[0]
 }
 
+// Tenx parameters
+tenx_tags = params.tenx_tags
+tenx_cell_barcode_pattern = params.tenx_cell_barcode_pattern
+tenx_molecular_barcode_pattern = params.tenx_molecular_barcode_pattern
+tenx_min_umi_per_cell = params.tenx_min_umi_per_cell
+
 if (params.splitKmer && 'protein' in molecules){
   exit 1, "Cannot specify 'protein' in `--molecules` if --splitKmer is set"
 }
@@ -390,11 +416,11 @@ summary['Log2 Sketch Sizes']      = params.log2_sketch_sizes
 summary['One Sig per Record']     = params.one_signature_per_record
 summary['Track Abundance']        = params.track_abundance
 // 10x parameters
-if(params.bam) summary["Bam chunk line count"] = params.line_count
-if(params.bam) summary['Count valid reads'] = params.min_umi_per_barcode
-if(params.bam) summary['Saved Fastas '] = params.save_fastas
-if(params.bam) summary['Saved intermediate files '] = params.save_intermediate_files
-if(params.bam) summary['Barcode umi read metadata'] = params.write_barcode_meta_csv
+if(params.tenx_tgz) summary["10x .tgz"] = params.tenx_tgz
+if(params.tenx_tgz) summary["10x SAM tags"] = params.tenx_tags
+if(params.tenx_tgz) summary["10x Cell pattern"] = params.tenx_cell_barcode_pattern
+if(params.tenx_tgz) summary["10x UMI pattern"] = params.tenx_molecular_barcode_pattern
+if(params.tenx_tgz) summary['Min UMI/cell'] = params.tenx_min_umi_per_cell
 // Extract coding parameters
 if(params.peptide_fasta) summary["Peptide fasta"] = params.peptide_fasta
 if(params.peptide_fasta) summary['Peptide ksize'] = params.translate_peptide_ksize
@@ -496,7 +522,188 @@ if (params.peptide_fasta){
   }
 }
 
-if (!params.skip_trimming && !params.bam){
+
+if (params.tenx_tgz) {
+  process tenx_tgz_extract_bam {
+    tag "$sample_id"
+    publishDir "${params.outdir}/10x-bams", mode: 'copy'
+
+    input:
+    file(tenx_tgz) from tenx_tgz_ch
+
+    output:
+    set val(sample_id), file(bam) into tenx_bam_for_unaligned_fastq_ch, tenx_bam_for_aligned_fastq_ch
+    file(bai)
+    set val(sample_id), file(barcodes) into tenx_bam_barcodes_ch
+
+    script:
+    sample_id = "${tenx_tgz.simpleName}"
+    bam = "${sample_id}__possorted_genome_bam.bam"
+    bai = "${sample_id}__possorted_genome_bam.bam.bai"
+    barcodes = "${sample_id}__barcodes.tsv"
+    """
+    tar xzvf ${tenx_tgz} \\
+      ${sample_id}/outs/possorted_genome_bam.bam.bai \\
+      ${sample_id}/outs/possorted_genome_bam.bam \\
+      ${sample_id}/outs/filtered_gene_bc_matrices
+    # Rename the files so there aren't conflicting duplicate filenames for the future
+    mv ${sample_id}/outs/possorted_genome_bam.bam ${bam}
+    mv ${sample_id}/outs/possorted_genome_bam.bam.bai ${bai}
+    mv ${sample_id}/outs/filtered_gene_bc_matrices/*/barcodes.tsv ${barcodes}
+    """
+  }
+}
+
+if (params.tenx_tgz || params.bam) {
+  process samtools_fastq_aligned {
+    tag "${channel_id}"
+    publishDir "${params.outdir}/10x-fastqs/per-channel/aligned", mode: 'copy'
+    label "mid_cpu"
+
+    input:
+    set val(channel_id), file(bam) from tenx_bam_for_unaligned_fastq_ch
+
+    output:
+    set val(channel_id), val("aligned"), file(reads) into tenx_reads_aligned_counting_ch, tenx_reads_aligned_concatenation_ch
+
+    script:
+    reads = "${channel_id}__aligned.fastq.gz"
+    """
+    samtools view -ub -F 256 -q 255 ${bam} \\
+        | samtools fastq --threads ${task.cpus} -T ${tenx_tags} - \\
+        | gzip -c - \\
+          > ${reads}
+    """
+  }
+
+  process samtools_fastq_unaligned {
+    tag "${channel_id}"
+    publishDir "${params.outdir}/10x-fastqs/per-channel/unaligned", mode: 'copy'
+    label "mid_cpu"
+
+    input:
+    set val(channel_id), file(bam) from tenx_bam_for_aligned_fastq_ch
+
+    output:
+    set val(channel_id), val("unaligned"), file(reads) into tenx_reads_unaligned_unfiltered_ch
+
+    script:
+    reads = "${channel_id}__unaligned.fastq.gz"
+    """
+    samtools view -f4 ${bam} \\
+      | grep -E '${tenx_cell_barcode_pattern}' \\
+      | samtools fastq --threads ${task.cpus} -T ${tenx_tags} - \\
+      | gzip -c - \\
+        > ${reads} \\
+      || touch ${reads}
+    """
+    // The '||' means that if anything in the previous step fails, do the next thing
+    // It's bash magic from: https://stackoverflow.com/a/3822649/1628971
+  }
+  // Remove empty files
+  // it[0] = channel_id
+  // it[1] = "unaligned"
+  // it[2] = read file
+  // gzipped files are 20 bytes when "empty" due to the header
+  tenx_reads_unaligned_unfiltered_ch.filter{ it -> it[2].size() > 20 }
+    .set{ tenx_reads_unaligned_ch }
+
+  // Put fastqs from aligned and unaligned reads into a single channel
+  tenx_reads_aligned_concatenation_ch.mix(tenx_reads_unaligned_ch)
+    .dump(tag: "tenx_reads_ch")
+    .set{ tenx_reads_ch }
+
+  if ((params.tenx_min_umi_per_cell > 0) || !params.barcodes_file) {
+    process count_umis_per_cell {
+      tag "${is_aligned_channel_id}"
+      label 'low_memory_long'
+
+      publishDir "${params.outdir}/10x-fastqs/umis-per-cell/", mode: 'copy'
+
+      input:
+      set val(channel_id), val(is_aligned), file(reads) from tenx_reads_aligned_counting_ch
+
+      output:
+      file(umis_per_cell)
+      set val(channel_id), file(good_barcodes) into good_barcodes_unfiltered_ch
+
+      script:
+      is_aligned_channel_id = "${channel_id}__${is_aligned}"
+      umis_per_cell = "${is_aligned_channel_id}__n_umi_per_cell.csv"
+      good_barcodes = "${is_aligned_channel_id}__barcodes.tsv"
+      """
+      bam2fasta count_umis_percell \\
+          --filename ${reads} \\
+          --min-umi-per-barcode ${tenx_min_umi_per_cell} \\
+          --cell-barcode-pattern '${tenx_cell_barcode_pattern}' \\
+          --molecular-barcode-pattern '${tenx_molecular_barcode_pattern}' \\
+          --write-barcode-meta-csv ${umis_per_cell} \\
+          --barcodes-significant-umis-file ${good_barcodes}
+      """
+    }
+    // Make sure good barcodes file is nonempty so next step doesn't start
+    // it[0] = channel id
+    // it[1] = good_barcodes file
+    good_barcodes_unfiltered_ch.filter{ it -> it[1].size() > 0 }
+      .ifEmpty{ exit 1, "No cell barcodes found with at least ${tenx_min_umi_per_cell} molecular barcodes (UMIs) per cell"}
+      .set{ good_barcodes_ch }
+
+  } else {
+    // Use barcodes extracted from the tenx .tgz file
+    good_barcodes_ch = tenx_bam_barcodes_ch
+  }
+
+  tenx_reads_ch.combine(good_barcodes_ch, by: 0)
+    .dump(tag: 'tenx_reads_ch__combine__good_barcodes_ch')
+    .set{ tenx_reads_with_good_barcodes_ch }
+
+  process extract_per_cell_fastqs {
+    tag "${is_aligned_channel_id}"
+    label "high_memory_long"
+    publishDir "${params.outdir}/10x-fastqs/per-cell/${channel_id}/", mode: 'copy', pattern: '*.fastq.gz', saveAs: { filename -> "${filename.replace("|", "-")}"}
+
+    input:
+    // Example input:
+    // ['mouse_lung', 'aligned', mouse_lung__aligned.fastq.gz, mouse_lung__aligned__barcodes.tsv]
+    set val(channel_id), val(is_aligned), file(reads), file(barcodes) from tenx_reads_with_good_barcodes_ch
+
+    output:
+    file('*.fastq.gz') into per_channel_cell_reads_ch
+
+    script:
+    is_aligned_channel_id = "${channel_id}__${is_aligned}__"
+    """
+    bam2fasta make_fastqs_percell \\
+        --filename ${reads} \\
+        --barcodes-significant-umis-fil ${barcodes} \\
+        --cell-barcode-pattern '${tenx_cell_barcode_pattern}' \\
+        --channel-id ${is_aligned_channel_id} \\
+        --output-format 'fastq.gz'
+
+    # Decoy file just in case there are no reads found,
+    # to prevent this process from erroring out
+    touch empty.fastq.gz
+    """
+  }
+  // Make per-cell fastqs into a flat channel that matches the read channels of yore
+  per_channel_cell_reads_ch
+    .dump(tag: 'per_channel_cell_reads_ch')
+    .flatten()
+    .filter{ it -> it.size() > 0 }   // each item is just a single file, no need to do it[1]
+    .map{ it -> tuple(it.simpleName, file(it)) }
+    .dump(tag: 'per_cell_fastqs_ch')
+    .set{ per_cell_fastqs_ch }
+
+  if (params.skip_trimming) {
+    reads_ch = ch_non_bam_reads.concat(per_cell_fastqs_ch)
+  } else {
+    ch_read_files_trimming = ch_non_bam_reads.concat(per_cell_fastqs_ch)
+  }
+}
+
+
+
+if (!params.skip_trimming){
   process fastp {
       label 'process_low'
       tag "$name"
@@ -581,56 +788,6 @@ if (params.subsample) {
 }
 
 
-if (params.bam) {
-  process bam2fasta {
-    tag "bam2fasta"
-    label "high_memory"
-    publishDir "${params.outdir}/${params.save_fastas}", pattern: '*.fasta', saveAs: { filename -> "${filename.replace("|", "-")}"}
-    publishDir "${params.outdir}/${barcode_metadata_folder}", pattern: '*.csv', mode: 'copy'
-
-
-    // If job fails, try again with more memory
-    // memory { 8.GB * task.attempt }
-    errorStrategy 'retry'
-    maxRetries 1
-
-    input:
-    file(barcodes_file) from barcodes_ch
-    set sample_id, file(bam) from bam_ch
-    file(rename_10x_barcodes) from rename_10x_barcodes_ch
-
-    output:
-    set val(sample_id), file("*.fasta") into reads_ch
-    // https://github.com/nextflow-io/patterns/blob/master/docs/optional-output.adoc
-    file("${params.write_barcode_meta_csv}") optional true
-
-    script:
-
-    min_umi_per_barcode = params.min_umi_per_barcode ? "--min-umi-per-barcode ${params.min_umi_per_barcode}" : ''
-    line_count = params.line_count ? "--line-count ${params.line_count}" : ''
-    metadata = params.write_barcode_meta_csv ? "--write-barcode-meta-csv ${params.write_barcode_meta_csv}": ''
-    save_fastas = "--save-fastas ."
-    save_intermediate_files = "--save-intermediate-files ${params.save_intermediate_files}"
-    processes = "--processes ${params.max_cpus}"
-
-    def barcodes_file = params.barcodes_file ? "--barcodes-file ${barcodes_file.baseName}.tsv": ''
-    def rename_10x_barcodes = params.rename_10x_barcodes ? "--rename-10x-barcodes ${rename_10x_barcodes.baseName}.tsv": ''
-    """
-      bam2fasta convert \\
-        $processes \\
-        $min_umi_per_barcode \\
-        $line_count \\
-        $rename_10x_barcodes \\
-        $barcodes_file \\
-        $save_fastas \\
-        $save_intermediate_files \\
-        $metadata \\
-        --filename $bam
-      find . -type f -name "*.fasta" | while read src; do if [[ \$src == *"|"* ]]; then mv "\$src" \$(echo "\$src" | tr "|" "_"); fi done
-    """
-  }
-}
-
 
 if (params.peptide_fasta){
   process translate {
@@ -708,12 +865,11 @@ if (params.splitKmer){
       """
 
     }
-}
-else {
+} else {
 process sourmash_compute_sketch_fastx_nucleotide {
   tag "${sample_id}_${sketch_id}"
-  label "low_memory"
-  publishDir "${params.outdir}/sketches_nucleotide", mode: 'copy'
+  label "mid_memory"
+  publishDir "${params.outdir}/sketches_nucleotide/${sketch_id}", mode: 'copy'
 
   input:
   each ksize from ksizes

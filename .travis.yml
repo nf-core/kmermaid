@@ -13,6 +13,10 @@ matrix:
     jdk: openjdk8
   - name: "Latest Nextflow version, regular test suite"
     env: NXF_VER='' SUITE=test FLAGS=
+  - name: "Test nextflow kmermaid, with --track_abundance"
+    env: NXF_VER='' SUITE=test FLAGS='--track_abundance'
+  - name: "Test nextflow kmermaid, with translate on fastas"
+    env: NXF_VER='' SUITE=test_translate
   - name: "Latest Nextflow version, regular test suite with splitKmers, ensure that `protein` can't be specified"
     # Check exit code to make sure it is nonzero for --splitKmer + --molecules protein
     script:
@@ -22,7 +26,17 @@ matrix:
   - name: "Latest Nextflow version, split k-mer test suite"
     env: NXF_VER='' SUITE=test_ska FLAGS=--skip_trimming
   - name: "Latest Nextflow version, split k-mer test suite, test subsampling"
-    env: NXF_VER='' SUITE=test_ska FLAGS=--subsample 10
+    env: NXF_VER='' SUITE=test_ska FLAGS='--subsample 10'
+  # - name: "Lint the documentation"
+  #   script: markdownlint ${TRAVIS_BUILD_DIR} -c ${TRAVIS_BUILD_DIR}/.github/markdownlint.yml
+  - name: "Test nextflow kmermaid, with 10x .tgz file"
+    env: NXF_VER='' SUITE=test_tenx_tgz FLAGS=
+  - name: "Test nextflow kmermaid, with 10x .tgz file"
+    env: NXF_VER='' SUITE=test_tenx_tgz FLAGS=--skip_trimming
+  - name: "Test nextflow kmermaid, with 10x .tgz file and min 2 UMI per cell"
+    env: NXF_VER='' SUITE=test_tenx_tgz FLAGS='--tenx_min_umi_per_cell 2'
+  - name: "Test nextflow kmermaid, with 10x .tgz file and min 5 UMI per cell (test extract_per_cell_fastqs failure)"
+    env: NXF_VER='' SUITE=test_tenx_tgz FLAGS='--tenx_min_umi_per_cell 5'
   # - name: "Lint the pipeline code"
   #   install:
   #     # Install nf-core/tools
@@ -47,8 +61,6 @@ matrix:
     env: NXF_VER='' SUITE=test_bam FLAGS='--write_barcodes_meta_csv false'
   - name: "Test nextflow kmermaid, with --track_abundance"
     env: NXF_VER='' SUITE=test FLAGS='--track_abundance'
-  - name: "Test nextflow kmermaid, with extract coding on fastas"
-    env: NXF_VER='' SUITE=test_translate, FLAGS='--barcodes_file false --rename_10x_barcodes false --save_fastas false --save_intermediate_files "temp_intermediate_files" --write_barcodes_meta_csv false '
   - name: "Test nextflow kmermaid, with extract coding on bam"
     env: NXF_VER='' SUITE=test_translate_bam, FLAGS='--fastas false --save_fastas false --save_intermediate_files "." --write_barcodes_meta_csv false '
 
