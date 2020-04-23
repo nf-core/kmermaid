@@ -626,15 +626,13 @@ if (params.tenx_tgz || params.bam) {
       good_barcodes = "${is_aligned_channel_id}__barcodes.tsv"
 
       """  
-        if [[ `gzip -l \$(realpath $reads) | awk 'NR==2 {print \$2}'` ne 0 ]]; then
-          bam2fasta count_umis_percell \\
-              --filename ${reads} \\
-              --min-umi-per-barcode ${tenx_min_umi_per_cell} \\
-              --cell-barcode-pattern '${tenx_cell_barcode_pattern}' \\
-              --molecular-barcode-pattern '${tenx_molecular_barcode_pattern}' \\
-              --write-barcode-meta-csv ${umis_per_cell} \\
-              --barcodes-significant-umis-file ${good_barcodes}
-        fi
+        bam2fasta count_umis_percell \\
+            --filename ${reads} \\
+            --min-umi-per-barcode ${tenx_min_umi_per_cell} \\
+            --cell-barcode-pattern '${tenx_cell_barcode_pattern}' \\
+            --molecular-barcode-pattern '${tenx_molecular_barcode_pattern}' \\
+            --write-barcode-meta-csv ${umis_per_cell} \\
+            --barcodes-significant-umis-file ${good_barcodes}
       """
     }
     // Make sure good barcodes file is nonempty so next step doesn't start
@@ -644,7 +642,10 @@ if (params.tenx_tgz || params.bam) {
       .ifEmpty{ exit 1, "No cell barcodes found with at least ${tenx_min_umi_per_cell} molecular barcodes (UMIs) per cell"}
       .set{ good_barcodes_ch }
 
-  } else {
+  } else if (params.barcodes) {
+    good_barcodes_ch = barcodes_ch
+  }
+  else {
     // Use barcodes extracted from the tenx .tgz file
     good_barcodes_ch = tenx_bam_barcodes_ch
   }
@@ -668,10 +669,12 @@ if (params.tenx_tgz || params.bam) {
 
     script:
     is_aligned_channel_id = "${channel_id}__${is_aligned}__"
+    def rename_10x_barcodes = params.rename_10x_barcodes ? "--rename-10x-barcodes ${rename_10x_barcodes.baseName}.tsv": ''
     """
     bam2fasta make_fastqs_percell \\
         --filename ${reads} \\
         --barcodes-significant-umis-fil ${barcodes} \\
+        $rename_10x_barcodes \\
         --cell-barcode-pattern '${tenx_cell_barcode_pattern}' \\
         --channel-id ${is_aligned_channel_id} \\
         --output-format 'fastq.gz'
@@ -753,7 +756,8 @@ if (!params.skip_trimming){
   if (params.subsample){
     // Concatenate trimmed reads with fastas for subsequent subsampling
     subsample_reads_ch = ch_reads_trimmed.concat(fastas_ch)
-  } else {
+  } 
+  else {
     // Concatenate trimmed reads with fastas for signature generation
     reads_ch = ch_reads_trimmed.concat(fastas_ch)
   }
@@ -874,7 +878,7 @@ process sourmash_compute_sketch_fastx_nucleotide {
   set sample_id, file(reads) from ch_coding_nucleotides_nonempty
 
   output:
-  set val(sketch_id), val("dna"), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches_nucleotide
+  set val(sketch_id), val("dna"), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches_all_nucleotide
 
   script:
   // Don't calculate DNA signature if this is protein, to minimize disk,
@@ -882,35 +886,45 @@ process sourmash_compute_sketch_fastx_nucleotide {
   ksize = ksize
   sketch_id = "molecule-dna_ksize-${ksize}_log2sketchsize-${log2_sketch_size}_trackabundance-${params.track_abundance}"
   track_abundance_flag = track_abundance ? '--track-abundance' : ''
-
+  processes = "--processes ${task.cpus}"
   if ( params.one_signature_per_record){
       """
-      if [[ `gzip -l \$(realpath $reads) | awk 'NR==2 {print \$2}'` ne 0 ]]; then
+      if [ `gzip -l \$(realpath $reads) | awk 'NR==2 {print \$2}'` -ne 0 ]; then
         sourmash compute \\
           --num-hashes \$((2**$log2_sketch_size)) \\
           --ksizes $ksize \\
           --dna \\
+          $processes \\
           $track_abundance_flag \\
           --output ${sample_id}_${sketch_id}.sig \\
           $reads
       fi
+      # Decoy file just in case there are no reads found,
+      # to prevent this process from erroring out
+      touch ${sample_id}_${sketch_id}.sig
       """
   }
   else {
     """
-      if [[ `gzip -l \$(realpath $reads) | awk 'NR==2 {print \$2}'` ne 0 ]]; then
+      if [ `gzip -l \$(realpath $reads) | awk 'NR==2 {print \$2}'` -ne 0 ]; then
         sourmash compute \\
         --num-hashes \$((2**$log2_sketch_size)) \\
         --ksizes $ksize \\
         --dna \\
+        $processes \\
         $track_abundance_flag \\
         --output ${sample_id}_${sketch_id}.sig \\
         --merge '$sample_id' \\
         $reads
       fi
+      # Decoy file just in case there are no reads found,
+      # to prevent this process from erroring out
+      touch ${sample_id}_${sketch_id}.sig
     """
     }
   }
+  sourmash_sketches_nucleotide = sourmash_sketches_all_nucleotide.filter{ it[4].size() > 0 }
+  
 }
 
 
@@ -927,45 +941,55 @@ if (params.peptide_fasta){
     set sample_id, file(reads) from ch_coding_peptides_nonempty
 
     output:
-    set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches_peptide
+    set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches_all_peptide
 
     script:
     sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}_trackabundance-${params.track_abundance}"
     molecule = molecule
     ksize = ksize
     track_abundance_flag = track_abundance ? '--track-abundance' : ''
+    processes = "--processes ${task.cpus}"
     if ( params.one_signature_per_record) {
       """
-      if [[ `gzip -l \$(realpath $reads) | awk 'NR==2 {print \$2}'` ne 0 ]]; then
+      if [ `gzip -l \$(realpath $reads) | awk 'NR==2 {print \$2}'` -ne 0 ]; then
         sourmash compute \\
           --num-hashes \$((2**$log2_sketch_size)) \\
           --ksizes $ksize \\
           --input-is-protein \\
           --$molecule \\
           --no-dna \\
+          $processes \\
           $track_abundance_flag \\
           --output ${sample_id}_${sketch_id}.sig \\
           $reads
       fi
+      # Decoy file just in case there are no reads found,
+      # to prevent this process from erroring out
+      touch ${sample_id}_${sketch_id}.sig
       """
     }
     else {
       """
-        if [[ `gzip -l \$(realpath $reads) | awk 'NR==2 {print \$2}'` ne 0 ]]; then
+        if [ `gzip -l \$(realpath $reads) | awk 'NR==2 {print \$2}'` -ne 0 ]; then
           sourmash compute \\
             --num-hashes \$((2**$log2_sketch_size)) \\
             --ksizes $ksize \\
             --input-is-protein \\
             --$molecule \\
             --no-dna \\
+            $processes \\
             $track_abundance_flag \\
             --output ${sample_id}_${sketch_id}.sig \\
             --merge '$sample_id' \\
             $reads
         fi
+      # Decoy file just in case there are no reads found,
+      # to prevent this process from erroring out
+      touch ${sample_id}_${sketch_id}.sig
       """
     }
   }
+  sourmash_sketches_peptide = sourmash_sketches_all_peptide.filter{ it[4].size() > 0 }
 } else {
   sourmash_sketches_peptide = Channel.empty()
 }
@@ -1010,6 +1034,7 @@ if (params.splitKmer){
           --ksize ${ksize[0]} \\
           --${molecule[0]} \\
           --csv similarities_${sketch_id}.csv \\
+          $processes \\
           --traverse-directory .
     """
 
