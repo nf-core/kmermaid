@@ -585,7 +585,7 @@ if (params.tenx_tgz || params.bam) {
     set val(channel_id), file(bam) from tenx_bam_for_aligned_fastq_ch
 
     output:
-    set val(channel_id), val("unaligned"), file(reads) into tenx_reads_unaligned_unfiltered_ch
+    set val(channel_id), val("unaligned"), file(reads) into tenx_reads_unaligned_ch
 
     script:
     reads = "${channel_id}__unaligned.fastq.gz"
@@ -600,13 +600,6 @@ if (params.tenx_tgz || params.bam) {
     // The '||' means that if anything in the previous step fails, do the next thing
     // It's bash magic from: https://stackoverflow.com/a/3822649/1628971
   }
-  // Remove empty files
-  // it[0] = channel_id
-  // it[1] = "unaligned"
-  // it[2] = read file
-  // gzipped files are 20 bytes when "empty" due to the header
-  tenx_reads_unaligned_unfiltered_ch.filter{ it -> it[2].size() > 20 }
-    .set{ tenx_reads_unaligned_ch }
 
   // Put fastqs from aligned and unaligned reads into a single channel
   tenx_reads_aligned_concatenation_ch.mix(tenx_reads_unaligned_ch)
@@ -631,14 +624,17 @@ if (params.tenx_tgz || params.bam) {
       is_aligned_channel_id = "${channel_id}__${is_aligned}"
       umis_per_cell = "${is_aligned_channel_id}__n_umi_per_cell.csv"
       good_barcodes = "${is_aligned_channel_id}__barcodes.tsv"
-      """
-      bam2fasta count_umis_percell \\
-          --filename ${reads} \\
-          --min-umi-per-barcode ${tenx_min_umi_per_cell} \\
-          --cell-barcode-pattern '${tenx_cell_barcode_pattern}' \\
-          --molecular-barcode-pattern '${tenx_molecular_barcode_pattern}' \\
-          --write-barcode-meta-csv ${umis_per_cell} \\
-          --barcodes-significant-umis-file ${good_barcodes}
+
+      """  
+        if [[ `gzip -l \$(realpath $reads) | awk 'NR==2 {print \$2}'` ne 0 ]]; then
+          bam2fasta count_umis_percell \\
+              --filename ${reads} \\
+              --min-umi-per-barcode ${tenx_min_umi_per_cell} \\
+              --cell-barcode-pattern '${tenx_cell_barcode_pattern}' \\
+              --molecular-barcode-pattern '${tenx_molecular_barcode_pattern}' \\
+              --write-barcode-meta-csv ${umis_per_cell} \\
+              --barcodes-significant-umis-file ${good_barcodes}
+        fi
       """
     }
     // Make sure good barcodes file is nonempty so next step doesn't start
@@ -752,6 +748,7 @@ if (!params.skip_trimming){
         """
       }
   }
+
   // Concatenate trimmed fastq files with fastas
   if (params.subsample){
     // Concatenate trimmed reads with fastas for subsequent subsampling
@@ -886,27 +883,31 @@ process sourmash_compute_sketch_fastx_nucleotide {
   sketch_id = "molecule-dna_ksize-${ksize}_log2sketchsize-${log2_sketch_size}_trackabundance-${params.track_abundance}"
   track_abundance_flag = track_abundance ? '--track-abundance' : ''
 
-  if ( params.one_signature_per_record ){
-    """
-    sourmash compute \\
-      --num-hashes \$((2**$log2_sketch_size)) \\
-      --ksizes $ksize \\
-      --dna \\
-      $track_abundance_flag \\
-      --output ${sample_id}_${sketch_id}.sig \\
-      $reads
-    """
+  if ( params.one_signature_per_record){
+      """
+      if [[ `gzip -l \$(realpath $reads) | awk 'NR==2 {print \$2}'` ne 0 ]]; then
+        sourmash compute \\
+          --num-hashes \$((2**$log2_sketch_size)) \\
+          --ksizes $ksize \\
+          --dna \\
+          $track_abundance_flag \\
+          --output ${sample_id}_${sketch_id}.sig \\
+          $reads
+      fi
+      """
   }
   else {
     """
-    sourmash compute \\
-      --num-hashes \$((2**$log2_sketch_size)) \\
-      --ksizes $ksize \\
-      --dna \\
-      $track_abundance_flag \\
-      --output ${sample_id}_${sketch_id}.sig \\
-      --merge '$sample_id' \\
-      $reads
+      if [[ `gzip -l \$(realpath $reads) | awk 'NR==2 {print \$2}'` ne 0 ]]; then
+        sourmash compute \\
+        --num-hashes \$((2**$log2_sketch_size)) \\
+        --ksizes $ksize \\
+        --dna \\
+        $track_abundance_flag \\
+        --output ${sample_id}_${sketch_id}.sig \\
+        --merge '$sample_id' \\
+        $reads
+      fi
     """
     }
   }
@@ -933,32 +934,35 @@ if (params.peptide_fasta){
     molecule = molecule
     ksize = ksize
     track_abundance_flag = track_abundance ? '--track-abundance' : ''
-
-    if ( params.one_signature_per_record ) {
+    if ( params.one_signature_per_record) {
       """
-      sourmash compute \\
-        --num-hashes \$((2**$log2_sketch_size)) \\
-        --ksizes $ksize \\
-        --input-is-protein \\
-        --$molecule \\
-        --no-dna \\
-        $track_abundance_flag \\
-        --output ${sample_id}_${sketch_id}.sig \\
-        $reads
+      if [[ `gzip -l \$(realpath $reads) | awk 'NR==2 {print \$2}'` ne 0 ]]; then
+        sourmash compute \\
+          --num-hashes \$((2**$log2_sketch_size)) \\
+          --ksizes $ksize \\
+          --input-is-protein \\
+          --$molecule \\
+          --no-dna \\
+          $track_abundance_flag \\
+          --output ${sample_id}_${sketch_id}.sig \\
+          $reads
+      fi
       """
     }
     else {
       """
-      sourmash compute \\
-        --num-hashes \$((2**$log2_sketch_size)) \\
-        --ksizes $ksize \\
-        --input-is-protein \\
-        --$molecule \\
-        --no-dna \\
-        $track_abundance_flag \\
-        --output ${sample_id}_${sketch_id}.sig \\
-        --merge '$sample_id' \\
-        $reads
+        if [[ `gzip -l \$(realpath $reads) | awk 'NR==2 {print \$2}'` ne 0 ]]; then
+          sourmash compute \\
+            --num-hashes \$((2**$log2_sketch_size)) \\
+            --ksizes $ksize \\
+            --input-is-protein \\
+            --$molecule \\
+            --no-dna \\
+            $track_abundance_flag \\
+            --output ${sample_id}_${sketch_id}.sig \\
+            --merge '$sample_id' \\
+            $reads
+        fi
       """
     }
   }
