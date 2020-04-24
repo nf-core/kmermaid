@@ -670,8 +670,10 @@ if (params.tenx_tgz || params.bam) {
     script:
     is_aligned_channel_id = "${channel_id}__${is_aligned}__"
     def rename_10x_barcodes = params.rename_10x_barcodes ? "--rename-10x-barcodes ${rename_10x_barcodes.baseName}.tsv": ''
+    processes = "--processes ${task.cpus}"
     """
     bam2fasta make_fastqs_percell \\
+        $processes \\
         --filename ${reads} \\
         --barcodes-significant-umis-fil ${barcodes} \\
         $rename_10x_barcodes \\
@@ -924,7 +926,7 @@ process sourmash_compute_sketch_fastx_nucleotide {
     }
   }
   sourmash_sketches_nucleotide = sourmash_sketches_all_nucleotide.filter{ it[4].size() > 0 }
-  
+
 }
 
 
