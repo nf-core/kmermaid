@@ -891,6 +891,9 @@ process sourmash_compute_sketch_fastx_nucleotide {
   processes = "--processes ${task.cpus}"
   if ( params.one_signature_per_record){
       """
+      # Check if the fastq.gz file is empty
+      # Find the uncompressed file size in the 2nd column listed
+      # by gzip -l and run sourmash compute only if it is nonzero
       if [ `gzip -l \$(realpath $reads) | awk 'NR==2 {print \$2}'` -ne 0 ]; then
         sourmash compute \\
           --num-hashes \$((2**$log2_sketch_size)) \\
@@ -901,13 +904,16 @@ process sourmash_compute_sketch_fastx_nucleotide {
           --output ${sample_id}_${sketch_id}.sig \\
           $reads
       fi
-      # Decoy file just in case there are no reads found,
+      # Decoy file just in case there are no sigs found,
       # to prevent this process from erroring out
       touch ${sample_id}_${sketch_id}.sig
       """
   }
   else {
     """
+      # Check if the fastq.gz file is empty
+      # Find the uncompressed file size in the 2nd column listed
+      # by gzip -l and run sourmash compute only if it is nonzero
       if [ `gzip -l \$(realpath $reads) | awk 'NR==2 {print \$2}'` -ne 0 ]; then
         sourmash compute \\
         --num-hashes \$((2**$log2_sketch_size)) \\
@@ -919,7 +925,7 @@ process sourmash_compute_sketch_fastx_nucleotide {
         --merge '$sample_id' \\
         $reads
       fi
-      # Decoy file just in case there are no reads found,
+      # Decoy file just in case there are no sigs found,
       # to prevent this process from erroring out
       touch ${sample_id}_${sketch_id}.sig
     """
@@ -953,6 +959,9 @@ if (params.peptide_fasta){
     processes = "--processes ${task.cpus}"
     if ( params.one_signature_per_record) {
       """
+      # Check if the fastq.gz file is empty
+      # Find the uncompressed file size in the 2nd column listed
+      # by gzip -l and run sourmash compute only if it is nonzero
       if [ `gzip -l \$(realpath $reads) | awk 'NR==2 {print \$2}'` -ne 0 ]; then
         sourmash compute \\
           --num-hashes \$((2**$log2_sketch_size)) \\
@@ -965,13 +974,16 @@ if (params.peptide_fasta){
           --output ${sample_id}_${sketch_id}.sig \\
           $reads
       fi
-      # Decoy file just in case there are no reads found,
+      # Decoy file just in case there are no sigs found,
       # to prevent this process from erroring out
       touch ${sample_id}_${sketch_id}.sig
       """
     }
     else {
       """
+      # Check if the fastq.gz file is empty
+      # Find the uncompressed file size in the 2nd column listed
+      # by gzip -l and run sourmash compute only if it is nonzero
         if [ `gzip -l \$(realpath $reads) | awk 'NR==2 {print \$2}'` -ne 0 ]; then
           sourmash compute \\
             --num-hashes \$((2**$log2_sketch_size)) \\
@@ -985,7 +997,7 @@ if (params.peptide_fasta){
             --merge '$sample_id' \\
             $reads
         fi
-      # Decoy file just in case there are no reads found,
+      # Decoy file just in case there are no sigs found,
       # to prevent this process from erroring out
       touch ${sample_id}_${sketch_id}.sig
       """
