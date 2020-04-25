@@ -83,10 +83,6 @@ def helpMessage() {
                                     and protein, i.e. 'dna,protein,dayhoff'
       --log2_sketch_sizes           Which log2 sketch sizes to use. Multiple are separated
                                     by commas. Default is '10,12,14,16'
-      --one_signature_per_record    Make a k-mer signature for each record in the FASTQ/FASTA files.
-                                    Useful for comparing e.g. assembled transcriptomes or metagenomes.
-                                    (Not typically used for raw sequencing data as this would create
-                                    a k-mer signature for each read!)
       --track_abundance             Track abundance of each hashed k-mer, could be useful for cancer RNA-seq or ATAC-seq analyses
       --skip_trimming               If provided, skip fastp trimming of reads
 
@@ -383,15 +379,6 @@ else {
   barcode_metadata_folder = "barcode_metadata"
 }
 
-// For bam files, one_signature_per_record is true
-if (params.bam) {
-  one_signature_per_record = true
-}
-else {
-  one_signature_per_record = params.one_signature_per_record
-}
-
-
 // Header log info
 log.info nfcoreHeader()
 def summary = [:]
@@ -413,7 +400,6 @@ summary['Skip trimming?'] = params.skip_trimming
 summary['K-mer sizes']            = params.ksizes
 summary['Molecule']               = params.molecules
 summary['Log2 Sketch Sizes']      = params.log2_sketch_sizes
-summary['One Sig per Record']     = params.one_signature_per_record
 summary['Track Abundance']        = params.track_abundance
 // 10x parameters
 if(params.tenx_tgz) summary["10x .tgz"] = params.tenx_tgz
@@ -680,7 +666,6 @@ if (params.tenx_tgz || params.bam) {
         --cell-barcode-pattern '${tenx_cell_barcode_pattern}' \\
         --channel-id ${is_aligned_channel_id} \\
         --output-format 'fastq.gz'
-
     # Decoy file just in case there are no reads found,
     # to prevent this process from erroring out
     touch empty.fastq.gz
@@ -889,47 +874,25 @@ process sourmash_compute_sketch_fastx_nucleotide {
   sketch_id = "molecule-dna_ksize-${ksize}_log2sketchsize-${log2_sketch_size}_trackabundance-${params.track_abundance}"
   track_abundance_flag = track_abundance ? '--track-abundance' : ''
   processes = "--processes ${task.cpus}"
-  if ( params.one_signature_per_record){
-      """
-      # Check if the fastq.gz file is empty
-      # Find the uncompressed file size in the 2nd column listed
-      # by gzip -l and run sourmash compute only if it is nonzero
-      if [ `gzip -l \$(realpath $reads) | awk 'NR==2 {print \$2}'` -ne 0 ]; then
-        sourmash compute \\
-          --num-hashes \$((2**$log2_sketch_size)) \\
-          --ksizes $ksize \\
-          --dna \\
-          $processes \\
-          $track_abundance_flag \\
-          --output ${sample_id}_${sketch_id}.sig \\
-          $reads
-      fi
-      # Decoy file just in case there are no sigs found,
-      # to prevent this process from erroring out
-      touch ${sample_id}_${sketch_id}.sig
-      """
-  }
-  else {
-    """
-      # Check if the fastq.gz file is empty
-      # Find the uncompressed file size in the 2nd column listed
-      # by gzip -l and run sourmash compute only if it is nonzero
-      if [ `gzip -l \$(realpath $reads) | awk 'NR==2 {print \$2}'` -ne 0 ]; then
-        sourmash compute \\
+  """
+  fqgz_size=\$(gzip -dc \$(realpath $reads) | wc --c)
+  if [ \$fqgz_size -ne 0 ]
+  then
+      sourmash compute \\
         --num-hashes \$((2**$log2_sketch_size)) \\
         --ksizes $ksize \\
         --dna \\
         $processes \\
         $track_abundance_flag \\
         --output ${sample_id}_${sketch_id}.sig \\
-        --merge '$sample_id' \\
         $reads
-      fi
-      # Decoy file just in case there are no sigs found,
-      # to prevent this process from erroring out
-      touch ${sample_id}_${sketch_id}.sig
-    """
-    }
+  else
+    # Decoy file just in case there are no sigs found,
+    # to prevent this process from erroring out
+    touch ${sample_id}_${sketch_id}.sig
+  fi
+  """
+
   }
   sourmash_sketches_nucleotide = sourmash_sketches_all_nucleotide.filter{ it[4].size() > 0 }
 
@@ -957,52 +920,27 @@ if (params.peptide_fasta){
     ksize = ksize
     track_abundance_flag = track_abundance ? '--track-abundance' : ''
     processes = "--processes ${task.cpus}"
-    if ( params.one_signature_per_record) {
-      """
-      # Check if the fastq.gz file is empty
-      # Find the uncompressed file size in the 2nd column listed
-      # by gzip -l and run sourmash compute only if it is nonzero
-      if [ `gzip -l \$(realpath $reads) | awk 'NR==2 {print \$2}'` -ne 0 ]; then
-        sourmash compute \\
-          --num-hashes \$((2**$log2_sketch_size)) \\
-          --ksizes $ksize \\
-          --input-is-protein \\
-          --$molecule \\
-          --no-dna \\
-          $processes \\
-          $track_abundance_flag \\
-          --output ${sample_id}_${sketch_id}.sig \\
-          $reads
-      fi
+    """
+    fqgz_size=\$(gzip -dc \$(realpath $reads) | wc --c)
+    if [ \$fqgz_size -ne 0 ]
+    then
+      sourmash compute \\
+        --num-hashes \$((2**$log2_sketch_size)) \\
+        --ksizes $ksize \\
+        --input-is-protein \\
+        --$molecule \\
+        --no-dna \\
+        $processes \\
+        $track_abundance_flag \\
+        --output ${sample_id}_${sketch_id}.sig \\
+        $reads
+    else
       # Decoy file just in case there are no sigs found,
       # to prevent this process from erroring out
       touch ${sample_id}_${sketch_id}.sig
-      """
+    fi
+    """
     }
-    else {
-      """
-      # Check if the fastq.gz file is empty
-      # Find the uncompressed file size in the 2nd column listed
-      # by gzip -l and run sourmash compute only if it is nonzero
-        if [ `gzip -l \$(realpath $reads) | awk 'NR==2 {print \$2}'` -ne 0 ]; then
-          sourmash compute \\
-            --num-hashes \$((2**$log2_sketch_size)) \\
-            --ksizes $ksize \\
-            --input-is-protein \\
-            --$molecule \\
-            --no-dna \\
-            $processes \\
-            $track_abundance_flag \\
-            --output ${sample_id}_${sketch_id}.sig \\
-            --merge '$sample_id' \\
-            $reads
-        fi
-      # Decoy file just in case there are no sigs found,
-      # to prevent this process from erroring out
-      touch ${sample_id}_${sketch_id}.sig
-      """
-    }
-  }
   sourmash_sketches_peptide = sourmash_sketches_all_peptide.filter{ it[4].size() > 0 }
 } else {
   sourmash_sketches_peptide = Channel.empty()
