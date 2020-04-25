@@ -672,6 +672,8 @@ if (params.tenx_tgz || params.bam) {
     """
   }
   // Make per-cell fastqs into a flat channel that matches the read channels of yore
+  // Filtering out fastq.gz files less than 200 bytes (arbitary number) 
+  // (they contain uncompressed fastq files of size 0 or few reads that we are trying to ignore)
   per_channel_cell_reads_ch
     .dump(tag: 'per_channel_cell_reads_ch')
     .flatten()
@@ -739,6 +741,8 @@ if (!params.skip_trimming){
       }
   }
 
+  // Filtering out fastq.gz files less than 200 bytes (arbitary number) 
+  // (they contain uncompressed fastq files of size 0 or few reads that we are trying to ignore)
   ch_reads_all_trimmed.filter{ it -> it[1].size() > 200 }
     .set{ ch_reads_trimmed }
   // Concatenate trimmed fastq files with fastas
