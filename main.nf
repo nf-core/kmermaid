@@ -675,7 +675,7 @@ if (params.tenx_tgz || params.bam) {
   per_channel_cell_reads_ch
     .dump(tag: 'per_channel_cell_reads_ch')
     .flatten()
-    .filter{ it -> it.size() > 0 }   // each item is just a single file, no need to do it[1]
+    .filter{ it -> it.size() > 200 }   // each item is just a single file, no need to do it[1]
     .map{ it -> tuple(it.simpleName, file(it)) }
     .dump(tag: 'per_cell_fastqs_ch')
     .set{ per_cell_fastqs_ch }
@@ -705,7 +705,7 @@ if (!params.skip_trimming){
       set val(name), file(reads) from ch_read_files_trimming
 
       output:
-      set val(name), file("*trimmed.fastq.gz") into ch_reads_trimmed
+      set val(name), file("*trimmed.fastq.gz") into ch_reads_all_trimmed
       file "*fastp.json" into ch_fastp_results
       file "*fastp.html" into ch_fastp_html
 
@@ -739,6 +739,8 @@ if (!params.skip_trimming){
       }
   }
 
+  ch_reads_all_trimmed.filter{ it -> it[1].size() > 200 }
+    .set{ ch_reads_trimmed }
   // Concatenate trimmed fastq files with fastas
   if (params.subsample){
     // Concatenate trimmed reads with fastas for subsequent subsampling
@@ -875,22 +877,14 @@ process sourmash_compute_sketch_fastx_nucleotide {
   track_abundance_flag = track_abundance ? '--track-abundance' : ''
   processes = "--processes ${task.cpus}"
   """
-  fqgz_size=\$(gzip -dc \$(realpath $reads) | wc --c)
-  if [ \$fqgz_size -ne 0 ]
-  then
-      sourmash compute \\
-        --num-hashes \$((2**$log2_sketch_size)) \\
-        --ksizes $ksize \\
-        --dna \\
-        $processes \\
-        $track_abundance_flag \\
-        --output ${sample_id}_${sketch_id}.sig \\
-        $reads
-  else
-    # Decoy file just in case there are no sigs found,
-    # to prevent this process from erroring out
-    touch ${sample_id}_${sketch_id}.sig
-  fi
+    sourmash compute \\
+      --num-hashes \$((2**$log2_sketch_size)) \\
+      --ksizes $ksize \\
+      --dna \\
+      $processes \\
+      $track_abundance_flag \\
+      --output ${sample_id}_${sketch_id}.sig \\
+      $reads
   """
 
   }
@@ -921,9 +915,6 @@ if (params.peptide_fasta){
     track_abundance_flag = track_abundance ? '--track-abundance' : ''
     processes = "--processes ${task.cpus}"
     """
-    fqgz_size=\$(gzip -dc \$(realpath $reads) | wc --c)
-    if [ \$fqgz_size -ne 0 ]
-    then
       sourmash compute \\
         --num-hashes \$((2**$log2_sketch_size)) \\
         --ksizes $ksize \\
@@ -934,11 +925,6 @@ if (params.peptide_fasta){
         $track_abundance_flag \\
         --output ${sample_id}_${sketch_id}.sig \\
         $reads
-    else
-      # Decoy file just in case there are no sigs found,
-      # to prevent this process from erroring out
-      touch ${sample_id}_${sketch_id}.sig
-    fi
     """
     }
   sourmash_sketches_peptide = sourmash_sketches_all_peptide.filter{ it[4].size() > 0 }
