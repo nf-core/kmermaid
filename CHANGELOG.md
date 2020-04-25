@@ -21,6 +21,9 @@
 * Add social preview image
 * Add `fastp` process for trimming reads
 * Add option to use compressed `.tgz` file containing output from 10X Genomics' `cellranger count` outputs, including `possorted_genome_bam.bam` and `barcodes.tsv` files
+* Add samtools_fastq_unaligned and samtools_fastq_aligned process for converting bam to per cell
+barcode fastq
+* Remove `one_signature_per_record` flag and add bam2fasta count_umis_percell and make_fastqs_percell instead of bam2fasta sharding method
 
 ### Dependency updates
 
