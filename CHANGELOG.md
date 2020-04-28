@@ -24,6 +24,7 @@
 * Add samtools_fastq_unaligned and samtools_fastq_aligned process for converting bam to per cell
 barcode fastq
 * Remove `one_signature_per_record` flag and add bam2fasta count_umis_percell and make_fastqs_percell instead of bam2fasta sharding method
+* Update renaming of `khtools` commands to `sencha`
 
 ### Dependency updates
 
