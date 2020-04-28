@@ -555,7 +555,7 @@ if (params.tenx_tgz || params.bam) {
     script:
     reads = "${channel_id}__aligned.fastq.gz"
     """
-    samtools view -ub -F 256 -q 255 ${bam} \\
+    samtools view -ub -F 4 ${bam} \\
         | samtools fastq --threads ${task.cpus} -T ${tenx_tags} - \\
         | gzip -c - \\
           > ${reads}
