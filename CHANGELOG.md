@@ -30,10 +30,10 @@ barcode fastq
 * Add `ska` and `seqtk` to container dependencies
 * Add `fastp` to container requirements
 * Add `fastqc` to environment.yml
-* Add [czbiohub/khtools](https://github.com/czbiohub/kh-tools/) repo to environment.yml
+* Add [czbiohub/sencha](https://github.com/czbiohub/kh-tools/) repo to environment.yml
 * Update Dockerfile with sourmash compute bam input dependencies
 * Add `track_abundance` feature to keep track of hashed kmer frequency.
-* Add [czbiohub/khtools](https://github.com/czbiohub/kh-tools/) repo to environment.yml
+* Add [czbiohub/sencha](https://github.com/czbiohub/kh-tools/) repo to environment.yml
 * Add [`czbiohub/bam2fasta`](https://github.com/czbiohub/bam2fasta/) repo to environment.yml
 * Update sourmash to version 3.2.2
 

@@ -493,12 +493,12 @@ if (params.peptide_fasta){
     peptide_molecule
 
     output:
-    set val(bloom_id), val(peptide_molecule), file("${peptides.simpleName}__${bloom_id}.bloomfilter") into ch_khtools_bloom_filter
+    set val(bloom_id), val(peptide_molecule), file("${peptides.simpleName}__${bloom_id}.bloomfilter") into ch_sencha_bloom_filter
 
     script:
     bloom_id = "molecule-${peptide_molecule}_ksize-${peptide_ksize}"
     """
-    khtools index \\
+    sencha index \\
       --tablesize ${bloomfilter_tablesize} \\
       --molecule ${peptide_molecule} \\
       --peptide-ksize ${peptide_ksize} \\
@@ -792,7 +792,7 @@ if (params.peptide_fasta){
     publishDir "${params.outdir}/translate/", mode: 'copy'
 
     input:
-    set bloom_id, molecule, file(bloom_filter) from ch_khtools_bloom_filter.collect()
+    set bloom_id, molecule, file(bloom_filter) from ch_sencha_bloom_filter.collect()
     set sample_id, file(reads) from reads_ch
 
     output:
@@ -804,7 +804,7 @@ if (params.peptide_fasta){
 
     script:
     """
-    khtools translate \\
+    sencha translate \\
       --molecule ${molecule} \\
       --coding-nucleotide-fasta ${sample_id}__coding_reads_nucleotides.fasta \\
       --csv ${sample_id}__coding_scores.csv \\

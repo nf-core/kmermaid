@@ -13,6 +13,6 @@ ENV PATH /opt/conda/envs/nf-core-kmermaid-1.0.0dev/bin:$PATH
 
 RUN sourmash info
 RUN bam2fasta info
-RUN khtools index --help
-RUN khtools translate --help
+RUN sencha index --help
+RUN sencha translate --help
 COPY docker/sysctl.conf /etc/sysctl.conf
