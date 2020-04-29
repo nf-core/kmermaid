@@ -455,6 +455,7 @@ if(params.csv_pairs)    summary['Paired-end samples.csv']            = params.cs
 if(params.csv_singles)  summary['Single-end samples.csv']    = params.csv_singles
 if(params.sra)          summary['SRA']                             = params.sra
 if(params.fastas)       summary["FASTAs"]                          = params.fastas
+if(params.protein_fastas) summary["Protein FASTAs"]                = params.protein_fastas
 if(params.bam)          summary["BAM"]                             = params.bam
 if(params.barcodes_file)          summary["Barcodes"]              = params.barcodes_file
 if(params.rename_10x_barcodes)    summary["Renamer barcodes"]      = params.rename_10x_barcodes
@@ -756,8 +757,8 @@ if (params.tenx_tgz || params.bam) {
   }
 }
 
-if (ch_read_files_trimming_to_check_size.toList().value) {
-  n_files_to_trim = ch_read_files_trimming_to_check_size.toList().value.size()  
+if (!params.skip_trimming) {
+  n_files_to_trim = ch_read_files_trimming_to_check_size.toList().value.size()
 } else {
   n_files_to_trim = 0
 }
