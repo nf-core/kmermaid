@@ -164,7 +164,6 @@ fastas_ch = Channel.empty()
 // 10X Genomics .tgz file containing possorted_genome_bam file
 tenx_tgz_ch = Channel.empty()
 
-
 // Parameters for testing
 if (params.read_paths) {
      read_paths_ch = Channel
@@ -255,6 +254,24 @@ if (params.read_paths) {
        .dump(tag: 'tenx_tgz_after_mri_filter')
        .set{ tenx_tgz_ch }
   }
+}
+
+////////////////////////////////////////////////////
+/* --          Parse protein fastas            -- */
+////////////////////////////////////////////////////
+if (params.protein_fastas){
+  Channel.fromPath(params.protein_fastas)
+      .ifEmpty { exit 1, "params.protein_fastas was empty - no input files supplied" }
+      .set { ch_protein_fastas }
+} else if (params.protein_fasta_paths){
+  Channel
+    .from(params.protein_fasta_paths)
+    .map { row -> [ row[0], [ file(row[1][0], checkIfExists: true)] ] }
+    .ifEmpty { exit 1, "params.protein_fasta_paths was empty - no input files supplied" }
+    .dump(tag: "protein_fasta_paths")
+    .set { ch_protein_fastas }
+} else {
+  ch_protein_fastas = Channel.empty()
 }
 
 if (params.reference_proteome_fasta) {
@@ -820,7 +837,9 @@ if (params.reference_proteome_fasta){
   // it[0] = sample id
   // it[1] = sequence fasta file
   ch_coding_nucleotides_nonempty = ch_coding_nucleotides.filter{ it[1].size() > 0 }
-  ch_coding_peptides_nonempty = ch_coding_peptides.filter{ it[1].size() > 0 }
+  ch_coding_peptides.filter{ it[1].size() > 0 }
+    .mix { ch_protein_fastas }
+    .set { ch_coding_peptides_nonempty }
 
 } else {
   // Send reads directly into coding/noncoding
