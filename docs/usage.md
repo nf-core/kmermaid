@@ -18,6 +18,7 @@
         * [`--csv_pairs`](#--csv_pairs)
         * [`--csv_singles`](#--csv_singles)
         * [`--fastas`](#--fastas)
+        * [`--protein_fastas`](#--protein_fastas)
         * [`--sra`](#--sra)
         * [`--bam`](#--bam)
         * [`--barcodes_file`](#--barcodes_file)
@@ -205,6 +206,23 @@ Please note the following requirements:
 2. The path *may* have at one or more `*` wildcard character
 
 If left unspecified, no samples are used.
+
+
+### `--protein_fastas`
+
+Use this to specify the location of *protein* fasta sequence files. No trimming, subsampling, or protein translation is done on these. Multiple inputs can be separated by seimcolons (`;`). For example:
+
+```bash
+--protein_fastas 'path/to/data/elephant.fasta;more/data/*.fasta'
+```
+
+Please note the following requirements:
+
+1. The path must be enclosed in quotes
+2. The path *may* have at one or more `*` wildcard character
+
+If left unspecified, no samples are used.
+
 
 ### `--sra`
 
