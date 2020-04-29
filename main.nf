@@ -260,7 +260,7 @@ if (params.read_paths) {
 /* --          Parse protein fastas            -- */
 ////////////////////////////////////////////////////
 if (params.protein_fastas){
-  Channel.fromPath(params.protein_fastas?.toString()?.tokenize(';'), checkIfExists: true)
+  Channel.fromPath(params.protein_fastas?.toString()?.tokenize(';'), checkIfExists: true, size: 1)
       .map{ f -> tuple(f.baseName, tuple(file(f))) }
       .ifEmpty { exit 1, "params.protein_fastas was empty - no input files supplied" }
       .set { ch_protein_fastas }
