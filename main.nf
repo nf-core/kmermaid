@@ -64,6 +64,7 @@ def helpMessage() {
       --csv_pairs                   CSV file with columns id, read1, read2 for each sample
       --csv_singles                 CSV file with columns id, read1, read2 for each sample
       --fastas                      Path to FASTA sequence files. Can be semi-colon-separated
+      --protein_fastas              Path to protein fasta inputs
       --bam                         Path to 10x BAM file
       --save_fastas                 For bam files, Path relative to outdir to save unique barcodes to {CELL_BARCODE}.fasta
       --save_intermediate_files     save temporary fastas and chunks of bam files
@@ -104,7 +105,7 @@ def helpMessage() {
                                     to new name, e.g. with channel or cell annotation label
 
     Extract protein-coding options:
-      --peptide_fasta               Path to a well-curated fasta file of protein sequences. Used to filter for coding reads
+      --reference_proteome_fasta    Path to a well-curated fasta file of protein sequences. Used to filter for coding reads
       --bloomfilter_tablesize       Maximum table size for bloom filter creation
 
     Other Options:
@@ -256,10 +257,10 @@ if (params.read_paths) {
   }
 }
 
-if (params.peptide_fasta) {
-Channel.fromPath(params.peptide_fasta, checkIfExists: true)
-     .ifEmpty { exit 1, "Peptide fasta file not found: ${params.peptide_fasta}" }
-     .set{ ch_peptide_fasta }
+if (params.reference_proteome_fasta) {
+Channel.fromPath(params.reference_proteome_fasta, checkIfExists: true)
+     .ifEmpty { exit 1, "Peptide fasta file not found: ${params.reference_proteome_fasta}" }
+     .set{ ch_reference_proteome_fasta }
 }
 
 if (params.subsample) {
@@ -408,10 +409,10 @@ if(params.tenx_tgz) summary["10x Cell pattern"] = params.tenx_cell_barcode_patte
 if(params.tenx_tgz) summary["10x UMI pattern"] = params.tenx_molecular_barcode_pattern
 if(params.tenx_tgz) summary['Min UMI/cell'] = params.tenx_min_umi_per_cell
 // Extract coding parameters
-if(params.peptide_fasta) summary["Peptide fasta"] = params.peptide_fasta
-if(params.peptide_fasta) summary['Peptide ksize'] = params.translate_peptide_ksize
-if(params.peptide_fasta) summary['Peptide molecule'] = params.translate_peptide_molecule
-if(params.peptide_fasta) summary['Bloom filter table size'] = params.bloomfilter_tablesize
+if(params.reference_proteome_fasta) summary["Peptide fasta"] = params.reference_proteome_fasta
+if(params.reference_proteome_fasta) summary['Peptide ksize'] = params.translate_peptide_ksize
+if(params.reference_proteome_fasta) summary['Peptide molecule'] = params.translate_peptide_molecule
+if(params.reference_proteome_fasta) summary['Bloom filter table size'] = params.bloomfilter_tablesize
 // Resource information
 summary['Max Resources']    = "$params.max_memory memory, $params.max_cpus cpus, $params.max_time time per job"
 if(workflow.containerEngine) summary['Container'] = "$workflow.containerEngine - $workflow.container"
@@ -480,7 +481,7 @@ process get_software_versions {
     """
 }
 
-if (params.peptide_fasta){
+if (params.reference_proteome_fasta){
   process make_protein_index {
     tag "${peptides}__${bloom_id}"
     label "low_memory"
@@ -488,7 +489,7 @@ if (params.peptide_fasta){
     publishDir "${params.outdir}/protein_index", mode: 'copy'
 
     input:
-    file(peptides) from ch_peptide_fasta
+    file(peptides) from ch_reference_proteome_fasta
     peptide_ksize
     peptide_molecule
 
@@ -611,7 +612,7 @@ if (params.tenx_tgz || params.bam) {
       umis_per_cell = "${is_aligned_channel_id}__n_umi_per_cell.csv"
       good_barcodes = "${is_aligned_channel_id}__barcodes.tsv"
 
-      """  
+      """
         bam2fasta count_umis_percell \\
             --filename ${reads} \\
             --min-umi-per-barcode ${tenx_min_umi_per_cell} \\
@@ -672,7 +673,7 @@ if (params.tenx_tgz || params.bam) {
     """
   }
   // Make per-cell fastqs into a flat channel that matches the read channels of yore
-  // Filtering out fastq.gz files less than 200 bytes (arbitary number) 
+  // Filtering out fastq.gz files less than 200 bytes (arbitary number)
   // ~200 bytes is about the size of a file with a single read or less
   // We can't use .size() > 0 because it's fastq.gz is gzipped content
   per_channel_cell_reads_ch
@@ -742,7 +743,7 @@ if (!params.skip_trimming){
       }
   }
 
-  // Filtering out fastq.gz files less than 200 bytes (arbitary number) 
+  // Filtering out fastq.gz files less than 200 bytes (arbitary number)
   // ~200 bytes is about the size of a file with a single read or less
   // We can't use .size() > 0 because it's fastq.gz is gzipped content
   ch_reads_all_trimmed.filter{ it -> it[1].size() > 200 }
@@ -751,7 +752,7 @@ if (!params.skip_trimming){
   if (params.subsample){
     // Concatenate trimmed reads with fastas for subsequent subsampling
     subsample_reads_ch = ch_reads_trimmed.concat(fastas_ch)
-  } 
+  }
   else {
     // Concatenate trimmed reads with fastas for signature generation
     reads_ch = ch_reads_trimmed.concat(fastas_ch)
@@ -785,7 +786,7 @@ if (params.subsample) {
 
 
 
-if (params.peptide_fasta){
+if (params.reference_proteome_fasta){
   process translate {
     tag "${sample_id}"
     label "low_memory_long"
@@ -899,7 +900,7 @@ process sourmash_compute_sketch_fastx_nucleotide {
 }
 
 
-if (params.peptide_fasta){
+if (params.reference_proteome_fasta){
   process sourmash_compute_sketch_fastx_peptide {
     tag "${sample_id}_${sketch_id}"
     label "low_memory"
