@@ -756,8 +756,11 @@ if (params.tenx_tgz || params.bam) {
   }
 }
 
-
-n_files_to_trim = ch_read_files_trimming_to_check_size.toList().value.size()
+if (ch_read_files_trimming_to_check_size.toList().value) {
+  n_files_to_trim = ch_read_files_trimming_to_check_size.toList().value.size()  
+} else {
+  n_files_to_trim = 0
+}
 do_nucleotide_stuff = n_files_to_trim || params.reference_proteome_fasta || params.subsample
 
 if ( do_nucleotide_stuff ) {
