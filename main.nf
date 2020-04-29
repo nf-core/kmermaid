@@ -815,8 +815,8 @@ if (params.reference_proteome_fasta){
 
     output:
     // TODO also extract nucleotide sequence of coding reads and do sourmash compute using only DNA on that?
-    set val(sample_id), file("${sample_id}__coding_reads_peptides.fasta") into ch_coding_peptides
-    set val(sample_id), file("${sample_id}__coding_reads_nucleotides.fasta") into ch_coding_nucleotides
+    set val(sample_id), file("${sample_id}__coding_reads_peptides.fasta") into ch_translated_protein_seqs
+    set val(sample_id), file("${sample_id}__coding_reads_nucleotides.fasta") into ch_translatable_nucleotide_seqs
     set val(sample_id), file("${sample_id}__coding_scores.csv") into ch_coding_scores_csv
     set val(sample_id), file("${sample_id}__coding_summary.json") into ch_coding_scores_json
 
@@ -836,15 +836,15 @@ if (params.reference_proteome_fasta){
   // Remove empty files
   // it[0] = sample id
   // it[1] = sequence fasta file
-  ch_coding_nucleotides_nonempty = ch_coding_nucleotides.filter{ it[1].size() > 0 }
-  ch_coding_peptides.filter{ it[1].size() > 0 }
+  ch_translatable_nucleotide_seqs_nonempty = ch_translatable_nucleotide_seqs.filter{ it[1].size() > 0 }
+  ch_translated_protein_seqs.filter{ it[1].size() > 0 }
     .mix { ch_protein_fastas }
-    .set { ch_coding_peptides_nonempty }
+    .set { ch_translated_protein_seqs_nonempty }
 
 } else {
   // Send reads directly into coding/noncoding
   reads_ch
-    .set{ ch_coding_nucleotides_nonempty }
+    .set{ ch_translatable_nucleotide_seqs_nonempty }
 }
 
 if (params.splitKmer){
@@ -890,7 +890,7 @@ process sourmash_compute_sketch_fastx_nucleotide {
   input:
   each ksize from ksizes
   each log2_sketch_size from log2_sketch_sizes
-  set sample_id, file(reads) from ch_coding_nucleotides_nonempty
+  set sample_id, file(reads) from ch_translatable_nucleotide_seqs_nonempty
 
   output:
   set val(sketch_id), val("dna"), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches_all_nucleotide
@@ -929,7 +929,7 @@ if (params.reference_proteome_fasta){
     each ksize from ksizes
     each molecule from peptide_molecules
     each log2_sketch_size from log2_sketch_sizes
-    set sample_id, file(reads) from ch_coding_peptides_nonempty
+    set sample_id, file(reads) from ch_translated_protein_seqs_nonempty
 
     output:
     set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches_all_peptide
