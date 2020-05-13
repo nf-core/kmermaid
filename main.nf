@@ -339,7 +339,7 @@ if (!protein_input) {
   println "in not protein input"
   if (params.subsample) {
     subsample_reads_ch_unchecked
-      .ifEmpty{ exit 1, "No reads provided! Check read input files"}
+      .ifEmpty{  exit 1, "No reads provided! Check read input files in subsample_reads_ch_unchecked"}
       .set { subsample_reads_ch }
   }
   if (params.skip_trimming) {
