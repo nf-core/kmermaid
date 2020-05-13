@@ -348,7 +348,7 @@ if (!protein_input) {
       .set { reads_ch }
   } else {
     ch_read_files_trimming_unchecked
-      .ifEmpty{ exit 1, "No reads provided! Check read input files"}
+      .ifEmpty{ exit 1, "No reads provided! Check read input files in ch_read_files_trimming_unchecked"}
       .into { ch_read_files_trimming_to_trim; ch_read_files_trimming_to_check_size }
   }
   if (params.bam) {
