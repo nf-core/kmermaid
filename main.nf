@@ -353,7 +353,7 @@ if (!protein_input) {
   }
   if (params.bam) {
     ch_non_bam_reads_unchecked
-      .ifEmpty{ exit 1, "No reads provided! Check read input files"}
+     .ifEmpty{ exit 1, "No reads provided! Check read input files in ch_non_bam_reads_unchecked")
       .set { ch_non_bam_reads }
   }
 } else {
