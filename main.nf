@@ -344,7 +344,7 @@ if (!protein_input) {
   }
   if (params.skip_trimming) {
     reads_ch_unchecked
-      .ifEmpty{ exit 1, "No reads provided! Check read input files"}
+      .ifEmpty{ exit 1, "No reads provided! Check read input files in reads_ch_unchecked"}
       .set { reads_ch }
   } else {
     ch_read_files_trimming_unchecked
