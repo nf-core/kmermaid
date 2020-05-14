@@ -692,7 +692,7 @@ if (params.tenx_tgz || params.bam) {
     file('*.fastq.gz') into per_channel_cell_ch_reads_for_ribosomal_removal
 
     script:
-    is_aligned_channel_id = "${channel_id}__${is_aligned}__"
+    is_aligned_channel_id = "${channel_id}__${is_aligned}"
     def rename_10x_barcodes = params.rename_10x_barcodes ? "--rename-10x-barcodes ${rename_10x_barcodes.baseName}.tsv": ''
     processes = "--processes ${task.cpus}"
     """
@@ -702,7 +702,7 @@ if (params.tenx_tgz || params.bam) {
         --barcodes-significant-umis-fil ${barcodes} \\
         $rename_10x_barcodes \\
         --cell-barcode-pattern '${tenx_cell_barcode_pattern}' \\
-        --channel-id ${is_aligned_channel_id} \\
+        --channel-id ${is_aligned_channel_id}__ \\
         --output-format 'fastq.gz'
     # Decoy file just in case there are no reads found,
     # to prevent this process from erroring out
