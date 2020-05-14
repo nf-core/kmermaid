@@ -104,8 +104,14 @@ def helpMessage() {
       --rename_10x_barcodes         For bam files, Optional absolute path to a .tsv Tab-separated file mapping 10x barcode name
                                     to new name, e.g. with channel or cell annotation label
 
-    Extract protein-coding options:
+    Translate RNA-seq reads into protein-coding sequences options:
       --reference_proteome_fasta    Path to a well-curated fasta file of protein sequences. Used to filter for coding reads
+      --translate_peptide_ksize     K-mer size to use for translating RNA into protein.
+                                    Default: 9, which is good for 'protein'. If using dayhoff, suggest 15
+      --translate_peptide_molecule  Which molecular encoding to use for translating. Default: "protein"
+                                    If your reference proteome is quite different from your species of interest,
+                                    suggest using "dayhoff" encoding
+      --translate_jaccard_threshold Minimum fraction of overlapping translated k-mers from the read to match to the reference. Default: 0.95
       --bloomfilter_tablesize       Maximum table size for bloom filter creation
 
     Other Options:
@@ -277,13 +283,14 @@ if (params.protein_fastas){
 
 if (params.reference_proteome_fasta) {
 Channel.fromPath(params.reference_proteome_fasta, checkIfExists: true)
-     .ifEmpty { exit 1, "Peptide fasta file not found: ${params.reference_proteome_fasta}" }
+     .ifEmpty { exit 1, "Reference proteome file not found: ${params.reference_proteome_fasta}" }
      .set{ ch_reference_proteome_fasta }
 }
 
 ////////////////////////////////////////////////////
 /* --    Concatenate all nucleotide inputs     -- */
 ////////////////////////////////////////////////////
+// Add _unchecked suffix because have not yet checked if these files are not empty
 if (params.subsample) {
   if (params.bam){
      exit 1, "Cannot provide both a bam file with --bam and specify --subsample"
@@ -307,7 +314,6 @@ if (params.subsample) {
       sra_ch.concat(
           csv_pairs_ch, csv_singles_ch, read_pairs_ch,
           read_singles_ch, fastas_ch, read_paths_ch)
-       // .ifEmpty{ exit 1, "No reads provided! Check read input files"}
        .set{ reads_ch_unchecked }
     } else {
       if (params.fastas) {
@@ -321,7 +327,6 @@ if (params.subsample) {
         sra_ch.concat(
             csv_pairs_ch, csv_singles_ch, read_pairs_ch,
             read_singles_ch, read_paths_ch)
-          // .ifEmpty{ exit 1, "No reads provided! Check read input files"}
           .set{ ch_read_files_trimming_unchecked }
       }
     }
@@ -336,7 +341,6 @@ if (params.subsample) {
 
 protein_input = params.protein_fastas || params.protein_fasta_paths
 if (!protein_input) {
-  println "in not protein input"
   if (params.subsample) {
     subsample_reads_ch_unchecked
       .ifEmpty{  exit 1, "No reads provided! Check read input files in subsample_reads_ch_unchecked"}
@@ -357,7 +361,6 @@ if (!protein_input) {
       .set { ch_non_bam_reads }
   }
 } else {
-  println "in protein input"
   // Since there exists protein input, don't check if these are empty
   if (params.subsample) {
     subsample_reads_ch_unchecked
