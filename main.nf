@@ -355,39 +355,17 @@ ksizes = params.ksizes?.toString().tokenize(',')
 molecules = params.molecules?.toString().tokenize(',')
 peptide_molecules = molecules.findAll { it != "dna" }
 
-//
 have_size = params.sketch_size || params.sketch_size_log2 || params.sketch_scaled || params.sketch_scaled_log2
 if (have_size) {
   using_size = params.sketch_size || params.sketch_size_log2
   using_scaled = params.sketch_scaled || params.sketch_scaled_log2
-  if (using_size && using_scaled ) {
-    exit 1, "Cannot specify both sketch scales and sizes! Can only use one of --sketch_size, --sketch_size_log2, --sketch_scaled, --sketch_scaled_log2"
-  }
-  if (using_size) {
-    if (params.sketch_size && params.sketch_size_log2){
-      exit 1, "Cannot specify both log2 and non-log2 sizes! Can only use one of --sketch_size, --sketch_size_log2"
-    }
-    if (params.sketch_size) {
-      sketch_values = params.sketch_size?.toString().tokenize(',')
-    } else {
-      sketch_values = params.sketch_size_log2?.toString().tokenize(',').map { 2 ** it }.collect()
-    }
-  } else {
-    if (params.sketch_scaled && params.sketch_scaled_log2){
-      exit 1, "Cannot specify both log2 and non-log2 sizes! Can only use one of --sketch_size, --sketch_size_log2"
-    }
-    if (params.sketch_scaled) {
-      sketch_values = params.sketch_scaled?.toString().tokenize(',')
-    } else {
-      sketch_values = params.sketch_scaled_log2?.toString().tokenize(',').map { 2 ** it }.collect()
-    }
-  }
-
 } else {
   log.info "Did not specify a sketch size or scale with any of --sketch_size, --sketch_size_log2, --sketch_scaled, --sketch_scaled_log2! Falling back on sourmash's default of --sketch_scaled 500"
   sketch_values = ['500']
   using_scaled = true
 }
+
+
 
 def make_sketch_id (molecule, ksize, sketch_value, track_abundance, using_size) {
   if (using_size) {
@@ -525,6 +503,41 @@ ${summary.collect { k,v -> "            <dt>$k</dt><dd><samp>${v ?: '<span style
 
    return yaml_file
 }
+
+
+/*
+ * Validate sketch sizes
+ */
+process validate_sketch_values {
+    publishDir "${params.outdir}/pipeline_info", mode: 'copy',
+    saveAs: {filename ->
+        if (filename.indexOf(".txt") > 0) filename
+        else null
+    }
+
+    output:
+    file 'sketch_values.txt' into ch_sketch_values
+
+    script:
+    """
+    validate_sketch_values.py \\
+      --sketch_size ${params.sketch_size} \\
+      --sketch_size_log2 ${params.sketch_size_log2} \\
+      --sketch_scaled ${params.sketch_scaled} \\
+      --sketch_scaled_log2 ${params.sketch_scaled_log2} \\
+      --output sketch_values.txt
+
+    """
+}
+
+// Parse file into values
+ch_sketch_values
+  .splitText()
+  .map { it -> it.replaceAll('\\n', '')}
+  .dump ( tag : 'sketch_values_parsed' )
+  .collect()
+  .dump ( tag : ',' )
+  .set { sketch_values }
 
 
 /*
