@@ -8,17 +8,22 @@ import re
 regexes = {
     'nf-core/kmermaid': ['v_pipeline.txt', r"(\S+)"],
     'Nextflow': ['v_nextflow.txt', r"(\S+)"],
-    'Sourmash': ['v_sourmash.txt', r"sourmash version (\S+)"],
     'Bam2fasta': ['v_bam2fasta.txt', r"bam2fasta version (\S+)"],
     'fastp': ['v_fastp.txt', r"fastp (\S+)"],
+    'Samtools': ['v_samtools.txt', r"samtools (\S+)"],
+    'SKA': ['v_ska.txt', r"Version (\S+)"],
+    'htslib': ['v_samtools.txt', r"htslib (\S+)"],
+    'Sourmash': ['v_sourmash.txt', r"sourmash (\S+)"],
     'SortMeRNA': ['v_sortmerna.txt', r"SortMeRNA version (\S+),"],
 }
 results = OrderedDict()
 results['nf-core/kmermaid'] = '<span style="color:#999999;">N/A</span>'
 results['Nextflow'] = '<span style="color:#999999;">N/A</span>'
-results['Sourmash'] = '<span style="color:#999999;">N/A</span>'
 results['bam2fasta'] = '<span style="color:#999999;">N/A</span>'
 results['fastp'] = '<span style="color:#999999;">N/A</span>'
+results['Samtools'] = '<span style="color:#999999;">N/A</span>'
+results['SKA'] = '<span style="color:#999999;">N/A</span>'
+results['Sourmash'] = '<span style="color:#999999;">N/A</span>'
 results['SortMeRNA'] = '<span style="color:#999999;">N/A</span>'
 
 # Search each file using its regex
@@ -32,11 +37,6 @@ for k, v in regexes.items():
     except IOError:
         results[k] = False
 
-
-# Remove software set to false in results
-for k in results:
-    if not results[k]:
-        del(results[k])
 
 # Dump to YAML
 print ('''
