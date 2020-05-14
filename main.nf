@@ -954,7 +954,7 @@ process sourmash_compute_sketch_fastx_nucleotide {
   sketch_value_flag = make_sketch_value_flag(using_size, sketch_value)
   track_abundance_flag = track_abundance ? '--track-abundance' : ''
   processes = "--processes ${task.cpus}"
-  sig = "${sample_id}__${sketch_id}.sig "
+  sig = "${sample_id}__${sketch_id}.sig"
   """
     sourmash compute \\
       ${sketch_value_flag} \\
@@ -994,7 +994,7 @@ if (params.peptide_fasta){
     sketch_value_flag = make_sketch_value_flag(using_size, sketch_value)
     track_abundance_flag = track_abundance ? '--track-abundance' : ''
     processes = "--processes ${task.cpus}"
-    sig = "${sample_id}__${sketch_id}.sig "
+    sig = "${sample_id}__${sketch_id}.sig"
     """
       sourmash compute \\
         ${sketch_value_flag} \\
