@@ -959,7 +959,7 @@ if (params.split_kmer){
 
     }
   } 
-if (!params.skip_compare) {
+if (!params.split_kmer && !params.skip_compare) {
   process sourmash_compare_sketches {
     // Combine peptide and nucleotide sketches
     sourmash_sketches = sourmash_sketches_peptide.concat(sourmash_sketches_nucleotide)
