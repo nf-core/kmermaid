@@ -508,9 +508,12 @@ process get_software_versions {
     """
     echo $workflow.manifest.version > v_pipeline.txt
     echo $workflow.nextflow.version > v_nextflow.txt
-    fastp --version &> v_fastp.txt
-    sortmerna --version &> v_sortmerna.txt
     bam2fasta info &> v_bam2fasta.txt
+    fastp --version &> v_fastp.txt
+    samtools --version &> v_samtools
+    ska version &> v_ska.txt
+    sortmerna --version &> v_sortmerna.txt
+    sourmash -v &> v_sourmash.txt
     scrape_software_versions.py &> software_versions_mqc.yaml
     """
 }
