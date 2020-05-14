@@ -81,10 +81,20 @@ def helpMessage() {
                                     separated by commas. Default is '21,27,33,51'
       --molecules                   Which molecule to compare on. Default is both DNA
                                     and protein, i.e. 'dna,protein,dayhoff'
-      --log2_sketch_sizes           Which log2 sketch sizes to use. Multiple are separated
-                                    by commas. Default is '10,12,14,16'
       --track_abundance             Track abundance of each hashed k-mer, could be useful for cancer RNA-seq or ATAC-seq analyses
       --skip_trimming               If provided, skip fastp trimming of reads
+
+     Sketch size options:
+      --sketch_size                 Number of hashes to use for making the sketches.
+                                    Mutually exclusive with --sketch_size_log2
+      --sketch_size_log2            Which log2 sketch sizes to use. Multiple are separated by commas.
+                                    Default is '10,12,14,16'. Mutually exclusive with --sketch_size
+      --sketch_scaled               Observe every 1/N hashes per sample, rather than a "flat rate" of N hashes
+                                    per sample. This way, the number of hashes scales by the sequencing depth.
+                                    Mutually exclusive with --sketch_scaled_log2
+      --sketch_scaled_log2          Same as --sketch_scaled, but instead of specifying the true number of hashes,
+                                    specify the power to take 2 to. Mutually exlusive with --sketch_scaled
+
 
     Split K-mer options:
       --splitKmer                   If provided, use SKA to compute split k-mer sketches instead of
@@ -344,7 +354,61 @@ if (params.splitKmer){
 ksizes = params.ksizes?.toString().tokenize(',')
 molecules = params.molecules?.toString().tokenize(',')
 peptide_molecules = molecules.findAll { it != "dna" }
-log2_sketch_sizes = params.log2_sketch_sizes?.toString().tokenize(',')
+
+//
+have_size = params.sketch_size || params.sketch_size_log2 || params.sketch_scaled || params.sketch_scaled_log2
+if (have_size) {
+  using_size = params.sketch_size || params.sketch_size_log2
+  using_scaled = params.sketch_scaled || params.sketch_scaled_log2
+  if (using_size && using_scaled ) {
+    exit 1, "Cannot specify both sketch scales and sizes! Can only use one of --sketch_size, --sketch_size_log2, --sketch_scaled, --sketch_scaled_log2"
+  }
+  if (using_size) {
+    if (params.sketch_size && params.sketch_size_log2){
+      exit 1, "Cannot specify both log2 and non-log2 sizes! Can only use one of --sketch_size, --sketch_size_log2"
+    }
+    if (params.sketch_size) {
+      sketch_values = params.sketch_size?.toString().tokenize(',')
+    } else {
+      sketch_values = params.sketch_size_log2?.toString().tokenize(',').map { 2 ** it }.collect()
+    }
+  } else {
+    if (params.sketch_scaled && params.sketch_scaled_log2){
+      exit 1, "Cannot specify both log2 and non-log2 sizes! Can only use one of --sketch_size, --sketch_size_log2"
+    }
+    if (params.sketch_scaled) {
+      sketch_values = params.sketch_scaled?.toString().tokenize(',')
+    } else {
+      sketch_values = params.sketch_scaled_log2?.toString().tokenize(',').map { 2 ** it }.collect()
+    }
+  }
+
+} else {
+  log.info "Did not specify a sketch size or scale with any of --sketch_size, --sketch_size_log2, --sketch_scaled, --sketch_scaled_log2! Falling back on sourmash's default of --sketch_scaled 500"
+  sketch_values = ['500']
+  using_scaled = true
+}
+
+def make_sketch_id (molecule, ksize, sketch_value, track_abundance, using_size) {
+  if (using_size) {
+    sketch_value = "num_hashes-${sketch_value}"
+  } else {
+    sketch_value = "scaled-${sketch_value}"
+  }
+
+  sketch_id = "molecule-${molecule}__ksize-${ksize}__${sketch_value}__track_abundance-${track_abundance}"
+  return sketch_id
+}
+
+// Create the --num-hashes or --scaled flag for sourmash
+def make_sketch_value_flag(using_size, sketch_value) {
+  if (using_size) {
+    number_flag = "--num-hashes ${sketch_value}"
+  } else {
+    number_flag = "--scaled ${sketch_value}"
+  }
+  return number_flag
+}
 
 int bloomfilter_tablesize = Math.round(Float.valueOf(params.bloomfilter_tablesize))
 
@@ -357,7 +421,7 @@ if (params.bam){
   // Extract the fasta just once using sourmash
   single_ksize = ksizes[0]
   single_molecule = molecules[0]
-  single_log2_sketch_size = log2_sketch_sizes[0]
+  single_log2_sketch_size = sketch_size_log2[0]
 }
 
 // Tenx parameters
@@ -399,8 +463,15 @@ if(params.read_paths)   summary['Read paths (paired-end)']         = params.read
 summary['Skip trimming?'] = params.skip_trimming
 summary['K-mer sizes']            = params.ksizes
 summary['Molecule']               = params.molecules
-summary['Log2 Sketch Sizes']      = params.log2_sketch_sizes
 summary['Track Abundance']        = params.track_abundance
+// -- Sketch size parameters --
+// Backup if not specified, use --scaled 500 as sourmash defaults
+if (!have_size) summary['Sketch scaled']                                      = "500"
+// Otherwise, use the user-specified ones
+if (have_size && params.sketch_size) summary['Sketch Sizes']                  = params.sketch_size
+if (have_size && params.sketch_size_log2) summary['Sketch Sizes (log2)']      = params.sketch_size_log2
+if (have_size && params.sketch_scaled) summary['Sketch scaled']               = params.sketch_scaled
+if (have_size && params.sketch_scaled_log2) summary['Sketch scaled (log2)']   = params.sketch_scaled_log2
 // 10x parameters
 if(params.tenx_tgz) summary["10x .tgz"] = params.tenx_tgz
 if(params.tenx_tgz) summary["10x SAM tags"] = params.tenx_tags
@@ -611,7 +682,7 @@ if (params.tenx_tgz || params.bam) {
       umis_per_cell = "${is_aligned_channel_id}__n_umi_per_cell.csv"
       good_barcodes = "${is_aligned_channel_id}__barcodes.tsv"
 
-      """  
+      """
         bam2fasta count_umis_percell \\
             --filename ${reads} \\
             --min-umi-per-barcode ${tenx_min_umi_per_cell} \\
@@ -672,7 +743,7 @@ if (params.tenx_tgz || params.bam) {
     """
   }
   // Make per-cell fastqs into a flat channel that matches the read channels of yore
-  // Filtering out fastq.gz files less than 200 bytes (arbitary number) 
+  // Filtering out fastq.gz files less than 200 bytes (arbitary number)
   // ~200 bytes is about the size of a file with a single read or less
   // We can't use .size() > 0 because it's fastq.gz is gzipped content
   per_channel_cell_reads_ch
@@ -742,7 +813,7 @@ if (!params.skip_trimming){
       }
   }
 
-  // Filtering out fastq.gz files less than 200 bytes (arbitary number) 
+  // Filtering out fastq.gz files less than 200 bytes (arbitary number)
   // ~200 bytes is about the size of a file with a single read or less
   // We can't use .size() > 0 because it's fastq.gz is gzipped content
   ch_reads_all_trimmed.filter{ it -> it[1].size() > 200 }
@@ -751,7 +822,7 @@ if (!params.skip_trimming){
   if (params.subsample){
     // Concatenate trimmed reads with fastas for subsequent subsampling
     subsample_reads_ch = ch_reads_trimmed.concat(fastas_ch)
-  } 
+  }
   else {
     // Concatenate trimmed reads with fastas for signature generation
     reads_ch = ch_reads_trimmed.concat(fastas_ch)
@@ -863,33 +934,35 @@ if (params.splitKmer){
     }
 } else {
 process sourmash_compute_sketch_fastx_nucleotide {
-  tag "${sample_id}_${sketch_id}"
+  tag "${sample_id}__${sketch_id}"
   label "mid_memory"
   publishDir "${params.outdir}/sketches_nucleotide/${sketch_id}", mode: 'copy'
 
   input:
   each ksize from ksizes
-  each log2_sketch_size from log2_sketch_sizes
+  each sketch_value from sketch_values
   set sample_id, file(reads) from ch_coding_nucleotides_nonempty
 
   output:
-  set val(sketch_id), val("dna"), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches_all_nucleotide
+  set val(sketch_id), val("dna"), val(ksize), val(sketch_value), file(sig) into sourmash_sketches_all_nucleotide
 
   script:
   // Don't calculate DNA signature if this is protein, to minimize disk,
   // memory and IO requirements in the future
   ksize = ksize
-  sketch_id = "molecule-dna_ksize-${ksize}_log2sketchsize-${log2_sketch_size}_trackabundance-${params.track_abundance}"
+  sketch_id = make_sketch_id("dna", ksize, sketch_value, track_abundance, using_size)
+  sketch_value_flag = make_sketch_value_flag(using_size, sketch_value)
   track_abundance_flag = track_abundance ? '--track-abundance' : ''
   processes = "--processes ${task.cpus}"
+  sig = "${sample_id}__${sketch_id}.sig "
   """
     sourmash compute \\
-      --num-hashes \$((2**$log2_sketch_size)) \\
+      ${sketch_value_flag} \\
       --ksizes $ksize \\
       --dna \\
       $processes \\
       $track_abundance_flag \\
-      --output ${sample_id}_${sketch_id}.sig \\
+      --output ${sig} \\
       $reads
   """
 
@@ -901,35 +974,37 @@ process sourmash_compute_sketch_fastx_nucleotide {
 
 if (params.peptide_fasta){
   process sourmash_compute_sketch_fastx_peptide {
-    tag "${sample_id}_${sketch_id}"
+    tag "${sample_id}__${sketch_id}"
     label "low_memory"
     publishDir "${params.outdir}/sketches_peptide/${sketch_id}", mode: 'copy'
 
     input:
     each ksize from ksizes
     each molecule from peptide_molecules
-    each log2_sketch_size from log2_sketch_sizes
+    each sketch_value from sketch_sizes
     set sample_id, file(reads) from ch_coding_peptides_nonempty
 
     output:
-    set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file("${sample_id}_${sketch_id}.sig") into sourmash_sketches_all_peptide
+    set val(sketch_id), val(molecule), val(ksize), val(sketch_value), file(sig) into sourmash_sketches_all_peptide
 
     script:
-    sketch_id = "molecule-${molecule}_ksize-${ksize}_log2sketchsize-${log2_sketch_size}_trackabundance-${params.track_abundance}"
     molecule = molecule
     ksize = ksize
+    sketch_id = make_sketch_id(molecule, ksize, sketch_value, track_abundance, using_size)
+    sketch_value_flag = make_sketch_value_flag(using_size, sketch_value)
     track_abundance_flag = track_abundance ? '--track-abundance' : ''
     processes = "--processes ${task.cpus}"
+    sig = "${sample_id}__${sketch_id}.sig "
     """
       sourmash compute \\
-        --num-hashes \$((2**$log2_sketch_size)) \\
+        ${sketch_value_flag} \\
         --ksizes $ksize \\
         --input-is-protein \\
         --$molecule \\
         --no-dna \\
         $processes \\
         $track_abundance_flag \\
-        --output ${sample_id}_${sketch_id}.sig \\
+        --output ${sig} \\
         $reads
     """
     }
@@ -965,7 +1040,7 @@ if (params.splitKmer){
     publishDir "${params.outdir}/sourmash/compare", mode: 'copy'
 
     input:
-    set val(sketch_id), val(molecule), val(ksize), val(log2_sketch_size), file ("sourmash/sketches/*.sig") \
+    set val(sketch_id), val(molecule), val(ksize), val(sketch_value), file ("sourmash/sketches/*.sig") \
       from sourmash_sketches.groupTuple(by: [0, 3])
 
     output:
