@@ -11,8 +11,12 @@
 ### Dependency Updates
 
 * Add samtools, screed, tqdm to dependencies
+* Add sortmerna=2.1b # for metatranscriptomics
+* Update sourmash to version 3.2.2
 
-## v1.0 - 6 March 2019
+## v0.1.0 - 6 March 2019
+
+Initial release of nf-core/kmermaid, created with the [nf-core](http://nf-co.re/) template.
 
 * Add option to use Dayhoff encoding for sourmash.
 * Add `bam2fasta` process to kmermaid pipeline and flags involved.
@@ -37,8 +41,3 @@ barcode fastq
 * Update Dockerfile with sourmash compute bam input dependencies
 * Add `track_abundance` feature to keep track of hashed kmer frequency.
 * Add [`czbiohub/bam2fasta`](https://github.com/czbiohub/bam2fasta/) repo to environment.yml
-* Update sourmash to version 3.2.2
-
-## v0.1.0 - 6 March 2019
-
-Initial release of nf-core/kmermaid, created with the [nf-core](http://nf-co.re/) template.

@@ -1,4 +1,4 @@
-FROM nfcore/base:1.7
+FROM nfcore/base:1.9
 LABEL description="Docker image containing all requirements for nf-core/kmermaid pipeline"
 
 # Suggested tags from https://microbadger.com/labels
