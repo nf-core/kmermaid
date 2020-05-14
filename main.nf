@@ -1138,7 +1138,7 @@ process multiqc {
     script:
     rtitle = custom_runName ? "--title \"$custom_runName\"" : ''
     rfilename = custom_runName ? "--filename " + custom_runName.replaceAll('\\W','_').replaceAll('_+','_') + "_multiqc_report" : ''
-    custom_config_file = params.multiqc_config ? "--config $mqc_custom_config" : ''
+    custom_config_file = params.multiqc_config ? "--config $multiqc_config" : ''
     """
     multiqc . -f $rtitle $rfilename $custom_config_file \\
         -m custom_content \\
