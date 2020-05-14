@@ -874,7 +874,8 @@ if (!params.remove_ribo_rna) {
         for (i=0; i<db_fasta.size(); i++) { Refs+= ":${db_fasta[i]},${db_name[i]}" }
         Refs = Refs.substring(1)
 
-        if (params.single_end) {
+        // One set of reads --> single end
+        if (reads[1] == null) {
             """
             gzip -d --force < ${reads} > all-reads.fastq
             sortmerna --ref ${Refs} \
