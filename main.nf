@@ -341,7 +341,7 @@ if (params.splitKmer){
 // Get rRNA databases
 // Default is set to bundled DB list in `assets/rrna-db-defaults.txt`
 
-rRNA_database = file(params.rRNA_database_manifest)
+rRNA_database = file(params.rrna_database_manifest)
 if (rRNA_database.isEmpty()) {exit 1, "File ${rRNA_database.getName()} is empty!"}
 Channel
     .from( rRNA_database.readLines() )
@@ -824,7 +824,7 @@ if (params.subsample) {
 /*
  * STEP 2+ - SortMeRNA - remove rRNA sequences on request
  */
-if (!params.remove_ribo_rnaRiboRNA) {
+if (!params.remove_ribo_rna) {
     ch_reads_for_ribosomal_removal
         .into { reads_ch }
     sortmerna_logs = Channel.empty()
@@ -1124,7 +1124,6 @@ process multiqc {
 
     input:
     file multiqc_config from ch_multiqc_config
-    file (mqc_custom_config) from ch_multiqc_custom_config.collect().ifEmpty([])
     file ('fastp/*') from ch_fastp_results.collect().ifEmpty([])
     file ('sortmerna/*') from sortmerna_logs.collect().ifEmpty([])
     file ('software_versions/*') from ch_software_versions_yaml.collect()
