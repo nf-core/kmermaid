@@ -7,6 +7,7 @@
 ### Pipeline enhancements & Fixes
 
 * Add option to use Dayhoff encoding for sourmash
+* Add option to remove ribosomal RNA using sortMeRNA ([#74](https://github.com/nf-core/kmermaid/issues/74))
 
 ### Dependency Updates
 
