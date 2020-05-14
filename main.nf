@@ -962,6 +962,7 @@ if ( do_nucleotide_stuff ) {
         --num-hashes \$((2**$log2_sketch_size)) \\
         --ksizes $ksize \\
         --dna \\
+        --name ${sample_id} \\
         $processes \\
         $track_abundance_flag \\
         --output ${sample_id}_${sketch_id}.sig \\
@@ -1005,6 +1006,7 @@ if (protein_input || params.reference_proteome_fasta){
         --ksizes $ksize \\
         --input-is-protein \\
         --$molecule \\
+        --name ${sample_id} \\
         --no-dna \\
         $processes \\
         $track_abundance_flag \\
