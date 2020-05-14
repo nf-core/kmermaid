@@ -1121,7 +1121,7 @@ process multiqc {
     publishDir "${params.outdir}/MultiQC", mode: "${params.publish_dir_mode}"
 
     when:
-    !params.skipMultiQC
+    !params.skip_multiqc
 
     input:
     file multiqc_config from ch_multiqc_config
