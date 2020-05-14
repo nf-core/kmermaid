@@ -824,7 +824,7 @@ if (params.subsample) {
 /*
  * STEP 2+ - SortMeRNA - remove rRNA sequences on request
  */
-if (!params.removeRiboRNA) {
+if (!params.remove_ribo_rnaRiboRNA) {
     ch_reads_for_ribosomal_removal
         .into { reads_ch }
     sortmerna_logs = Channel.empty()
@@ -853,7 +853,7 @@ if (!params.removeRiboRNA) {
         publishDir "${params.outdir}/SortMeRNA", mode: "${params.publish_dir_mode}",
             saveAs: {filename ->
                 if (filename.indexOf("_rRNA_report.txt") > 0) "logs/$filename"
-                else if (params.saveNonRiboRNAReads) "reads/$filename"
+                else if (params.save_non_rrna_reads) "reads/$filename"
                 else null
             }
 
