@@ -172,6 +172,7 @@ tenx_tgz_ch = Channel.empty()
 
 // Boolean for if an nucleotide input exists anywhere
 have_nucleotide_input = params.read_paths || params.sra || params.csv_pairs || params.csv_singles || params.read_pairs || params.read_singles || params.fastas || params.bam || params.tenx_tgz
+println "have_nucleotide_input: ${have_nucleotide_input}"
 
 // Parameters for testing
 if (params.read_paths) {
@@ -222,6 +223,7 @@ if (params.read_paths) {
      fastas_ch = Channel
        .fromPath(params.fastas?.toString()?.tokenize(';'))
        .map{ f -> tuple(f.baseName, tuple(file(f))) }
+       .dump ( tag: 'fastas_ch' )
        .ifEmpty { exit 1, "params.fastas (${params.fastas}) was empty - no input files supplied" }
    }
 
@@ -313,6 +315,7 @@ if (params.subsample) {
     }
   }
 } else {
+  println 'No subsample'
   if (!(params.tenx_tgz || params.bam)) {
     if(params.skip_trimming){
       sra_ch.concat(
@@ -325,12 +328,14 @@ if (params.subsample) {
         sra_ch.concat(
             csv_pairs_ch, csv_singles_ch, read_pairs_ch,
             read_singles_ch, read_paths_ch)
-          .set{ ch_read_files_trimming_unchecked }
+          .dump ( tag: 'ch_read_files_trimming_unchecked__with_fastas' )
+          .into { ch_read_files_trimming_to_trim; ch_read_files_trimming_to_check_size }
       } else {
         // No fasta files - combine everything and error out
         sra_ch.concat(
             csv_pairs_ch, csv_singles_ch, read_pairs_ch,
             read_singles_ch, read_paths_ch)
+          .dump ( tag: 'ch_read_files_trimming_unchecked__no_fastas' )
           .set{ ch_read_files_trimming_unchecked }
       }
     }
@@ -338,7 +343,8 @@ if (params.subsample) {
 //   Do nothing - can't combine the fastq files and bam files (yet)
       sra_ch.concat(
           csv_pairs_ch, csv_singles_ch, read_pairs_ch,
-          read_singles_ch, read_paths_ch)
+          read_singles_ch, read_paths_ch, fastas_ch)
+        .dump ( tag: 'ch_non_bam_reads_unchecked__concatenated' )
         .set{ ch_non_bam_reads_unchecked }
     }
 }
@@ -359,12 +365,12 @@ if (!protein_input) {
     ch_non_bam_reads_unchecked
       // No need to check if empty since there is bam input
       .set { ch_non_bam_reads }
-  } else {
-    ch_read_files_trimming_unchecked
-      .ifEmpty{ exit 1, "No reads provided! Check read input files" }
-      .into { ch_read_files_trimming_to_trim; ch_read_files_trimming_to_check_size }
+  } else if (!params.fastas) {
+      // if no fastas, then definitely trimming the remaining reads
+      ch_read_files_trimming_unchecked
+        .ifEmpty{ exit 1, "No reads provided! Check read input files" }
+        .into { ch_read_files_trimming_to_trim; ch_read_files_trimming_to_check_size }
   }
-
 } else {
   // Since there exists protein input, don't check if these are empty
   if (params.subsample) {
@@ -375,7 +381,7 @@ if (!protein_input) {
     reads_ch_unchecked
       .set { reads_ch }
     ch_read_files_trimming_to_check_size = Channel.empty()
-  } else {
+  } else if (!params.fastas) {
     ch_read_files_trimming_unchecked
       .into { ch_read_files_trimming_to_trim; ch_read_files_trimming_to_check_size }
   }
@@ -779,7 +785,7 @@ println "n_files_to_trim: ${n_files_to_trim}"
 
 do_nucleotide_stuff = params.reference_proteome_fasta || params.subsample || have_nucleotide_input
 
-if ( do_nucleotide_stuff ) {
+if ( have_nucleotide_input ) {
   if (!params.skip_trimming){
     process fastp {
         label 'process_low'
@@ -908,7 +914,7 @@ if ( do_nucleotide_stuff ) {
     // it[1] = sequence fasta file
     ch_translatable_nucleotide_seqs_nonempty = ch_translatable_nucleotide_seqs.filter{ it[1].size() > 0 }
     ch_translated_protein_seqs.filter{ it[1].size() > 0 }
-      .mix { ch_protein_fastas }
+      .mix ( ch_protein_fastas )
       .set { ch_translated_protein_seqs_nonempty }
 
   } else {
