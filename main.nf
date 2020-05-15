@@ -356,8 +356,8 @@ molecules = params.molecules?.toString().tokenize(',')
 peptide_molecules = molecules.findAll { it != "dna" }
 
 
-def make_sketch_id (molecule, ksize, sketch_value, track_abundance, using_size) {
-  if (using_size) {
+def make_sketch_id (molecule, ksize, sketch_value, track_abundance, sketch_style) {
+  if (sketch_style == 'size') {
     sketch_value = "num_hashes-${sketch_value}"
   } else {
     sketch_value = "scaled-${sketch_value}"
@@ -441,12 +441,12 @@ summary['Molecule']               = params.molecules
 summary['Track Abundance']        = params.track_abundance
 // -- Sketch size parameters --
 // Backup if not specified, use --scaled 500 as sourmash defaults
-if (!have_size) summary['Sketch scaled']                                      = "500"
+// if (!have_size) summary['Sketch scaled']                                      = "500"
 // Otherwise, use the user-specified ones
-if (have_size && params.sketch_size) summary['Sketch Sizes']                  = params.sketch_size
-if (have_size && params.sketch_size_log2) summary['Sketch Sizes (log2)']      = params.sketch_size_log2
-if (have_size && params.sketch_scaled) summary['Sketch scaled']               = params.sketch_scaled
-if (have_size && params.sketch_scaled_log2) summary['Sketch scaled (log2)']   = params.sketch_scaled_log2
+if (params.sketch_size) summary['Sketch Sizes']                  = params.sketch_size
+if (params.sketch_size_log2) summary['Sketch Sizes (log2)']      = params.sketch_size_log2
+if (params.sketch_scaled) summary['Sketch scaled']               = params.sketch_scaled
+if (params.sketch_scaled_log2) summary['Sketch scaled (log2)']   = params.sketch_scaled_log2
 // 10x parameters
 if(params.tenx_tgz) summary["10x .tgz"] = params.tenx_tgz
 if(params.tenx_tgz) summary["10x SAM tags"] = params.tenx_tags
@@ -518,28 +518,34 @@ process validate_sketch_values {
     val sketch_scaled_log2
 
     output:
-    file 'sketch_values.txt' into ch_sketch_values
+    file sketch_values into ch_sketch_values
     file sketch_style into ch_sketch_style
 
     script:
+    sketch_style = "sketch_style.txt"
+    sketch_values = 'sketch_values.txt'
     """
     validate_sketch_values.py \\
       --sketch_size ${sketch_size} \\
       --sketch_size_log2 ${sketch_size_log2} \\
       --sketch_scaled ${sketch_scaled} \\
       --sketch_scaled_log2 ${sketch_scaled_log2} \\
-      --output sketch_values.txt \\
+      --output ${sketch_values} \\
       --sketch_style ${sketch_style}
     """
 }
 
+// Parse sketch style into value
 ch_sketch_style
   .splitText()
-  .collect()
   .dump ( tag: 'ch_sketch_style' )
-  .set { sketch_style_parsed }
-println "sketch_style_parsed: ${sketch_style_parsed}"
-
+  .map { it -> it.replaceAll('\\n', '' ) }
+  // .first()
+  .dump ( tag: 'sketch_style_parsed' )
+  .into { sketch_style_for_nucleotides; sketch_style_for_proteins }
+// sketch_style = sketch_styles[0]
+// println "sketch_style_parsed: ${sketch_style_parsed}"
+// println "sketch_style: ${sketch_style}"
 
 // Parse file into values
 ch_sketch_values
@@ -547,7 +553,7 @@ ch_sketch_values
   .map { it -> it.replaceAll('\\n', '')}
   .dump ( tag : 'sketch_values_parsed' )
   .collect()
-  .dump ( tag : ',' )
+  .dump ( tag : 'sketch_values_parsed__collected' )
   .set { sketch_values }
 
 
@@ -963,7 +969,7 @@ process sourmash_compute_sketch_fastx_nucleotide {
   publishDir "${params.outdir}/sketches_nucleotide/${sketch_id}", mode: 'copy'
 
   input:
-  val sketch_style
+  val sketch_style from sketch_style_for_nucleotides.collect()
   each ksize from ksizes
   each sketch_value from sketch_values
   set sample_id, file(reads) from ch_coding_nucleotides_nonempty
@@ -972,11 +978,12 @@ process sourmash_compute_sketch_fastx_nucleotide {
   set val(sketch_id), val("dna"), val(ksize), val(sketch_value), file(sig) into sourmash_sketches_all_nucleotide
 
   script:
+  sketch_style = sketch_style[0]
   // Don't calculate DNA signature if this is protein, to minimize disk,
   // memory and IO requirements in the future
   ksize = ksize
-  sketch_id = make_sketch_id("dna", ksize, sketch_value, track_abundance, using_size)
-  sketch_value_flag = make_sketch_value_flag(sketch_style_parsed, sketch_value)
+  sketch_id = make_sketch_id("dna", ksize, sketch_value, track_abundance, sketch_style)
+  sketch_value_flag = make_sketch_value_flag(sketch_style, sketch_value)
   track_abundance_flag = track_abundance ? '--track-abundance' : ''
   processes = "--processes ${task.cpus}"
   sig = "${sample_id}__${sketch_id}.sig"
@@ -1004,7 +1011,7 @@ if (params.peptide_fasta){
     publishDir "${params.outdir}/sketches_peptide/${sketch_id}", mode: 'copy'
 
     input:
-    val sketch_style
+    val sketch_style from sketch_style_for_proteins.collect()
     each ksize from ksizes
     each molecule from peptide_molecules
     each sketch_value from sketch_values
@@ -1014,10 +1021,11 @@ if (params.peptide_fasta){
     set val(sketch_id), val(molecule), val(ksize), val(sketch_value), file(sig) into sourmash_sketches_all_peptide
 
     script:
+    sketch_style = sketch_style[0]
     molecule = molecule
     ksize = ksize
-    sketch_id = make_sketch_id(molecule, ksize, sketch_value, track_abundance, using_size)
-    sketch_value_flag = make_sketch_value_flag(using_size, sketch_value)
+    sketch_id = make_sketch_id(molecule, ksize, sketch_value, track_abundance, sketch_style)
+    sketch_value_flag = make_sketch_value_flag(sketch_style, sketch_value)
     track_abundance_flag = track_abundance ? '--track-abundance' : ''
     processes = "--processes ${task.cpus}"
     sig = "${sample_id}__${sketch_id}.sig"
