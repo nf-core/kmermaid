@@ -240,7 +240,7 @@ By default, the k-merization and sketch creation program is [sourmash](https://s
 
 If `--split_kmer` is specified, then the [Split K-mer Analysis (SKA)](https://github.com/simonrharris/SKA) program ([publication](https://www.biorxiv.org/content/10.1101/453142v1)) is used to obtain k-mers from the data. This allows for a SNP to be present in the middle of a k-mer which can be advantageous for metagenomic analyses or with single-cell ATAC-seq data.
 
-#### What does `--ksize` mean when `--split_kmer` is set
+#### What does `--ksize` mean when `--split_kmer` is set?
 
 The meaning of `ksize` is different with split k-mers, so now the value specified by `--ksize` is just under half of the total sampled sequence size, where the middle base can be any base (`N`) `[---ksize---]N[---ksize---]`. When `--split_kmer` is set, then the default k-mer sizes are 9 and 15, for a total sequence unit size of `2*15+1 = 31` and `2*9+1 = 19` which is as if you specified on the command line `--split_kmer --ksize 9,15`. Additionally k-mer sizes with `--split_kmer` must be divisible by 3 (yes, this is inconvenient) and between 3 and 60 (inclusive). So the "total" `2*k+1` sizes can be:
 
