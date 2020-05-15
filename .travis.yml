@@ -13,6 +13,8 @@ matrix:
     jdk: openjdk8
   - name: "Latest Nextflow version, regular test suite"
     env: NXF_VER='' SUITE=test FLAGS=
+  - name: "Test nextflow kmermaid, with --skip_trimming"
+    env: NXF_VER='' SUITE=test FLAGS='--skip_trimming'
   - name: "Test nextflow kmermaid, with --track_abundance"
     env: NXF_VER='' SUITE=test FLAGS='--track_abundance'
   - name: "Test nextflow kmermaid, with translate on fastas"
