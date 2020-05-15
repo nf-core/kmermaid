@@ -170,8 +170,12 @@ fastas_ch = Channel.empty()
 // 10X Genomics .tgz file containing possorted_genome_bam file
 tenx_tgz_ch = Channel.empty()
 
+// Boolean for if an nucleotide input
+have_nucleotide_input = false
+
 // Parameters for testing
 if (params.read_paths) {
+  have_nucleotide_input = true
      read_paths_ch = Channel
         .from(params.read_paths)
         .map { row -> if (row[1].size() == 2) [ row[0], [file(row[1][0]), file(row[1][1])]]
@@ -180,12 +184,14 @@ if (params.read_paths) {
  } else {
    // Provided SRA ids
    if (params.sra){
+     have_nucleotide_input = true
      sra_ch = Channel
          .fromSRA( params.sra?.toString()?.tokenize(';') )
          .ifEmpty { exit 1, "params.sra ${params.sra} was not found - no input files supplied" }
    }
    // Provided a samples.csv file of read pairs
    if (params.csv_pairs){
+     have_nucleotide_input = true
      csv_pairs_ch = Channel
       .fromPath(params.csv_pairs)
       .splitCsv(header:true)
@@ -195,6 +201,7 @@ if (params.read_paths) {
 
    // Provided a samples.csv file of single-ended reads
    if (params.csv_singles){
+     have_nucleotide_input = true
      csv_singles_ch = Channel
       .fromPath(params.csv_singles)
       .splitCsv(header:true)
@@ -204,18 +211,21 @@ if (params.read_paths) {
 
    // Provided fastq gz paired-end reads
    if (params.read_pairs){
+     have_nucleotide_input = true
      read_pairs_ch = Channel
        .fromFilePairs(params.read_pairs?.toString()?.tokenize(';'), size: 2)
        .ifEmpty { exit 1, "params.read_pairs (${params.read_pairs}) was empty - no input files supplied" }
    }
    // Provided fastq gz single-end reads
    if (params.read_singles){
+     have_nucleotide_input = true
      read_singles_ch = Channel
        .fromFilePairs(params.read_singles?.toString()?.tokenize(';'), size: 1)
        .ifEmpty { exit 1, "params.read_singles (${params.read_singles}) was empty - no input files supplied" }
   }
    // Provided vanilla fastas
    if (params.fastas){
+     have_nucleotide_input = true
      fastas_ch = Channel
        .fromPath(params.fastas?.toString()?.tokenize(';'))
        .map{ f -> tuple(f.baseName, tuple(file(f))) }
@@ -223,6 +233,7 @@ if (params.read_paths) {
    }
 
   if (params.bam) {
+    have_nucleotide_input = true
   Channel.fromPath(params.bam, checkIfExists: true)
         .map{ f -> tuple(f.baseName, tuple(file(f))) }
        .ifEmpty { exit 1, "Bam file not found: ${params.bam}" }
@@ -253,6 +264,7 @@ if (params.read_paths) {
   }
 
   if (params.tenx_tgz) {
+    have_nucleotide_input = true
     Channel.fromPath(params.tenx_tgz, checkIfExists: true)
        .dump(tag: 'tenx_tgz_before_mri_filter')
        .filter{ ~/.+[^mri]\.tgz/ }
@@ -350,6 +362,7 @@ if (!protein_input) {
     reads_ch_unchecked
       .ifEmpty{ exit 1, "No reads provided! Check read input files" }
       .set { reads_ch }
+    ch_read_files_trimming_to_check_size = Channel.empty()
   } else {
     ch_read_files_trimming_unchecked
       .ifEmpty{ exit 1, "No reads provided! Check read input files" }
@@ -369,6 +382,7 @@ if (!protein_input) {
   if (params.skip_trimming) {
     reads_ch_unchecked
       .set { reads_ch }
+    ch_read_files_trimming_to_check_size = Channel.empty()
   } else {
     ch_read_files_trimming_unchecked
       .into { ch_read_files_trimming_to_trim; ch_read_files_trimming_to_check_size }
@@ -753,6 +767,7 @@ if (params.tenx_tgz || params.bam) {
 
   if (params.skip_trimming) {
     reads_ch = ch_non_bam_reads.concat(per_cell_fastqs_ch)
+    ch_read_files_trimming_to_check_size = Channel.empty()
   } else {
     ch_non_bam_reads
       .concat(per_cell_fastqs_ch)
@@ -767,7 +782,8 @@ if (!params.skip_trimming && files_to_trim) {
 } else {
   n_files_to_trim = 0
 }
-do_nucleotide_stuff = n_files_to_trim || params.reference_proteome_fasta || params.subsample
+
+do_nucleotide_stuff = n_files_to_trim || params.reference_proteome_fasta || params.subsample || have_nucleotide_input
 
 if ( do_nucleotide_stuff ) {
   if (!params.skip_trimming && n_files_to_trim > 0){
