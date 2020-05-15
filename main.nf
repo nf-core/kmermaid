@@ -343,21 +343,21 @@ protein_input = params.protein_fastas || params.protein_fasta_paths
 if (!protein_input) {
   if (params.subsample) {
     subsample_reads_ch_unchecked
-      .ifEmpty{  exit 1, "No reads provided! Check read input files in subsample_reads_ch_unchecked"}
+      .ifEmpty{  exit 1, "No reads provided! Check read input files" }
       .set { subsample_reads_ch }
   }
   if (params.skip_trimming) {
     reads_ch_unchecked
-      .ifEmpty{ exit 1, "No reads provided! Check read input files in reads_ch_unchecked"}
+      .ifEmpty{ exit 1, "No reads provided! Check read input files" }
       .set { reads_ch }
   } else {
     ch_read_files_trimming_unchecked
-      .ifEmpty{ exit 1, "No reads provided! Check read input files in ch_read_files_trimming_unchecked"}
+      .ifEmpty{ exit 1, "No reads provided! Check read input files" }
       .into { ch_read_files_trimming_to_trim; ch_read_files_trimming_to_check_size }
   }
   if (params.bam) {
     ch_non_bam_reads_unchecked
-     .ifEmpty{ exit 1, "No reads provided! Check read input files in ch_non_bam_reads_unchecked")
+     .ifEmpty{ exit 1, "No reads provided! Check read input files" }
       .set { ch_non_bam_reads }
   }
 } else {
