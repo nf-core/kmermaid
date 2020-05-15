@@ -24,6 +24,8 @@ matrix:
   - name: "Latest Nextflow version, split k-mer test suite"
     env: NXF_VER='' SUITE=test_ska FLAGS=
   - name: "Latest Nextflow version, split k-mer test suite"
+    env: NXF_VER='' SUITE=test_ska FLAGS=--skip_compare
+  - name: "Latest Nextflow version, split k-mer test suite"
     env: NXF_VER='' SUITE=test_ska FLAGS=--skip_trimming
   - name: "Latest Nextflow version, split k-mer test suite, test subsampling"
     env: NXF_VER='' SUITE=test_ska FLAGS='--subsample 10'
