@@ -57,6 +57,13 @@ def get_sketch_values(values, values_log2):
 def value_or_bool(value):
     if value == 'false':
         return False
+    if value == 'true':
+        logger.exception("Must set a value for the --sketch_size, "
+                        "--sketch_size_log2, --sketch_scaled, "
+                        "--sketch_scaled_log2 options! Cannot simply set the "
+                        "flag. E.g. '--sketch_size 5' is valid but "
+                        "'--sketch_size' on its own is not")
+        os.exit(1)
     else:
         return value
 
