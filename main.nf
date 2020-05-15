@@ -363,16 +363,16 @@ if (!protein_input) {
       .ifEmpty{ exit 1, "No reads provided! Check read input files" }
       .set { reads_ch }
     ch_read_files_trimming_to_check_size = Channel.empty()
+  } else if (params.bam || params.tenx_tgz) {
+    ch_non_bam_reads_unchecked
+      // No need to check if empty since there is bam input
+      .set { ch_non_bam_reads }
   } else {
     ch_read_files_trimming_unchecked
       .ifEmpty{ exit 1, "No reads provided! Check read input files" }
       .into { ch_read_files_trimming_to_trim; ch_read_files_trimming_to_check_size }
   }
-  if (params.bam) {
-    ch_non_bam_reads_unchecked
-     .ifEmpty{ exit 1, "No reads provided! Check read input files" }
-      .set { ch_non_bam_reads }
-  }
+
 } else {
   // Since there exists protein input, don't check if these are empty
   if (params.subsample) {
@@ -770,7 +770,8 @@ if (params.tenx_tgz || params.bam) {
     ch_read_files_trimming_to_check_size = Channel.empty()
   } else {
     ch_non_bam_reads
-      .concat(per_cell_fastqs_ch)
+      .mix ( per_cell_fastqs_ch )
+      .dump ( tag: 'ch_non_bam_reads__per_cell_fastqs_ch' )
       .into{ ch_read_files_trimming_to_trim; ch_read_files_trimming_to_check_size }
   }
 }
