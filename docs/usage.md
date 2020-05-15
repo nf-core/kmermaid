@@ -257,7 +257,7 @@ The meaning of `ksize` is different with split k-mers, so now the value specifie
 The `subsample` command is often necessary because the `ska` tool uses ALL the reads rather than a MinHash subsampling of them. If your input files are rather big, then the `ska` sketching command (`ska fastq`) runs out of memory, or it takes so long that it's untenable. The `--subsample` command specifies the number of reads to be used. When e.g. `--subsample 1000` is set, then 1000 reads (or read pairs) are randomly subsampled from the data using [seqtk](https://github.com/lh3/seqtk).
 
 
-#### Which `--molecules` are valid when `--split_kmer` is set
+#### Which `--molecules` are valid when `--split_kmer` is set?
 
 Currently, `--split_kmer` only works with DNA sequence and not protein sequence, and thus will fail if `protein` or `dayhoff` is specified in `--molecules`.
 
