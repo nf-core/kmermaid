@@ -355,17 +355,6 @@ ksizes = params.ksizes?.toString().tokenize(',')
 molecules = params.molecules?.toString().tokenize(',')
 peptide_molecules = molecules.findAll { it != "dna" }
 
-have_size = params.sketch_size || params.sketch_size_log2 || params.sketch_scaled || params.sketch_scaled_log2
-if (have_size) {
-  using_size = params.sketch_size || params.sketch_size_log2
-  using_scaled = params.sketch_scaled || params.sketch_scaled_log2
-} else {
-  log.info "Did not specify a sketch size or scale with any of --sketch_size, --sketch_size_log2, --sketch_scaled, --sketch_scaled_log2! Falling back on sourmash's default of --sketch_scaled 500"
-  sketch_values = ['500']
-  using_scaled = true
-}
-
-
 
 def make_sketch_id (molecule, ksize, sketch_value, track_abundance, using_size) {
   if (using_size) {
@@ -379,11 +368,13 @@ def make_sketch_id (molecule, ksize, sketch_value, track_abundance, using_size) 
 }
 
 // Create the --num-hashes or --scaled flag for sourmash
-def make_sketch_value_flag(using_size, sketch_value) {
-  if (using_size) {
+def make_sketch_value_flag(sketch_style, sketch_value) {
+  if (sketch_style == "size") {
     number_flag = "--num-hashes ${sketch_value}"
-  } else {
+  } else if (sketch_style == "scaled" ) {
     number_flag = "--scaled ${sketch_value}"
+  } else {
+    exit 1, "${sketch_style} is not a valid sketch counting style! Only 'scaled' and 'size' are valid"
   }
   return number_flag
 }
@@ -394,6 +385,12 @@ peptide_ksize = params.translate_peptide_ksize
 peptide_molecule = params.translate_peptide_molecule
 jaccard_threshold = params.translate_jaccard_threshold
 track_abundance = params.track_abundance
+
+// Parse sketch value and style parameters
+sketch_size = params.sketch_size
+sketch_size_log2 = params.sketch_size_log2
+sketch_scaled = params.sketch_scaled
+sketch_scaled_log2 = params.sketch_scaled_log2
 
 if (params.bam){
   // Extract the fasta just once using sourmash
@@ -514,21 +511,35 @@ process validate_sketch_values {
         if (filename.indexOf(".txt") > 0) filename
         else null
     }
+    input:
+    val sketch_size
+    val sketch_size_log2
+    val sketch_scaled
+    val sketch_scaled_log2
 
     output:
     file 'sketch_values.txt' into ch_sketch_values
+    file sketch_style into ch_sketch_style
 
     script:
     """
     validate_sketch_values.py \\
-      --sketch_size ${params.sketch_size} \\
-      --sketch_size_log2 ${params.sketch_size_log2} \\
-      --sketch_scaled ${params.sketch_scaled} \\
-      --sketch_scaled_log2 ${params.sketch_scaled_log2} \\
-      --output sketch_values.txt
-
+      --sketch_size ${sketch_size} \\
+      --sketch_size_log2 ${sketch_size_log2} \\
+      --sketch_scaled ${sketch_scaled} \\
+      --sketch_scaled_log2 ${sketch_scaled_log2} \\
+      --output sketch_values.txt \\
+      --sketch_style ${sketch_style}
     """
 }
+
+ch_sketch_style
+  .splitText()
+  .collect()
+  .dump ( tag: 'ch_sketch_style' )
+  .set { sketch_style_parsed }
+println "sketch_style_parsed: ${sketch_style_parsed}"
+
 
 // Parse file into values
 ch_sketch_values
@@ -952,6 +963,7 @@ process sourmash_compute_sketch_fastx_nucleotide {
   publishDir "${params.outdir}/sketches_nucleotide/${sketch_id}", mode: 'copy'
 
   input:
+  val sketch_style
   each ksize from ksizes
   each sketch_value from sketch_values
   set sample_id, file(reads) from ch_coding_nucleotides_nonempty
@@ -964,7 +976,7 @@ process sourmash_compute_sketch_fastx_nucleotide {
   // memory and IO requirements in the future
   ksize = ksize
   sketch_id = make_sketch_id("dna", ksize, sketch_value, track_abundance, using_size)
-  sketch_value_flag = make_sketch_value_flag(using_size, sketch_value)
+  sketch_value_flag = make_sketch_value_flag(sketch_style_parsed, sketch_value)
   track_abundance_flag = track_abundance ? '--track-abundance' : ''
   processes = "--processes ${task.cpus}"
   sig = "${sample_id}__${sketch_id}.sig"
@@ -992,9 +1004,10 @@ if (params.peptide_fasta){
     publishDir "${params.outdir}/sketches_peptide/${sketch_id}", mode: 'copy'
 
     input:
+    val sketch_style
     each ksize from ksizes
     each molecule from peptide_molecules
-    each sketch_value from sketch_sizes
+    each sketch_value from sketch_values
     set sample_id, file(reads) from ch_coding_peptides_nonempty
 
     output:
