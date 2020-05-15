@@ -170,7 +170,7 @@ fastas_ch = Channel.empty()
 // 10X Genomics .tgz file containing possorted_genome_bam file
 tenx_tgz_ch = Channel.empty()
 
-// Boolean for if an nucleotide input
+// Boolean for if an nucleotide input exists anywhere
 have_nucleotide_input = params.read_paths || params.sra || params.csv_pairs || params.csv_singles || params.read_pairs || params.read_singles || params.fastas || params.bam || params.tenx_tgz
 
 // Parameters for testing
