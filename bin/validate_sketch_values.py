@@ -68,7 +68,8 @@ def value_or_bool(value):
         return value
 
 
-def main(sketch_size, sketch_size_log2, sketch_scaled, sketch_scaled_log2, out):
+def main(sketch_size, sketch_size_log2, sketch_scaled, sketch_scaled_log2, out,
+         sketch_style):
     sketch_size = value_or_bool(sketch_size)
     sketch_size_log2 = value_or_bool(sketch_size_log2)
     sketch_scaled = value_or_bool(sketch_scaled)
@@ -89,12 +90,15 @@ def main(sketch_size, sketch_size_log2, sketch_scaled, sketch_scaled_log2, out):
             logger.exception("Cannot specify both --sketch_size and --sketch_size_log2! Exiting.")
             os.exit(1)
         sketch_values = get_sketch_values(sketch_size, sketch_size_log2)
-
+        with open(sketch_style, 'w') as f:
+            f.write('size')
     elif using_scaled:
         if sketch_scaled and sketch_scaled_log2:
             logger.exception("Cannot specify both --sketch_scaled and --sketch_scaled_log2! Exiting.")
             os.exit(1)
         sketch_values = get_sketch_values(sketch_scaled, sketch_scaled_log2)
+        with open(sketch_style, 'w') as f:
+            f.write('scaled')
 
     else:
         logger.info("Did not specify a sketch size or scale with any of "
@@ -114,6 +118,8 @@ if __name__ == "__main__":
     parser.add_argument("--sketch_scaled_log2", type=str, help="Fraction of total observed hashes to observe, log2")
     parser.add_argument("-o", "--output", dest='output', default='sketch_values.txt',
         type=str, help="file with output")
+    parser.add_argument("--sketch_style", default='sketch_style.txt', type=str, help="file indicating 'size' or 'scaled'")
 
     args = parser.parse_args()
-    main(args.sketch_size, args.sketch_size_log2, args.sketch_scaled, args.sketch_scaled_log2, args.output)
+    main(args.sketch_size, args.sketch_size_log2, args.sketch_scaled,
+         args.sketch_scaled_log2, args.output, args.sketch_style)
