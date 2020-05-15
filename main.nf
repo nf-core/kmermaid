@@ -349,7 +349,7 @@ if (params.subsample) {
 
 protein_input = params.protein_fastas || params.protein_fasta_paths
 if (!protein_input) {
-  if (params.subsample) {
+  if (params.subsample && params.skip_trimming ) {
     subsample_reads_ch_unchecked
       .ifEmpty{  exit 1, "No reads provided! Check read input files" }
       .set { subsample_reads_ch }
