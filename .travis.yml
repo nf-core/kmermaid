@@ -14,15 +14,15 @@ matrix:
   - name: "Latest Nextflow version, regular test suite"
     env: NXF_VER='' SUITE=test FLAGS=
   - name: "Test empty --sketch_size"
-    env: NXF_VER='' SUITE=test FLAGS=--sketch_size false
+    env: NXF_VER='' SUITE=test FLAGS='--sketch_size false'
   - name: "Test --sketch_size"
-    env: NXF_VER='' SUITE=test FLAGS=--sketch_size 2,4
+    env: NXF_VER='' SUITE=test FLAGS='--sketch_size 2,4'
   - name: "Test --sketch_size_log2"
-    env: NXF_VER='' SUITE=test FLAGS=--sketch_size_log2 2,4
+    env: NXF_VER='' SUITE=test FLAGS='--sketch_size_log2 2,4'
   - name: "Test --sketch_scaled"
-    env: NXF_VER='' SUITE=test FLAGS=--sketch_scaled 2,4
+    env: NXF_VER='' SUITE=test FLAGS='--sketch_scaled 2,4'
   - name: "Test --sketch_scaled_log2"
-    env: NXF_VER='' SUITE=test FLAGS=--sketch_scaled_log2 2,4
+    env: NXF_VER='' SUITE=test FLAGS='--sketch_scaled_log2 2,4'
   - name: "Test nextflow kmermaid, with --track_abundance"
     env: NXF_VER='' SUITE=test FLAGS='--track_abundance'
   - name: "Test nextflow kmermaid, with translate on fastas"
