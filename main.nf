@@ -760,8 +760,10 @@ if (params.tenx_tgz || params.bam) {
   }
 }
 
-if (!params.skip_trimming) {
-  n_files_to_trim = ch_read_files_trimming_to_check_size.toList().value.size()
+files_to_trim = ch_read_files_trimming_to_check_size.toList().value
+
+if (!params.skip_trimming && files_to_trim) {
+  n_files_to_trim = files_to_trim.size()
 } else {
   n_files_to_trim = 0
 }
