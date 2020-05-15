@@ -171,11 +171,10 @@ fastas_ch = Channel.empty()
 tenx_tgz_ch = Channel.empty()
 
 // Boolean for if an nucleotide input
-have_nucleotide_input = false
+have_nucleotide_input = params.read_paths || params.sra || params.csv_pairs || params.csv_singles || params.read_pairs || params.read_singles || params.fastas || params.bam || params.tenx_tgz
 
 // Parameters for testing
 if (params.read_paths) {
-  have_nucleotide_input = true
      read_paths_ch = Channel
         .from(params.read_paths)
         .map { row -> if (row[1].size() == 2) [ row[0], [file(row[1][0]), file(row[1][1])]]
@@ -184,14 +183,12 @@ if (params.read_paths) {
  } else {
    // Provided SRA ids
    if (params.sra){
-     have_nucleotide_input = true
      sra_ch = Channel
          .fromSRA( params.sra?.toString()?.tokenize(';') )
          .ifEmpty { exit 1, "params.sra ${params.sra} was not found - no input files supplied" }
    }
    // Provided a samples.csv file of read pairs
    if (params.csv_pairs){
-     have_nucleotide_input = true
      csv_pairs_ch = Channel
       .fromPath(params.csv_pairs)
       .splitCsv(header:true)
@@ -201,7 +198,6 @@ if (params.read_paths) {
 
    // Provided a samples.csv file of single-ended reads
    if (params.csv_singles){
-     have_nucleotide_input = true
      csv_singles_ch = Channel
       .fromPath(params.csv_singles)
       .splitCsv(header:true)
@@ -211,21 +207,18 @@ if (params.read_paths) {
 
    // Provided fastq gz paired-end reads
    if (params.read_pairs){
-     have_nucleotide_input = true
      read_pairs_ch = Channel
        .fromFilePairs(params.read_pairs?.toString()?.tokenize(';'), size: 2)
        .ifEmpty { exit 1, "params.read_pairs (${params.read_pairs}) was empty - no input files supplied" }
    }
    // Provided fastq gz single-end reads
    if (params.read_singles){
-     have_nucleotide_input = true
      read_singles_ch = Channel
        .fromFilePairs(params.read_singles?.toString()?.tokenize(';'), size: 1)
        .ifEmpty { exit 1, "params.read_singles (${params.read_singles}) was empty - no input files supplied" }
   }
    // Provided vanilla fastas
    if (params.fastas){
-     have_nucleotide_input = true
      fastas_ch = Channel
        .fromPath(params.fastas?.toString()?.tokenize(';'))
        .map{ f -> tuple(f.baseName, tuple(file(f))) }
@@ -233,7 +226,6 @@ if (params.read_paths) {
    }
 
   if (params.bam) {
-    have_nucleotide_input = true
   Channel.fromPath(params.bam, checkIfExists: true)
         .map{ f -> tuple(f.baseName, tuple(file(f))) }
        .ifEmpty { exit 1, "Bam file not found: ${params.bam}" }
