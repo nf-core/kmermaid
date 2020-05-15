@@ -354,7 +354,7 @@ if (!protein_input) {
       .ifEmpty{  exit 1, "No reads provided! Check read input files" }
       .set { subsample_reads_ch }
   }
-  if (params.skip_trimming) {
+  if (params.skip_trimming && !(params.bam || params.tenx_tgz)) {
     reads_ch_unchecked
       .ifEmpty{ exit 1, "No reads provided! Check read input files" }
       .set { reads_ch }
