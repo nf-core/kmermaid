@@ -353,7 +353,10 @@ The log2 sketch size specifies the number of k-mers to use for the sketch. We us
 
 ### `--skip_compare`
 
-This allows to skip the sourmash compare process when there is 1. Too many samples to compare so it'll take too long/run out of memory anyway 2. Won't actually use the compare result that has been trimmed already.
+This allows to skip the sourmash or SKA compare process when there are:
+
+1. Too many samples to compare so it'll take too long/run out of memory anyway 
+2. Won't actually use the compare result that has been trimmed already.
 
 
 ### `--save_fastas`
