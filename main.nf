@@ -940,7 +940,7 @@ if (params.peptide_fasta){
 }
 
 
-if (params.split_kmer){
+if (params.split_kmer && !params.skip_compare){
      process ska_compare_sketches {
     tag "${sketch_id}"
     publishDir "${params.outdir}/ska/compare/", mode: 'copy'
