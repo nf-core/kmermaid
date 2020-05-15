@@ -172,7 +172,6 @@ tenx_tgz_ch = Channel.empty()
 
 // Boolean for if an nucleotide input exists anywhere
 have_nucleotide_input = params.read_paths || params.sra || params.csv_pairs || params.csv_singles || params.read_pairs || params.read_singles || params.fastas || params.bam || params.tenx_tgz
-println "have_nucleotide_input: ${have_nucleotide_input}"
 
 // Parameters for testing
 if (params.read_paths) {
@@ -315,7 +314,6 @@ if (params.subsample) {
     }
   }
 } else {
-  println 'No subsample'
   if (!(params.tenx_tgz || params.bam)) {
     if(params.skip_trimming){
       sra_ch.concat(
@@ -774,16 +772,6 @@ if (params.tenx_tgz || params.bam) {
   }
 }
 
-files_to_trim = ch_read_files_trimming_to_check_size.toList().value
-
-if (!params.skip_trimming && files_to_trim) {
-  n_files_to_trim = files_to_trim.size()
-} else {
-  n_files_to_trim = 0
-}
-println "n_files_to_trim: ${n_files_to_trim}"
-
-do_nucleotide_stuff = params.reference_proteome_fasta || params.subsample || have_nucleotide_input
 
 if ( have_nucleotide_input ) {
   if (!params.skip_trimming){
