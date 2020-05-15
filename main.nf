@@ -783,11 +783,12 @@ if (!params.skip_trimming && files_to_trim) {
 } else {
   n_files_to_trim = 0
 }
+println "n_files_to_trim: ${n_files_to_trim}"
 
-do_nucleotide_stuff = n_files_to_trim || params.reference_proteome_fasta || params.subsample || have_nucleotide_input
+do_nucleotide_stuff = params.reference_proteome_fasta || params.subsample || have_nucleotide_input
 
 if ( do_nucleotide_stuff ) {
-  if (!params.skip_trimming && n_files_to_trim > 0){
+  if (!params.skip_trimming){
     process fastp {
         label 'process_low'
         tag "$name"
