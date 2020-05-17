@@ -7,6 +7,7 @@ work/
 results
 my-results
 __pycache__
+# cov file
 .coverage
 
 # Nextflow outputs
