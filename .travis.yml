@@ -25,7 +25,7 @@ matrix:
       - nextflow run ${TRAVIS_BUILD_DIR} -profile test,docker --splitKmer ; if [ $? -eq 0 ]; then echo "--splitKmer + --molecules protein should fail but did not" && exit 1 ; else echo "Correctly failed --splitKmer + --molecules protein" ; fi
   - name: "Latest Nextflow version, split k-mer test suite"
     env: NXF_VER='' SUITE=test_ska FLAGS=
-  - name: "Latest Nextflow version, split k-mer test suite"
+  - name: "Latest Nextflow version, split k-mer test suite, with --skip_trimming"
     env: NXF_VER='' SUITE=test_ska FLAGS=--skip_trimming
   - name: "Latest Nextflow version, split k-mer test suite, test subsampling"
     env: NXF_VER='' SUITE=test_ska FLAGS='--subsample 10'
@@ -33,7 +33,7 @@ matrix:
   #   script: markdownlint ${TRAVIS_BUILD_DIR} -c ${TRAVIS_BUILD_DIR}/.github/markdownlint.yml
   - name: "Test nextflow kmermaid, with 10x .tgz file"
     env: NXF_VER='' SUITE=test_tenx_tgz FLAGS=
-  - name: "Test nextflow kmermaid, with 10x .tgz file"
+  - name: "Test nextflow kmermaid, with 10x .tgz file, with --skip_trimming"
     env: NXF_VER='' SUITE=test_tenx_tgz FLAGS=--skip_trimming
   - name: "Test nextflow kmermaid, with 10x .tgz file and min 2 UMI per cell"
     env: NXF_VER='' SUITE=test_tenx_tgz FLAGS='--tenx_min_umi_per_cell 2'
