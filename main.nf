@@ -171,7 +171,8 @@ fastas_ch = Channel.empty()
 tenx_tgz_ch = Channel.empty()
 
 // Boolean for if an nucleotide input exists anywhere
-have_nucleotide_input = params.read_paths || params.sra || params.csv_pairs || params.csv_singles || params.read_pairs || params.read_singles || params.fastas || params.bam || params.tenx_tgz
+have_nucleotide_fasta_input = params.fastas || params.fasta_paths
+have_nucleotide_input = params.read_paths || params.sra || params.csv_pairs || params.csv_singles || params.read_pairs || params.read_singles || have_nucleotide_fasta_input || params.bam || params.tenx_tgz
 
 // Parameters for testing
 if (params.read_paths) {
@@ -224,6 +225,13 @@ if (params.read_paths) {
        .map{ f -> tuple(f.baseName, tuple(file(f))) }
        .dump ( tag: 'fastas_ch' )
        .ifEmpty { exit 1, "params.fastas (${params.fastas}) was empty - no input files supplied" }
+   } else if (params.fasta_paths) {
+     fastas_ch = Channel
+       .from(params.fasta_paths)
+       .map { row -> if (row[1].size() == 2) [ row[0], [file(row[1][0]), file(row[1][1])]]
+             else [row[0], [file(row[1][0])]]}
+       .dump ( tag: 'fastas_ch' )
+       .ifEmpty { exit 1, "params.fasta_paths (${params.fastas}) was empty - no input files supplied" }
    }
 
   if (params.bam) {
@@ -321,7 +329,7 @@ if (params.subsample) {
           read_singles_ch, fastas_ch, read_paths_ch)
        .set{ reads_ch_unchecked }
     } else {
-      if (params.fastas) {
+      if (have_nucleotide_fasta_input) {
         // With fasta files - combine everything that can be trimmed
         sra_ch.concat(
             csv_pairs_ch, csv_singles_ch, read_pairs_ch,
@@ -362,7 +370,7 @@ if (!protein_input) {
     ch_non_bam_reads_unchecked
       // No need to check if empty since there is bam input
       .set { ch_non_bam_reads }
-  } else if (!params.fastas) {
+  } else if (!have_nucleotide_fasta_input) {
       // if no fastas, then definitely trimming the remaining reads
       ch_read_files_trimming_unchecked
         .ifEmpty{ exit 1, "No reads provided! Check read input files" }
@@ -378,7 +386,7 @@ if (!protein_input) {
     reads_ch_unchecked
       .set { reads_ch }
     ch_read_files_trimming_to_check_size = Channel.empty()
-  } else if (!params.fastas) {
+  } else if (!have_nucleotide_fasta_input) {
     ch_read_files_trimming_unchecked
       .into { ch_read_files_trimming_to_trim; ch_read_files_trimming_to_check_size }
   }

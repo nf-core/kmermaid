@@ -17,6 +17,8 @@ matrix:
     env: NXF_VER='' SUITE=test FLAGS='--skip_trimming'
   - name: "Test nextflow kmermaid, with --track_abundance"
     env: NXF_VER='' SUITE=test FLAGS='--track_abundance'
+  - name: "Test fasta input"
+    env: NXF_VER='' SUITE=test_fastas FLAGS=
   - name: "Test nextflow kmermaid, with translate on fastas"
     env: NXF_VER='' SUITE=test_translate
   - name: "Latest Nextflow version, regular test suite with splitKmers, ensure that `protein` can't be specified"
