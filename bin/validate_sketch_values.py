@@ -5,6 +5,8 @@ import logging
 import argparse
 import glob
 import os
+import sys
+
 
 # Create a logger
 logging.basicConfig(format='%(name)s - %(asctime)s %(levelname)s: %(message)s')
@@ -63,7 +65,7 @@ def value_or_bool(value):
                         "--sketch_scaled_log2 options! Cannot simply set the "
                         "flag. E.g. '--sketch_size 5' is valid but "
                         "'--sketch_size' on its own is not")
-        os.exit(1)
+        sys.exit(1)
     else:
         return value
 
@@ -82,20 +84,20 @@ def main(sketch_size, sketch_size_log2, sketch_scaled, sketch_scaled_log2, out,
         logger.exception("Cannot specify both sketch scales and sizes! Can only"
                          " use one of --sketch_size, --sketch_size_log2, --sketch_scaled, "
                          "--sketch_scaled_log2. Exiting.")
-        os.exit(1)
+        sys.exit(1)
 
 
     if using_size:
         if sketch_size and sketch_size_log2:
             logger.exception("Cannot specify both --sketch_size and --sketch_size_log2! Exiting.")
-            os.exit(1)
+            sys.exit(1)
         sketch_values = get_sketch_values(sketch_size, sketch_size_log2)
         with open(sketch_style, 'w') as f:
             f.write('size')
     elif using_scaled:
         if sketch_scaled and sketch_scaled_log2:
             logger.exception("Cannot specify both --sketch_scaled and --sketch_scaled_log2! Exiting.")
-            os.exit(1)
+            sys.exit(1)
         sketch_values = get_sketch_values(sketch_scaled, sketch_scaled_log2)
         with open(sketch_style, 'w') as f:
             f.write('scaled')
