@@ -31,6 +31,7 @@ barcode fastq
 * Update renaming of `khtools` commands to `sencha`
 * Make sure `samtools_fastq_aligned` outputs ALL aligned reads, regardless of mapping quality or primary alignment status
 * Rename splitkmer to `split_kmer` and add `--skip_compare option` to skip `sourmash_compare_sketches` process
+* Increase CPUs in `high_memory_long` profile from 1 to 10
 
 ### Dependency updates
 
