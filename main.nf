@@ -338,10 +338,9 @@ if (params.subsample) {
       }
     }
   } else {
-//   Do nothing - can't combine the fastq files and bam files (yet)
       sra_ch.concat(
           csv_pairs_ch, csv_singles_ch, read_pairs_ch,
-          read_singles_ch, read_paths_ch, fastas_ch)
+          read_singles_ch, read_paths_ch)
         .dump ( tag: 'ch_non_bam_reads_unchecked__concatenated' )
         .set{ ch_non_bam_reads_unchecked }
     }
