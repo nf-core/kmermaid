@@ -391,6 +391,7 @@ sketch_size = params.sketch_size
 sketch_size_log2 = params.sketch_size_log2
 sketch_scaled = params.sketch_scaled
 sketch_scaled_log2 = params.sketch_scaled_log2
+have_sketch_value = params.sketch_size || params.sketch_size_log2 || params.sketch_scaled || params.sketch_scaled_log2
 
 if (params.bam){
   // Extract the fasta just once using sourmash
@@ -501,60 +502,63 @@ ${summary.collect { k,v -> "            <dt>$k</dt><dd><samp>${v ?: '<span style
    return yaml_file
 }
 
+if ( !params.splitKmer && have_sketch_value ) {
+  // Only use this for sourmash sketches, not split k-mer sketches
+  /*
+   * Validate sketch sizes
+   */
+  process validate_sketch_values {
+      publishDir "${params.outdir}/pipeline_info", mode: 'copy',
+      saveAs: {filename ->
+          if (filename.indexOf(".txt") > 0) filename
+          else null
+      }
+      input:
+      val sketch_size
+      val sketch_size_log2
+      val sketch_scaled
+      val sketch_scaled_log2
 
-/*
- * Validate sketch sizes
- */
-process validate_sketch_values {
-    publishDir "${params.outdir}/pipeline_info", mode: 'copy',
-    saveAs: {filename ->
-        if (filename.indexOf(".txt") > 0) filename
-        else null
-    }
-    input:
-    val sketch_size
-    val sketch_size_log2
-    val sketch_scaled
-    val sketch_scaled_log2
+      output:
+      file sketch_values into ch_sketch_values
+      file sketch_style into ch_sketch_style
 
-    output:
-    file sketch_values into ch_sketch_values
-    file sketch_style into ch_sketch_style
+      script:
+      sketch_style = "sketch_style.txt"
+      sketch_values = 'sketch_values.txt'
+      """
+      validate_sketch_values.py \\
+        --sketch_size ${sketch_size} \\
+        --sketch_size_log2 ${sketch_size_log2} \\
+        --sketch_scaled ${sketch_scaled} \\
+        --sketch_scaled_log2 ${sketch_scaled_log2} \\
+        --output ${sketch_values} \\
+        --sketch_style ${sketch_style}
+      """
+  }
 
-    script:
-    sketch_style = "sketch_style.txt"
-    sketch_values = 'sketch_values.txt'
-    """
-    validate_sketch_values.py \\
-      --sketch_size ${sketch_size} \\
-      --sketch_size_log2 ${sketch_size_log2} \\
-      --sketch_scaled ${sketch_scaled} \\
-      --sketch_scaled_log2 ${sketch_scaled_log2} \\
-      --output ${sketch_values} \\
-      --sketch_style ${sketch_style}
-    """
+  // Parse sketch style into value
+  ch_sketch_style
+    .splitText()
+    .dump ( tag: 'ch_sketch_style' )
+    .map { it -> it.replaceAll('\\n', '' ) }
+    // .first()
+    .dump ( tag: 'sketch_style_parsed' )
+    .into { sketch_style_for_nucleotides; sketch_style_for_proteins }
+  // sketch_style = sketch_styles[0]
+  // println "sketch_style_parsed: ${sketch_style_parsed}"
+  // println "sketch_style: ${sketch_style}"
+
+  // Parse file into values
+  ch_sketch_values
+    .splitText()
+    .map { it -> it.replaceAll('\\n', '')}
+    .dump ( tag : 'sketch_values_parsed' )
+    .collect()
+    .dump ( tag : 'sketch_values_parsed__collected' )
+    .set { sketch_values }
+
 }
-
-// Parse sketch style into value
-ch_sketch_style
-  .splitText()
-  .dump ( tag: 'ch_sketch_style' )
-  .map { it -> it.replaceAll('\\n', '' ) }
-  // .first()
-  .dump ( tag: 'sketch_style_parsed' )
-  .into { sketch_style_for_nucleotides; sketch_style_for_proteins }
-// sketch_style = sketch_styles[0]
-// println "sketch_style_parsed: ${sketch_style_parsed}"
-// println "sketch_style: ${sketch_style}"
-
-// Parse file into values
-ch_sketch_values
-  .splitText()
-  .map { it -> it.replaceAll('\\n', '')}
-  .dump ( tag : 'sketch_values_parsed' )
-  .collect()
-  .dump ( tag : 'sketch_values_parsed__collected' )
-  .set { sketch_values }
 
 
 /*
