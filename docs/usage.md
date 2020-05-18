@@ -26,12 +26,13 @@
     * [Adapter Trimming][#adapter-trimming]
         * [`--skip_trimming`](#--skip_trimming)
     * [K-merization/Sketching program options](#k-merization-sketching-program-options)
-        * [`--splitKmer`](#--splitKmer)
+        * [`--split_kmer`](#--split_kmer)
     * [Sketch parameters](#sketch-parameters)
         * [`--molecule`](#--molecule)
         * [`--ksize`](#--ksize)
         * [`--log2_sketch_size`](#--log2_sketch_size)
         * [`--track_abundance`](#--track_abundance)
+        * [`--skip_compare`](#--skip_compare)
     * [Bam optional parameters](#bam-optional-parameters)
         * [`--tenx_min_umi_per_cell`](#--tenx_min_umi_per_cell)
         * [`--write_barcode_meta_csv`](#--write_barcode_meta_csv)
@@ -235,13 +236,13 @@ This allows to skip the trimming process to save time when re-analyzing data tha
 
 By default, the k-merization and sketch creation program is [sourmash](https://sourmash.readthedocs.io).
 
-### `--splitKmer`
+### `--split_kmer`
 
-If `--splitKmer` is specified, then the [Split K-mer Analysis (SKA)](https://github.com/simonrharris/SKA) program ([publication](https://www.biorxiv.org/content/10.1101/453142v1)) is used to obtain k-mers from the data. This allows for a SNP to be present in the middle of a k-mer which can be advantageous for metagenomic analyses or with single-cell ATAC-seq data.
+If `--split_kmer` is specified, then the [Split K-mer Analysis (SKA)](https://github.com/simonrharris/SKA) program ([publication](https://www.biorxiv.org/content/10.1101/453142v1)) is used to obtain k-mers from the data. This allows for a SNP to be present in the middle of a k-mer which can be advantageous for metagenomic analyses or with single-cell ATAC-seq data.
 
-#### What does `--ksize` mean when `--splitKmer` is set
+#### What does `--ksize` mean when `--split_kmer` is set?
 
-The meaning of `ksize` is different with split k-mers, so now the value specified by `--ksize` is just under half of the total sampled sequence size, where the middle base can be any base (`N`) `[---ksize---]N[---ksize---]`. When `--splitKmer` is set, then the default k-mer sizes are 9 and 15, for a total sequence unit size of `2*15+1 = 31` and `2*9+1 = 19` which is as if you specified on the command line `--splitKmer --ksize 9,15`. Additionally k-mer sizes with `--splitKmer` must be divisible by 3 (yes, this is inconvenient) and between 3 and 60 (inclusive). So the "total" `2*k+1` sizes can be:
+The meaning of `ksize` is different with split k-mers, so now the value specified by `--ksize` is just under half of the total sampled sequence size, where the middle base can be any base (`N`) `[---ksize---]N[---ksize---]`. When `--split_kmer` is set, then the default k-mer sizes are 9 and 15, for a total sequence unit size of `2*15+1 = 31` and `2*9+1 = 19` which is as if you specified on the command line `--split_kmer --ksize 9,15`. Additionally k-mer sizes with `--split_kmer` must be divisible by 3 (yes, this is inconvenient) and between 3 and 60 (inclusive). So the "total" `2*k+1` sizes can be:
 
 * k = 3 --> 2*3 + 1 = 7 total length
 * k = 6 --> 2*6 + 1 = 13 total length
@@ -251,14 +252,14 @@ The meaning of `ksize` is different with split k-mers, so now the value specifie
 * ...
 * k = 60 --> 2*60 + 1 = 121 total length
 
-#### `--subsample` reads when `--splitKmer` is set
+#### `--subsample` reads when `--split_kmer` is set
 
 The `subsample` command is often necessary because the `ska` tool uses ALL the reads rather than a MinHash subsampling of them. If your input files are rather big, then the `ska` sketching command (`ska fastq`) runs out of memory, or it takes so long that it's untenable. The `--subsample` command specifies the number of reads to be used. When e.g. `--subsample 1000` is set, then 1000 reads (or read pairs) are randomly subsampled from the data using [seqtk](https://github.com/lh3/seqtk).
 
 
-#### Which `--molecules` are valid when `--splitKmer` is set
+#### Which `--molecules` are valid when `--split_kmer` is set?
 
-Currently, `--splitKmer` only works with DNA sequence and not protein sequence, and thus will fail if `protein` or `dayhoff` is specified in `--molecules`.
+Currently, `--split_kmer` only works with DNA sequence and not protein sequence, and thus will fail if `protein` or `dayhoff` is specified in `--molecules`.
 
 ### `--bam`
 For bam/10x files, Use this to specify the location of the bam file. For example:
@@ -348,6 +349,14 @@ The log2 sketch size specifies the number of k-mers to use for the sketch. We us
   * `--log2_sketch_size 10,12,14,16`
 * Only a log2 sketch size of 8 (2^8 = 256):
   * `--log2_sketch_size 8`
+
+
+### `--skip_compare`
+
+This allows to skip the sourmash or SKA compare process when there are:
+
+1. Too many samples to compare so it'll take too long/run out of memory anyway 
+2. Won't actually use the compare result that has been trimmed already.
 
 
 ### `--save_fastas`
