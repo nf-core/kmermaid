@@ -285,6 +285,7 @@ if (params.subsample) {
       sra_ch.concat(
           csv_pairs_ch, csv_singles_ch, read_pairs_ch,
           read_singles_ch, read_paths_ch)
+        .dump ( tag: 'fastqs_concatenated_for_trimming' )
         .ifEmpty{ exit 1, "No reads provided! Check read input files"}
         .set{ ch_read_files_trimming }
     }
@@ -850,41 +851,45 @@ if (!params.skip_trimming){
   // Filtering out fastq.gz files less than 200 bytes (arbitary number)
   // ~200 bytes is about the size of a file with a single read or less
   // We can't use .size() > 0 because it's fastq.gz is gzipped content
-  ch_reads_all_trimmed.filter{ it -> it[1].size() > 200 }
+  ch_reads_all_trimmed
+    .filter{ it -> it[1][0].size() > 200 }
+    .dump ( tag: 'ch_reads_trimmed' )
     .set{ ch_reads_trimmed }
   // Concatenate trimmed fastq files with fastas
   if (params.subsample){
     // Concatenate trimmed reads with fastas for subsequent subsampling
-    subsample_reads_ch = ch_reads_trimmed.concat(fastas_ch)
-  }
-  else {
+    ch_reads_trimmed
+      .concat(fastas_ch)
+      .dump ( tag: 'trimmed_reads__concat_fastas' )
+      .set { subsample_reads_ch }
+  } else {
     // Concatenate trimmed reads with fastas for signature generation
     reads_ch = ch_reads_trimmed.concat(fastas_ch)
   }
 }
 
 if (params.subsample) {
-    process subsample_input {
-	tag "${id}_subsample"
-	publishDir "${params.outdir}/seqtk/", mode: 'copy'
+println "Subsampling: ${params.subsample}"
+  process subsample_input {
+  	tag "${id}_subsample"
+  	publishDir "${params.outdir}/seqtk/", mode: 'copy'
 
-	input:
-	set id, file(reads) from subsample_reads_ch
+  	input:
+  	set val(id), file(reads) from subsample_reads_ch
 
-	output:
+  	output:
+  	set val(id), file("*_${params.subsample}.fastq.gz") into reads_ch
 
-	set val(id), file("*_${params.subsample}.fastq.gz") into reads_ch
+  	script:
+  	read1 = reads[0]
+  	read2 = reads[1]
+  	read1_prefix = read1.simpleName
+  	read2_prefix = read2.simpleName
 
-	script:
-	read1 = reads[0]
-	read2 = reads[1]
-	read1_prefix = read1.name.minus(".fastq.gz") // TODO: change to RE to match fasta as well?
-	read2_prefix = read2.name.minus(".fastq.gz")
-
-  """
-  seqtk sample -s100 ${read1} ${params.subsample} > ${read1_prefix}_${params.subsample}.fastq.gz
-  seqtk sample -s100 ${read2} ${params.subsample} > ${read2_prefix}_${params.subsample}.fastq.gz
-  """
+    """
+    seqtk sample -s100 ${read1} ${params.subsample} > ${read1_prefix}_${params.subsample}.fastq.gz
+    seqtk sample -s100 ${read2} ${params.subsample} > ${read2_prefix}_${params.subsample}.fastq.gz
+    """
   }
 }
 
