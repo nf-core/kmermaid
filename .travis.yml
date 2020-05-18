@@ -14,15 +14,16 @@ matrix:
   - name: "Latest Nextflow version, regular test suite"
     env: NXF_VER='' SUITE=test FLAGS=
   - name: "Test empty --sketch_size"
-    env: NXF_VER='' SUITE=test FLAGS='--sketch_size false'
+    script:
+      - nextflow run ${TRAVIS_BUILD_DIR} -profile test,docker --sketch_size false  --sketch_size_log2 false ; if [ $? -eq 0 ]; then echo "Must specify at least one sketch size/scale" && exit 1 ; else echo "Correctly failed --sketch_size + --sketch_size_log2 empty" ; fi
   - name: "Test --sketch_size"
-    env: NXF_VER='' SUITE=test FLAGS='--sketch_size 2,4'
+    env: NXF_VER='' SUITE=test FLAGS='--sketch_size 2,4 --sketch_size_log2 false'
   - name: "Test --sketch_size_log2"
-    env: NXF_VER='' SUITE=test FLAGS='--sketch_size_log2 2,4'
+    env: NXF_VER='' SUITE=test FLAGS='--sketch_size_log2 2,4 --sketch_size_log2 false'
   - name: "Test --sketch_scaled"
-    env: NXF_VER='' SUITE=test FLAGS='--sketch_scaled 2,4'
+    env: NXF_VER='' SUITE=test FLAGS='--sketch_scaled 2,4 --sketch_size_log2 false'
   - name: "Test --sketch_scaled_log2"
-    env: NXF_VER='' SUITE=test FLAGS='--sketch_scaled_log2 2,4'
+    env: NXF_VER='' SUITE=test FLAGS='--sketch_scaled_log2 2,4 --sketch_size_log2 false'
   - name: "Test nextflow kmermaid, with --track_abundance"
     env: NXF_VER='' SUITE=test FLAGS='--track_abundance'
   - name: "Test nextflow kmermaid, with translate on fastas"
