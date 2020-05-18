@@ -30,6 +30,7 @@ barcode fastq
 * Remove `one_signature_per_record` flag and add bam2fasta count_umis_percell and make_fastqs_percell instead of bam2fasta sharding method
 * Update renaming of `khtools` commands to `sencha`
 * Make sure `samtools_fastq_aligned` outputs ALL aligned reads, regardless of mapping quality or primary alignment status
+* Increase CPUs in `high_memory_long` profile from 1 to 10
 
 ### Dependency updates
 
