@@ -794,6 +794,8 @@ if (!params.skip_trimming){
     // Concatenate trimmed reads with fastas for signature generation
     ch_reads_for_ribosomal_removal = ch_reads_trimmed.concat(fastas_ch)
   }
+} else {
+  ch_fastp_results = Channel.from(false)
 }
 
 if (params.subsample) {
