@@ -15,6 +15,8 @@ matrix:
     env: NXF_VER='' SUITE=test FLAGS=
   - name: "Test nextflow kmermaid, with --skip_trimming"
     env: NXF_VER='' SUITE=test FLAGS='--skip_trimming'
+  - name: "Text nextflow kmermaid, with removing ribosomal reads"
+    env: NXF_VER='' SUITE=test_remove_ribo FLAGS=--remove_ribo_rna
   - name: "Test nextflow kmermaid, with --track_abundance"
     env: NXF_VER='' SUITE=test FLAGS='--track_abundance'
   - name: "Test fasta input"
