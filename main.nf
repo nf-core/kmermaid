@@ -524,7 +524,7 @@ ${summary.collect { k,v -> "            <dt>$k</dt><dd><samp>${v ?: '<span style
    return yaml_file
 }
 
-if ( !params.splitKmer && have_sketch_value ) {
+if ( !params.split_kmer && have_sketch_value ) {
   // Only use this for sourmash sketches, not split k-mer sketches
   /*
    * Validate sketch sizes
@@ -621,7 +621,7 @@ process get_software_versions {
     echo $workflow.nextflow.version > v_nextflow.txt
     bam2fasta info &> v_bam2fasta.txt
     fastp --version &> v_fastp.txt
-    samtools --version &> v_samtools
+    samtools --version &> v_samtools.txt
     ska version &> v_ska.txt
     sortmerna --version &> v_sortmerna.txt
     sourmash -v &> v_sourmash.txt
@@ -1128,7 +1128,12 @@ if (params.split_kmer){
 process sourmash_compute_sketch_fastx_nucleotide {
   tag "${sig_id}"
   label "low_memory"
-  publishDir "${params.outdir}/sketches_nucleotide/${sketch_id}", mode: 'copy'
+  publishDir "${params.outdir}/sourmash/sketches_nucleotide", mode: "${params.publish_dir_mode}",
+      saveAs: {filename ->
+          if (filename.indexOf(".csv") > 0) "description/$filename"
+          else if (filename.indexOf(".sig") > 0) "sigs/$filename"
+          else null
+      }
 
   input:
   val sketch_style from sketch_style_for_nucleotides.collect()
@@ -1174,7 +1179,12 @@ if (params.peptide_fasta){
   process sourmash_compute_sketch_fastx_peptide {
     tag "${sig_id}"
     label "low_memory"
-    publishDir "${params.outdir}/sketches_peptide/${sketch_id}", mode: 'copy'
+    publishDir "${params.outdir}/sourmash/sketches_peptide", mode: "${params.publish_dir_mode}",
+        saveAs: {filename ->
+            if (filename.indexOf(".csv") > 0) "description/$filename"
+            else if (filename.indexOf(".sig") > 0) "sigs/$filename"
+            else null
+        }
 
     input:
     val sketch_style from sketch_style_for_proteins.collect()
