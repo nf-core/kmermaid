@@ -856,14 +856,33 @@ if (!params.skip_trimming){
   // ~200 bytes is about the size of a file with a single read or less
   // We can't use .size() > 0 because it's fastq.gz is gzipped content
   ch_reads_all_trimmed
+    .dump ( tag: 'ch_reads_all_trimmed' )
+    .branch {
+      // Paired is a tuple of two reads
+      paired: it[1].size() == 2
+      single: true
+    }
+    .set { ch_reads_trimmed_branched }
+
+  ch_reads_trimmed_branched.paired
     .filter{ it -> it[1][0].size() > 200 }
-    .dump ( tag: 'ch_reads_trimmed' )
-    .set{ ch_reads_trimmed }
+    .dump ( tag: 'ch_reads_trimmed_paired' )
+    .set{ ch_reads_trimmed_paired }
+
+  ch_reads_trimmed_branched.single
+    .filter{ it -> it[1].size() > 200 }
+    .dump ( tag: 'ch_reads_trimmed_single' )
+    .set{ ch_reads_trimmed_single }
+
+  ch_reads_trimmed_single
+    .mix ( ch_reads_trimmed_paired )
+    .set { ch_reads_trimmed }
+
   // Concatenate trimmed fastq files with fastas
   if (params.subsample){
     // Concatenate trimmed reads with fastas for subsequent subsampling
     ch_reads_trimmed
-      .concat(fastas_ch)
+      .concat( fastas_ch )
       .dump ( tag: 'trimmed_reads__concat_fastas' )
       .set { subsample_reads_ch }
   } else {
@@ -873,7 +892,6 @@ if (!params.skip_trimming){
 }
 
 if (params.subsample) {
-println "Subsampling: ${params.subsample}"
   process subsample_input {
   	tag "${id}_subsample"
   	publishDir "${params.outdir}/seqtk/", mode: 'copy'
@@ -977,8 +995,8 @@ if (params.splitKmer){
     }
 } else {
 process sourmash_compute_sketch_fastx_nucleotide {
-  tag "${sample_id}__${sketch_id}"
-  label "mid_memory"
+  tag "${sig_id}"
+  label "low_memory"
   publishDir "${params.outdir}/sketches_nucleotide/${sketch_id}", mode: 'copy'
 
   input:
@@ -988,6 +1006,7 @@ process sourmash_compute_sketch_fastx_nucleotide {
   set sample_id, file(reads) from ch_coding_nucleotides_nonempty
 
   output:
+  file(csv)
   set val(sketch_id), val("dna"), val(ksize), val(sketch_value), file(sig) into sourmash_sketches_all_nucleotide
 
   script:
@@ -999,7 +1018,9 @@ process sourmash_compute_sketch_fastx_nucleotide {
   sketch_value_flag = make_sketch_value_flag(sketch_style, sketch_value)
   track_abundance_flag = track_abundance ? '--track-abundance' : ''
   processes = "--processes ${task.cpus}"
-  sig = "${sample_id}__${sketch_id}.sig"
+  sig_id = "${sample_id}__${sketch_id}"
+  sig = "${sig_id}.sig"
+  csv = "${sig_id}.csv"
   """
     sourmash compute \\
       ${sketch_value_flag} \\
@@ -1009,6 +1030,7 @@ process sourmash_compute_sketch_fastx_nucleotide {
       $track_abundance_flag \\
       --output ${sig} \\
       $reads
+    sourmash sig describe --csv ${csv} ${sig}
   """
 
   }
@@ -1019,7 +1041,7 @@ process sourmash_compute_sketch_fastx_nucleotide {
 
 if (params.peptide_fasta){
   process sourmash_compute_sketch_fastx_peptide {
-    tag "${sample_id}__${sketch_id}"
+    tag "${sig_id}"
     label "low_memory"
     publishDir "${params.outdir}/sketches_peptide/${sketch_id}", mode: 'copy'
 
@@ -1031,6 +1053,7 @@ if (params.peptide_fasta){
     set sample_id, file(reads) from ch_coding_peptides_nonempty
 
     output:
+    file(csv)
     set val(sketch_id), val(molecule), val(ksize), val(sketch_value), file(sig) into sourmash_sketches_all_peptide
 
     script:
@@ -1041,7 +1064,9 @@ if (params.peptide_fasta){
     sketch_value_flag = make_sketch_value_flag(sketch_style, sketch_value)
     track_abundance_flag = track_abundance ? '--track-abundance' : ''
     processes = "--processes ${task.cpus}"
-    sig = "${sample_id}__${sketch_id}.sig"
+    sig_id = "${sample_id}__${sketch_id}"
+    sig = "${sig_id}.sig"
+    csv = "${sig_id}.csv"
     """
       sourmash compute \\
         ${sketch_value_flag} \\
@@ -1053,6 +1078,7 @@ if (params.peptide_fasta){
         $track_abundance_flag \\
         --output ${sig} \\
         $reads
+      sourmash sig describe --csv ${csv} ${sig}
     """
     }
   sourmash_sketches_peptide = sourmash_sketches_all_peptide.filter{ it[4].size() > 0 }
