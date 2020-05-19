@@ -83,6 +83,7 @@ def helpMessage() {
                                     and protein, i.e. 'dna,protein,dayhoff'
       --track_abundance             Track abundance of each hashed k-mer, could be useful for cancer RNA-seq or ATAC-seq analyses
       --skip_trimming               If provided, skip fastp trimming of reads
+      --skip_compare                If provided, skip comparison of hashes using sourmash compare
 
      Sketch size options:
       --sketch_size                 Number of hashes to use for making the sketches.
@@ -97,7 +98,7 @@ def helpMessage() {
 
 
     Split K-mer options:
-      --splitKmer                   If provided, use SKA to compute split k-mer sketches instead of
+      --split_kmer                   If provided, use SKA to compute split k-mer sketches instead of
                                     sourmash to compute k-mer sketches
       --subsample                   Integer value to subsample reads from input fastq files
 
@@ -280,7 +281,7 @@ if (params.subsample) {
       sra_ch.concat(csv_pairs_ch, csv_singles_ch, read_pairs_ch,
         read_singles_ch, fastas_ch, read_paths_ch)
         .ifEmpty{ exit 1, "No reads provided! Check read input files"}
-        .set{ subsample_reads_ch }
+        .set{ subsample_ch_reads_for_ribosomal_removal }
     } else {
       sra_ch.concat(
           csv_pairs_ch, csv_singles_ch, read_pairs_ch,
@@ -297,7 +298,7 @@ if (params.subsample) {
           csv_pairs_ch, csv_singles_ch, read_pairs_ch,
           read_singles_ch, fastas_ch, read_paths_ch)
        .ifEmpty{ exit 1, "No reads provided! Check read input files"}
-       .set{ reads_ch }
+       .set{ ch_reads_for_ribosomal_removal }
     } else {
       if (params.fastas) {
         // With fasta files - combine everything that can be trimmed
@@ -342,12 +343,22 @@ if (workflow.profile == 'awsbatch') {
 }
 
 
-if (params.splitKmer){
+if (params.split_kmer){
     params.ksizes = '15,9'
     params.molecules = 'dna'
 } else {
     params.ksizes = '21,27,33,51'
 }
+
+// Get rRNA databases
+// Default is set to bundled DB list in `assets/rrna-db-defaults.txt`
+
+rRNA_database = file(params.rrna_database_manifest)
+if (rRNA_database.isEmpty()) {exit 1, "File ${rRNA_database.getName()} is empty!"}
+Channel
+    .from( rRNA_database.readLines() )
+    .map { row -> file(row) }
+    .set { sortmerna_fasta }
 
 
 // Parse the parameters
@@ -411,8 +422,8 @@ tenx_cell_barcode_pattern = params.tenx_cell_barcode_pattern
 tenx_molecular_barcode_pattern = params.tenx_molecular_barcode_pattern
 tenx_min_umi_per_cell = params.tenx_min_umi_per_cell
 
-if (params.splitKmer && 'protein' in molecules){
-  exit 1, "Cannot specify 'protein' in `--molecules` if --splitKmer is set"
+if (params.split_kmer && 'protein' in molecules){
+  exit 1, "Cannot specify 'protein' in `--molecules` if --split_kmer is set"
 }
 
 
@@ -423,6 +434,12 @@ if (!params.write_barcode_meta_csv) {
 else {
   barcode_metadata_folder = "barcode_metadata"
 }
+
+
+// Stage config files
+ch_multiqc_config = file("$baseDir/assets/multiqc_config.yaml", checkIfExists: true)
+ch_multiqc_custom_config = params.multiqc_config ? Channel.fromPath(params.multiqc_config, checkIfExists: true) : Channel.empty()
+ch_output_docs = file("$baseDir/docs/output.md", checkIfExists: true)
 
 // Header log info
 log.info nfcoreHeader()
@@ -566,6 +583,24 @@ if ( !params.splitKmer && have_sketch_value ) {
 }
 
 
+Channel.from(summary.collect{ [it.key, it.value] })
+    .map { k,v -> "<dt>$k</dt><dd><samp>${v ?: '<span style=\"color:#999999;\">N/A</a>'}</samp></dd>" }
+    .reduce { a, b -> return [a, b].join("\n            ") }
+    .map { x -> """
+    id: 'nf-core-kmermaid-summary'
+    description: " - this information is collected when the pipeline is started."
+    section_name: 'nf-core/kmermaid Workflow Summary'
+    section_href: 'https://github.com/nf-core/kmermaid'
+    plot_type: 'html'
+    data: |
+        <dl class=\"dl-horizontal\">
+            $x
+        </dl>
+    """.stripIndent() }
+    .set { ch_workflow_summary }
+
+
+
 /*
  * Parse software version numbers
  */
@@ -577,15 +612,19 @@ process get_software_versions {
     }
 
     output:
-    file 'software_versions_mqc.yaml' into software_versions_yaml
+    file 'software_versions_mqc.yaml' into ch_software_versions_yaml
     file "software_versions.csv"
 
     script:
     """
     echo $workflow.manifest.version > v_pipeline.txt
     echo $workflow.nextflow.version > v_nextflow.txt
-    sourmash info &> v_sourmash.txt
     bam2fasta info &> v_bam2fasta.txt
+    fastp --version &> v_fastp.txt
+    samtools --version &> v_samtools
+    ska version &> v_ska.txt
+    sortmerna --version &> v_sortmerna.txt
+    sourmash -v &> v_sourmash.txt
     scrape_software_versions.py &> software_versions_mqc.yaml
     """
 }
@@ -699,8 +738,8 @@ if (params.tenx_tgz || params.bam) {
 
   // Put fastqs from aligned and unaligned reads into a single channel
   tenx_reads_aligned_concatenation_ch.mix(tenx_reads_unaligned_ch)
-    .dump(tag: "tenx_reads_ch")
-    .set{ tenx_reads_ch }
+    .dump(tag: "tenx_ch_reads_for_ribosomal_removal")
+    .set{ tenx_ch_reads_for_ribosomal_removal }
 
   if ((params.tenx_min_umi_per_cell > 0) || !params.barcodes_file) {
     process count_umis_per_cell {
@@ -746,8 +785,8 @@ if (params.tenx_tgz || params.bam) {
     good_barcodes_ch = tenx_bam_barcodes_ch
   }
 
-  tenx_reads_ch.combine(good_barcodes_ch, by: 0)
-    .dump(tag: 'tenx_reads_ch__combine__good_barcodes_ch')
+  tenx_ch_reads_for_ribosomal_removal.combine(good_barcodes_ch, by: 0)
+    .dump(tag: 'tenx_ch_reads_for_ribosomal_removal__combine__good_barcodes_ch')
     .set{ tenx_reads_with_good_barcodes_ch }
 
   process extract_per_cell_fastqs {
@@ -761,10 +800,10 @@ if (params.tenx_tgz || params.bam) {
     set val(channel_id), val(is_aligned), file(reads), file(barcodes) from tenx_reads_with_good_barcodes_ch
 
     output:
-    file('*.fastq.gz') into per_channel_cell_reads_ch
+    file('*.fastq.gz') into per_channel_cell_ch_reads_for_ribosomal_removal
 
     script:
-    is_aligned_channel_id = "${channel_id}__${is_aligned}__"
+    is_aligned_channel_id = "${channel_id}__${is_aligned}"
     def rename_10x_barcodes = params.rename_10x_barcodes ? "--rename-10x-barcodes ${rename_10x_barcodes.baseName}.tsv": ''
     processes = "--processes ${task.cpus}"
     """
@@ -774,7 +813,7 @@ if (params.tenx_tgz || params.bam) {
         --barcodes-significant-umis-fil ${barcodes} \\
         $rename_10x_barcodes \\
         --cell-barcode-pattern '${tenx_cell_barcode_pattern}' \\
-        --channel-id ${is_aligned_channel_id} \\
+        --channel-id ${is_aligned_channel_id}__ \\
         --output-format 'fastq.gz'
     # Decoy file just in case there are no reads found,
     # to prevent this process from erroring out
@@ -785,8 +824,8 @@ if (params.tenx_tgz || params.bam) {
   // Filtering out fastq.gz files less than 200 bytes (arbitary number)
   // ~200 bytes is about the size of a file with a single read or less
   // We can't use .size() > 0 because it's fastq.gz is gzipped content
-  per_channel_cell_reads_ch
-    .dump(tag: 'per_channel_cell_reads_ch')
+  per_channel_cell_ch_reads_for_ribosomal_removal
+    .dump(tag: 'per_channel_cell_ch_reads_for_ribosomal_removal')
     .flatten()
     .filter{ it -> it.size() > 200 }   // each item is just a single file, no need to do it[1]
     .map{ it -> tuple(it.simpleName, file(it)) }
@@ -794,7 +833,7 @@ if (params.tenx_tgz || params.bam) {
     .set{ per_cell_fastqs_ch }
 
   if (params.skip_trimming) {
-    reads_ch = ch_non_bam_reads.concat(per_cell_fastqs_ch)
+    ch_reads_for_ribosomal_removal = ch_non_bam_reads.concat(per_cell_fastqs_ch)
   } else {
     ch_read_files_trimming = ch_non_bam_reads.concat(per_cell_fastqs_ch)
   }
@@ -884,11 +923,13 @@ if (!params.skip_trimming){
     ch_reads_trimmed
       .concat( fastas_ch )
       .dump ( tag: 'trimmed_reads__concat_fastas' )
-      .set { subsample_reads_ch }
+      .set { subsample_ch_reads_for_ribosomal_removal }
   } else {
     // Concatenate trimmed reads with fastas for signature generation
-    reads_ch = ch_reads_trimmed.concat(fastas_ch)
+    ch_reads_for_ribosomal_removal = ch_reads_trimmed.concat(fastas_ch)
   }
+} else {
+  ch_fastp_results = Channel.from(false)
 }
 
 if (params.subsample) {
@@ -897,10 +938,10 @@ if (params.subsample) {
   	publishDir "${params.outdir}/seqtk/", mode: 'copy'
 
   	input:
-  	set val(id), file(reads) from subsample_reads_ch
+  	set val(id), file(reads) from subsample_ch_reads_for_ribosomal_removal
 
   	output:
-  	set val(id), file("*_${params.subsample}.fastq.gz") into reads_ch
+  	set val(id), file("*_${params.subsample}.fastq.gz") into ch_reads_for_ribosomal_removal
 
   	script:
   	read1 = reads[0]
@@ -913,6 +954,96 @@ if (params.subsample) {
     seqtk sample -s100 ${read2} ${params.subsample} > ${read2_prefix}_${params.subsample}.fastq.gz
     """
   }
+}
+
+/*
+ * STEP 2+ - SortMeRNA - remove rRNA sequences on request
+ */
+if (!params.remove_ribo_rna) {
+    ch_reads_for_ribosomal_removal
+        .into { reads_ch }
+    sortmerna_logs = Channel.empty()
+} else {
+    process sortmerna_index {
+        label 'low_memory'
+        tag "${fasta.baseName}"
+
+        input:
+        file(fasta) from sortmerna_fasta
+
+        output:
+        val("${fasta.baseName}") into sortmerna_db_name
+        file("$fasta") into sortmerna_db_fasta
+        file("${fasta.baseName}*") into sortmerna_db
+
+        script:
+        """
+        indexdb_rna --ref $fasta,${fasta.baseName} -m 3072 -v
+        """
+    }
+
+    process sortmerna {
+        label 'low_memory'
+        tag "$name"
+        publishDir "${params.outdir}/SortMeRNA", mode: "${params.publish_dir_mode}",
+            saveAs: {filename ->
+                if (filename.indexOf("_rRNA_report.txt") > 0) "logs/$filename"
+                else if (params.save_non_rrna_reads) "reads/$filename"
+                else null
+            }
+
+        input:
+        set val(name), file(reads) from ch_reads_for_ribosomal_removal
+        val(db_name) from sortmerna_db_name.collect()
+        file(db_fasta) from sortmerna_db_fasta.collect()
+        file(db) from sortmerna_db.collect()
+
+        output:
+        set val(name), file("*.fq.gz") into reads_ch
+        file "*_rRNA_report.txt" into sortmerna_logs
+
+
+        script:
+        //concatenate reference files: ${db_fasta},${db_name}:${db_fasta},${db_name}:...
+        def Refs = ''
+        for (i=0; i<db_fasta.size(); i++) { Refs+= ":${db_fasta[i]},${db_name[i]}" }
+        Refs = Refs.substring(1)
+
+        // One set of reads --> single end
+        if (reads[1] == null) {
+            """
+            gzip -d --force < ${reads} > all-reads.fastq
+            sortmerna --ref ${Refs} \
+                --reads all-reads.fastq \
+                --num_alignments 1 \
+                -a ${task.cpus} \
+                --fastx \
+                --aligned rRNA-reads \
+                --other non-rRNA-reads \
+                --log -v
+            gzip --force < non-rRNA-reads.fastq > ${name}.fq.gz
+            mv rRNA-reads.log ${name}_rRNA_report.txt
+            """
+        } else {
+            """
+            gzip -d --force < ${reads[0]} > reads-fw.fq
+            gzip -d --force < ${reads[1]} > reads-rv.fq
+            merge-paired-reads.sh reads-fw.fq reads-rv.fq all-reads.fastq
+            sortmerna --ref ${Refs} \
+                --reads all-reads.fastq \
+                --num_alignments 1 \
+                -a ${task.cpus} \
+                --fastx --paired_in \
+                --aligned rRNA-reads \
+                --other non-rRNA-reads \
+                --log -v
+            unmerge-paired-reads.sh non-rRNA-reads.fastq non-rRNA-reads-fw.fq non-rRNA-reads-rv.fq
+            gzip < non-rRNA-reads-fw.fq > ${name}-fw.fq.gz
+            gzip < non-rRNA-reads-rv.fq > ${name}-rv.fq.gz
+            mv rRNA-reads.log ${name}_rRNA_report.txt
+            """
+        }
+    }
 }
 
 
@@ -959,7 +1090,7 @@ if (params.peptide_fasta){
     .set{ ch_coding_nucleotides_nonempty }
 }
 
-if (params.splitKmer){
+if (params.split_kmer){
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 /* --                                                                     -- */
@@ -1087,7 +1218,7 @@ if (params.peptide_fasta){
 }
 
 
-if (params.splitKmer){
+if (params.split_kmer && !params.skip_compare){
      process ska_compare_sketches {
     tag "${sketch_id}"
     publishDir "${params.outdir}/ska/compare/", mode: 'copy'
@@ -1105,7 +1236,8 @@ if (params.splitKmer){
     """
 
     }
-  } else {
+  }
+if (!params.split_kmer && !params.skip_compare) {
   process sourmash_compare_sketches {
     // Combine peptide and nucleotide sketches
     sourmash_sketches = sourmash_sketches_peptide.concat(sourmash_sketches_nucleotide)
@@ -1132,6 +1264,41 @@ if (params.splitKmer){
 
   }
 }
+
+
+/*
+ * STEP 16 - MultiQC
+ */
+process multiqc {
+    publishDir "${params.outdir}/MultiQC", mode: "${params.publish_dir_mode}"
+
+    when:
+    !params.skip_multiqc
+
+    input:
+    file multiqc_config from ch_multiqc_config
+    file ('fastp/*') from ch_fastp_results.collect().ifEmpty([])
+    file ('sortmerna/*') from sortmerna_logs.collect().ifEmpty([])
+    file ('software_versions/*') from ch_software_versions_yaml.collect()
+    file workflow_summary from ch_workflow_summary.collectFile(name: "workflow_summary_mqc.yaml")
+
+    output:
+    file "*multiqc_report.html" into ch_multiqc_report
+    file "*_data"
+    file "multiqc_plots"
+
+    script:
+    rtitle = custom_runName ? "--title \"$custom_runName\"" : ''
+    rfilename = custom_runName ? "--filename " + custom_runName.replaceAll('\\W','_').replaceAll('_+','_') + "_multiqc_report" : ''
+    custom_config_file = params.multiqc_config ? "--config $multiqc_config" : ''
+    """
+    multiqc . -f $rtitle $rfilename $custom_config_file \\
+        -m custom_content \\
+        -m fastp \\
+        -m sortmerna
+    """
+}
+
 
 
 /*
