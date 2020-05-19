@@ -877,14 +877,11 @@ if ( have_nucleotide_input ) {
   if (params.subsample){
     // Concatenate trimmed reads with fastas for subsequent subsampling
     subsample_ch_reads_for_ribosomal_removal = ch_reads_trimmed.concat(fastas_ch)
+  } else {
+      // Concatenate trimmed reads with fastas for signature generation
+      ch_reads_for_ribosomal_removal = ch_reads_trimmed.concat(fastas_ch)
+    }
   }
-  else {
-    // Concatenate trimmed reads with fastas for signature generation
-    ch_reads_for_ribosomal_removal = ch_reads_trimmed.concat(fastas_ch)
-  }
-} else {
-  ch_fastp_results = Channel.from(false)
-}
 
   if (params.subsample) {
       process subsample_input {
@@ -998,7 +995,7 @@ if (!params.remove_ribo_rna) {
             """
         }
     }
-}
+  }
 
 
 
@@ -1120,6 +1117,18 @@ if (!params.remove_ribo_rna) {
   sourmash_sketches_nucleotide = Channel.empty()
   ch_protein_fastas
     .set { ch_translated_protein_seqs_nonempty }
+}
+
+
+
+if ((!have_nucleotide_input) || params.skip_trimming || have_nucleotide_fasta_input) {
+  // Only protein input or skip trimming, or fastas which can't be trimmed.
+  ch_fastp_results = Channel.from(false)
+}
+
+if (!have_nucleotide_input) {
+  // Only protein input, can't do sortMeRNA
+  sortmerna_logs = Channel.empty()
 }
 
 
