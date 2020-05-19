@@ -12,31 +12,36 @@
         * [`awsbatch`](#awsbatch)
         * [`standard`](#standard)
         * [`none`](#none)
-    * [Read inputs](#read-inputs)
-        * [`--read_pairs`](#--read_pairs)
-        * [`--read_singles`](#--read_singles)
-        * [`--csv_pairs`](#--csv_pairs)
-        * [`--csv_singles`](#--csv_singles)
-        * [`--fastas`](#--fastas)
-        * [`--sra`](#--sra)
-        * [`--bam`](#--bam)
-        * [`--barcodes_file`](#--barcodes_file)
-        * [`--rename_10x_barcodes`](#--rename_10x_barcodes)
-        * [`--save_fastas`](#--save_fastas)
-    * [Adapter Trimming][#adapter-trimming]
-        * [`--skip_trimming`](#--skip_trimming)
-    * [K-merization/Sketching program options](#k-merization-sketching-program-options)
-        * [`--split_kmer`](#--split_kmer)
-    * [Sketch parameters](#sketch-parameters)
-        * [`--molecule`](#--molecule)
-        * [`--ksize`](#--ksize)
-        * [`--log2_sketch_size`](#--log2_sketch_size)
-        * [`--track_abundance`](#--track_abundance)
-        * [`--skip_compare`](#--skip_compare)
-    * [Bam optional parameters](#bam-optional-parameters)
-        * [`--tenx_min_umi_per_cell`](#--tenx_min_umi_per_cell)
-        * [`--write_barcode_meta_csv`](#--write_barcode_meta_csv)
-        * [`--shard_size`](#--shard_size)
+* [Read inputs](#read-inputs)
+    * [`--read_pairs`](#--read_pairs)
+    * [`--read_singles`](#--read_singles)
+    * [`--csv_pairs`](#--csv_pairs)
+    * [`--csv_singles`](#--csv_singles)
+    * [`--fastas`](#--fastas)
+    * [`--sra`](#--sra)
+    * [`--bam`](#--bam)
+    * [`--barcodes_file`](#--barcodes_file)
+    * [`--rename_10x_barcodes`](#--rename_10x_barcodes)
+    * [`--save_fastas`](#--save_fastas)
+* [Adapter Trimming][#adapter-trimming]
+    * [`--skip_trimming`](#--skip_trimming)
+* [K-merization/Sketching program options](#k-merization-sketching-program-options)
+* [Ribosomal RNA removal](#ribosomal-rna-removal)
+  * [`--removeRiboRNA`](#removeriborna)
+  * [`--saveNonRiboRNAReads`](#savenonribornareads)
+  * [`--rRNA_database_manifest`](#rrnadatabasemanifest)
+- [Library Prep Presets](#library-prep-presets)
+    * [`--splitKmer`](#--splitKmer)
+* [Sketch parameters](#sketch-parameters)
+    * [`--molecule`](#--molecule)
+    * [`--ksize`](#--ksize)
+    * [`--log2_sketch_size`](#--log2_sketch_size)
+    * [`--track_abundance`](#--track_abundance)
+    * [`--skip_compare`](#--skip_compare)
+* [Bam optional parameters](#bam-optional-parameters)
+    * [`--tenx_min_umi_per_cell`](#--tenx_min_umi_per_cell)
+    * [`--write_barcode_meta_csv`](#--write_barcode_meta_csv)
+    * [`--shard_size`](#--shard_size)
 
 * [Job Resources](#job-resources)
 * [Automatic resubmission](#automatic-resubmission)
@@ -231,6 +236,26 @@ used to launch fastp!
 ### `--skip_trimming`
 
 This allows to skip the trimming process to save time when re-analyzing data that has been trimmed already.
+
+## Ribosomal RNA removal
+
+If rRNA removal is desired (for example, metatranscriptomics),
+add the following command line parameters.
+Please be adviced that by default these steps make use of the SILVA v119 database that requires [`licencing for commercial/non-academic entities`](https://www.arb-silva.de/silva-license-information).
+
+### `--removeRiboRNA`
+
+Instructs to use SortMeRNA to remove reads related to ribosomal RNA (or any patterns found in the sequences defined by `--rRNA_database_manifest`).
+
+### `--saveNonRiboRNAReads`
+
+By default, non-rRNA FastQ files will not be saved to the results directory. Specify this
+flag (or set to true in your config file) to copy these files when complete.
+
+### `--rRNA_database_manifest`
+
+By default, rRNA databases in github [`biocore/sortmerna/rRNA_databases`](https://github.com/biocore/sortmerna/tree/master/data/rRNA_databases) are used. Here the path to a text file can be provided that contains paths to fasta files (one per line, no ' or " for file names) that will be used for database creation for SortMeRNA instead of the default ones. You can see an example in the directory `assets/rrna-default-dbs.txt`. Consequently, similar reads to these sequences will be removed.
+Be aware that commercial/non-academic entities require [`licensing for SILVA`](https://www.arb-silva.de/silva-license-information) with these default databases.
 
 ## K-merization/Sketching program Options
 
