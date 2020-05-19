@@ -85,9 +85,10 @@ def helpMessage() {
                                     by commas. Default is '10,12,14,16'
       --track_abundance             Track abundance of each hashed k-mer, could be useful for cancer RNA-seq or ATAC-seq analyses
       --skip_trimming               If provided, skip fastp trimming of reads
+      --skip_compare                If provided, skip comparison of hashes using sourmash compare
 
     Split K-mer options:
-      --splitKmer                   If provided, use SKA to compute split k-mer sketches instead of
+      --split_kmer                   If provided, use SKA to compute split k-mer sketches instead of
                                     sourmash to compute k-mer sketches
       --subsample                   Integer value to subsample reads from input fastq files
 
@@ -331,7 +332,7 @@ if (workflow.profile == 'awsbatch') {
 }
 
 
-if (params.splitKmer){
+if (params.split_kmer){
     params.ksizes = '15,9'
     params.molecules = 'dna'
 } else {
@@ -376,8 +377,8 @@ tenx_cell_barcode_pattern = params.tenx_cell_barcode_pattern
 tenx_molecular_barcode_pattern = params.tenx_molecular_barcode_pattern
 tenx_min_umi_per_cell = params.tenx_min_umi_per_cell
 
-if (params.splitKmer && 'protein' in molecules){
-  exit 1, "Cannot specify 'protein' in `--molecules` if --splitKmer is set"
+if (params.split_kmer && 'protein' in molecules){
+  exit 1, "Cannot specify 'protein' in `--molecules` if --split_kmer is set"
 }
 
 
@@ -957,7 +958,7 @@ if (params.peptide_fasta){
     .set{ ch_coding_nucleotides_nonempty }
 }
 
-if (params.splitKmer){
+if (params.split_kmer){
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 /* --                                                                     -- */
@@ -1069,7 +1070,7 @@ if (params.peptide_fasta){
 }
 
 
-if (params.splitKmer){
+if (params.split_kmer && !params.skip_compare){
      process ska_compare_sketches {
     tag "${sketch_id}"
     publishDir "${params.outdir}/ska/compare/", mode: 'copy'
@@ -1087,7 +1088,8 @@ if (params.splitKmer){
     """
 
     }
-  } else {
+  } 
+if (!params.split_kmer && !params.skip_compare) {
   process sourmash_compare_sketches {
     // Combine peptide and nucleotide sketches
     sourmash_sketches = sourmash_sketches_peptide.concat(sourmash_sketches_nucleotide)
