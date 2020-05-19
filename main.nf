@@ -915,7 +915,7 @@ if ( have_nucleotide_input ) {
  */
 if (!params.remove_ribo_rna) {
     ch_reads_for_ribosomal_removal
-        .into { reads_ch }
+        .set { reads_ch }
     sortmerna_logs = Channel.empty()
 } else {
     process sortmerna_index {
