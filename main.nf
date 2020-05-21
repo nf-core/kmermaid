@@ -463,9 +463,6 @@ summary['K-mer sizes']            = params.ksizes
 summary['Molecule']               = params.molecules
 summary['Track Abundance']        = params.track_abundance
 // -- Sketch size parameters --
-// Backup if not specified, use --scaled 500 as sourmash defaults
-// if (!have_size) summary['Sketch scaled']                                      = "500"
-// Otherwise, use the user-specified ones
 if (params.sketch_size) summary['Sketch Sizes']                  = params.sketch_size
 if (params.sketch_size_log2) summary['Sketch Sizes (log2)']      = params.sketch_size_log2
 if (params.sketch_scaled) summary['Sketch scaled']               = params.sketch_scaled

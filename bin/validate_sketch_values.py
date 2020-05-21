@@ -13,40 +13,6 @@ logging.basicConfig(format='%(name)s - %(asctime)s %(levelname)s: %(message)s')
 logger = logging.getLogger(__file__)
 logger.setLevel(logging.INFO)
 
-#
-# have_size = params.sketch_size || params.sketch_size_log2 || params.sketch_scaled || params.sketch_scaled_log2
-# if (have_size) {
-#   using_size = params.sketch_size || params.sketch_size_log2
-#   using_scaled = params.sketch_scaled || params.sketch_scaled_log2
-#   if (using_size && using_scaled ) {
-#     exit 1, "Cannot specify both sketch scales and sizes! Can only use one of --sketch_size, --sketch_size_log2, --sketch_scaled, --sketch_scaled_log2"
-#   }
-#   if (using_size) {
-#     if (params.sketch_size && params.sketch_size_log2){
-#       exit 1, "Cannot specify both log2 and non-log2 sizes! Can only use one of --sketch_size, --sketch_size_log2"
-#     }
-#     if (params.sketch_size) {
-#       sketch_values = params.sketch_size?.toString().tokenize(',').map { Int.parseInt(it) }.collect()
-#     } else {
-#       sketch_values = params.sketch_size_log2?.toString().tokenize(',').map { 2 ** Int.parseInt(it) }.collect()
-#     }
-#   } else {
-#     if (params.sketch_scaled && params.sketch_scaled_log2){
-#       exit 1, "Cannot specify both log2 and non-log2 sizes! Can only use one of --sketch_size, --sketch_size_log2"
-#     }
-#     if (params.sketch_scaled) {
-#       sketch_values = params.sketch_scaled?.toString().tokenize(',')
-#     } else {
-#       sketch_values = params.sketch_scaled_log2?.toString().tokenize(',').map { 2 ** Int.parseInt(it) }.collect()
-#     }
-#   }
-#
-# } else {
-#   log.info "Did not specify a sketch size or scale with any of --sketch_size, --sketch_size_log2, --sketch_scaled, --sketch_scaled_log2! Falling back on sourmash's default of --sketch_scaled 500"
-#   sketch_values = ['500']
-#   using_scaled = true
-# }
-
 
 def get_sketch_values(values, values_log2):
     if values:
