@@ -940,6 +940,7 @@ if (params.peptide_fasta){
       --csv ${sample_id}__coding_scores.csv \\
       --json-summary ${sample_id}__coding_summary.json \\
       --jaccard-threshold ${jaccard_threshold} \\
+      --peptide-ksize ${peptide_ksize} \\
       --peptides-are-bloom-filter \\
       ${bloom_filter} \\
       ${reads} > ${sample_id}__coding_reads_peptides.fasta
