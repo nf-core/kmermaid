@@ -13,10 +13,14 @@ matrix:
     jdk: openjdk8
   - name: "Latest Nextflow version, regular test suite"
     env: NXF_VER='' SUITE=test FLAGS=
+  - name: "Test nextflow kmermaid, with --skip_trimming"
+    env: NXF_VER='' SUITE=test FLAGS='--skip_trimming'
   - name: "Text nextflow kmermaid, with removing ribosomal reads"
     env: NXF_VER='' SUITE=test_remove_ribo FLAGS=--remove_ribo_rna
   - name: "Test nextflow kmermaid, with --track_abundance"
     env: NXF_VER='' SUITE=test FLAGS='--track_abundance'
+  - name: "Test fasta input"
+    env: NXF_VER='' SUITE=test_fastas FLAGS=
   - name: "Test nextflow kmermaid, with translate on fastas"
     env: NXF_VER='' SUITE=test_translate
   - name: "Latest Nextflow version, regular test suite with split_kmers, ensure that `protein` can't be specified"
@@ -25,9 +29,9 @@ matrix:
       - nextflow run ${TRAVIS_BUILD_DIR} -profile test,docker --split_kmer ; if [ $? -eq 0 ]; then echo "--split_kmer + --molecules protein should fail but did not" && exit 1 ; else echo "Correctly failed --split_kmer + --molecules protein" ; fi
   - name: "Latest Nextflow version, split k-mer test suite"
     env: NXF_VER='' SUITE=test_ska FLAGS=
-  - name: "Latest Nextflow version, split k-mer test suite"
+  - name: "Latest Nextflow version, split k-mer test suite, with --skip_compare"
     env: NXF_VER='' SUITE=test_ska FLAGS=--skip_compare
-  - name: "Latest Nextflow version, split k-mer test suite"
+  - name: "Latest Nextflow version, split k-mer test suite, with --skip_trimming"
     env: NXF_VER='' SUITE=test_ska FLAGS=--skip_trimming
   - name: "Latest Nextflow version, split k-mer test suite, test subsampling"
     env: NXF_VER='' SUITE=test_ska FLAGS='--subsample 10'
@@ -35,7 +39,7 @@ matrix:
   #   script: markdownlint ${TRAVIS_BUILD_DIR} -c ${TRAVIS_BUILD_DIR}/.github/markdownlint.yml
   - name: "Test nextflow kmermaid, with 10x .tgz file"
     env: NXF_VER='' SUITE=test_tenx_tgz FLAGS=
-  - name: "Test nextflow kmermaid, with 10x .tgz file"
+  - name: "Test nextflow kmermaid, with 10x .tgz file, with --skip_trimming"
     env: NXF_VER='' SUITE=test_tenx_tgz FLAGS=--skip_trimming
   - name: "Test nextflow kmermaid, with 10x .tgz file, skip compare"
     env: NXF_VER='' SUITE=test_tenx_tgz FLAGS=--skip_compare
