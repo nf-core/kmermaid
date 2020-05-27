@@ -1030,6 +1030,7 @@ if (!params.remove_ribo_rna) {
       ${reads} > ${sample_id}__coding_reads_peptides.fasta
     """
     }
+
     // Remove empty files
     // it[0] = sample id
     // it[1] = sequence fasta file
