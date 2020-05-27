@@ -1016,19 +1016,21 @@ if (!params.remove_ribo_rna) {
       set val(sample_id), file("${sample_id}__coding_scores.csv") into ch_coding_scores_csv
       set val(sample_id), file("${sample_id}__coding_summary.json") into ch_coding_scores_json
 
-      script:
-      """
-      sencha translate \\
-        --molecule ${molecule} \\
-        --coding-nucleotide-fasta ${sample_id}__coding_reads_nucleotides.fasta \\
-        --csv ${sample_id}__coding_scores.csv \\
-        --json-summary ${sample_id}__coding_summary.json \\
-        --jaccard-threshold ${jaccard_threshold} \\
-        --peptides-are-bloom-filter \\
-        ${bloom_filter} \\
-        ${reads} > ${sample_id}__coding_reads_peptides.fasta
-      """
+    script:
+    """
+    sencha translate \\
+      --molecule ${molecule} \\
+      --coding-nucleotide-fasta ${sample_id}__coding_reads_nucleotides.fasta \\
+      --csv ${sample_id}__coding_scores.csv \\
+      --json-summary ${sample_id}__coding_summary.json \\
+      --jaccard-threshold ${jaccard_threshold} \\
+      --peptide-ksize ${peptide_ksize} \\
+      --peptides-are-bloom-filter \\
+      ${bloom_filter} \\
+      ${reads} > ${sample_id}__coding_reads_peptides.fasta
+    """
     }
+
     // Remove empty files
     // it[0] = sample id
     // it[1] = sequence fasta file
