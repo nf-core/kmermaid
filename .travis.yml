@@ -11,19 +11,20 @@ matrix:
     env: NXF_VER='0.32.0' SUITE=test FLAGS=
     language: java
     jdk: openjdk8
-  - name: "Latest Nextflow version, regular test suite"
+  - name: "Latest Nextflow version, regular test suite (test --sketch_size_log2")"
     env: NXF_VER='' SUITE=test FLAGS=
   - name: "Test empty --sketch_size"
     script:
-      - nextflow run ${TRAVIS_BUILD_DIR} -profile test,docker --sketch_size false  --sketch_size_log2 false ; if [ $? -eq 0 ]; then echo "Must specify at least one sketch size/scale" && exit 1 ; else echo "Correctly failed --sketch_size + --sketch_size_log2 empty" ; fi
+      - nextflow run ${TRAVIS_BUILD_DIR} -profile test,docker --sketch_size_log2 false ; if [ $? -eq 0 ]; then echo "Must specify at least one sketch size/scale" && exit 1 ; else echo "Correctly failed --sketch_size + --sketch_size_log2 empty" ; fi
   - name: "Test --sketch_size"
     env: NXF_VER='' SUITE=test FLAGS='--sketch_size 2,4 --sketch_size_log2 false'
-  - name: "Test --sketch_size_log2"
-    env: NXF_VER='' SUITE=test FLAGS='--sketch_size_log2 2,4'
+  - name: "Test --sketch_scaled_log2"
+    env: NXF_VER='' SUITE=test FLAGS='--sketch_scaled_log2 2,4'
   - name: "Test --sketch_scaled"
     env: NXF_VER='' SUITE=test FLAGS='--sketch_scaled 2,4 --sketch_size_log2 false'
-  - name: "Test --sketch_scaled_log2"
-    env: NXF_VER='' SUITE=test FLAGS='--sketch_scaled_log2 2,4 --sketch_size_log2 false'
+  - name: "Test can't specify both --sketch_scaled_log2 and --sketch_scaled_log2"
+      script:
+        - nextflow run ${TRAVIS_BUILD_DIR} -profile test,docker --sketch_scaled_log2 2,4 --sketch_size_log2 2,4 ; if [ $? -eq 0 ]; then echo "Must specify at least one sketch size/scale" && exit 1 ; else echo "Correctly failed --sketch_size + --sketch_size_log2 empty" ; fi
   - name: "Text nextflow kmermaid, with removing ribosomal reads"
     env: NXF_VER='' SUITE=test_remove_ribo FLAGS=--remove_ribo_rna
   - name: "Test nextflow kmermaid, with --track_abundance"
