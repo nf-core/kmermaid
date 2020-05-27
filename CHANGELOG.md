@@ -8,6 +8,7 @@
 
 * Add option to use Dayhoff encoding for sourmash
 * Add option to remove ribosomal RNA using sortMeRNA ([#74](https://github.com/nf-core/kmermaid/issues/74))
+* Actually propagate `--translate_peptide_ksize` down to `sencha` ([#83](https://github.com/nf-core/kmermaid/pull/83/))
 
 ### Dependency Updates
 
