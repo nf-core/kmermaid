@@ -405,8 +405,8 @@ sketch_scaled = params.sketch_scaled
 sketch_scaled_log2 = params.sketch_scaled_log2
 have_sketch_value = params.sketch_size || params.sketch_size_log2 || params.sketch_scaled || params.sketch_scaled_log2
 
-if (!have_sketch_value) {
-  exit 1, "None of --sketch_size, --sketch_size_log2, --sketch_scaled, --sketch_scaled_log2 was provided! Provide one (1) and only one to specify the style and amount of hashes per sketch"
+if (!have_sketch_value && !params.split_kmer) {
+  exit 1, "None of --sketch_size, --sketch_size_log2, --sketch_scaled, --sketch_scaled_log2 was provided! Provide one (1) and only one to specify the style and amount of hashes per sourmash sketch"
 }
 
 if (params.bam){
