@@ -1139,7 +1139,7 @@ process sourmash_compute_sketch_fastx_nucleotide {
   set sample_id, file(reads) from ch_coding_nucleotides_nonempty
 
   output:
-  file(csv)
+  file(csv) into ch_sourmash_sig_describe_nucleotides
   set val(sketch_id), val("dna"), val(ksize), val(sketch_value), file(sig) into sourmash_sketches_all_nucleotide
 
   script:
@@ -1191,7 +1191,7 @@ if (params.peptide_fasta){
     set sample_id, file(reads) from ch_coding_peptides_nonempty
 
     output:
-    file(csv)
+    file(csv) into ch_sourmash_sig_describe_peptides
     set val(sketch_id), val(molecule), val(ksize), val(sketch_value), file(sig) into sourmash_sketches_all_peptide
 
     script:
