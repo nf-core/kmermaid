@@ -8,6 +8,7 @@
 
 * Add option to use Dayhoff encoding for sourmash
 * Add option to remove ribosomal RNA using sortMeRNA ([#74](https://github.com/nf-core/kmermaid/issues/74))
+* Actually propagate `--translate_peptide_ksize` down to `sencha` ([#83](https://github.com/nf-core/kmermaid/pull/83/))
 
 ### Dependency Updates
 
@@ -31,6 +32,7 @@ barcode fastq
 * Remove `one_signature_per_record` flag and add bam2fasta count_umis_percell and make_fastqs_percell instead of bam2fasta sharding method
 * Update renaming of `khtools` commands to `sencha`
 * Make sure `samtools_fastq_aligned` outputs ALL aligned reads, regardless of mapping quality or primary alignment status
+* Add `--protein_fastas` option for translated protein input
 * Rename splitkmer to `split_kmer` and add `--skip_compare option` to skip `sourmash_compare_sketches` process
 * Increase CPUs in `high_memory_long` profile from 1 to 10
 

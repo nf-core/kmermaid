@@ -64,6 +64,7 @@ def helpMessage() {
       --csv_pairs                   CSV file with columns id, read1, read2 for each sample
       --csv_singles                 CSV file with columns id, read1, read2 for each sample
       --fastas                      Path to FASTA sequence files. Can be semi-colon-separated
+      --protein_fastas              Path to protein fasta inputs
       --bam                         Path to 10x BAM file
       --save_fastas                 For bam files, Path relative to outdir to save unique barcodes to {CELL_BARCODE}.fasta
       --save_intermediate_files     save temporary fastas and chunks of bam files
@@ -114,8 +115,14 @@ def helpMessage() {
       --rename_10x_barcodes         For bam files, Optional absolute path to a .tsv Tab-separated file mapping 10x barcode name
                                     to new name, e.g. with channel or cell annotation label
 
-    Extract protein-coding options:
-      --peptide_fasta               Path to a well-curated fasta file of protein sequences. Used to filter for coding reads
+    Translate RNA-seq reads into protein-coding sequences options:
+      --reference_proteome_fasta    Path to a well-curated fasta file of protein sequences. Used to filter for coding reads
+      --translate_peptide_ksize     K-mer size to use for translating RNA into protein.
+                                    Default: 9, which is good for 'protein'. If using dayhoff, suggest 15
+      --translate_peptide_molecule  Which molecular encoding to use for translating. Default: "protein"
+                                    If your reference proteome is quite different from your species of interest,
+                                    suggest using "dayhoff" encoding
+      --translate_jaccard_threshold Minimum fraction of overlapping translated k-mers from the read to match to the reference. Default: 0.95
       --bloomfilter_tablesize       Maximum table size for bloom filter creation
 
     Other Options:
@@ -174,6 +181,9 @@ fastas_ch = Channel.empty()
 // 10X Genomics .tgz file containing possorted_genome_bam file
 tenx_tgz_ch = Channel.empty()
 
+// Boolean for if an nucleotide input exists anywhere
+have_nucleotide_fasta_input = params.fastas || params.fasta_paths
+have_nucleotide_input = params.read_paths || params.sra || params.csv_pairs || params.csv_singles || params.read_pairs || params.read_singles || have_nucleotide_fasta_input || params.bam || params.tenx_tgz
 
 // Parameters for testing
 if (params.read_paths) {
@@ -224,7 +234,15 @@ if (params.read_paths) {
      fastas_ch = Channel
        .fromPath(params.fastas?.toString()?.tokenize(';'))
        .map{ f -> tuple(f.baseName, tuple(file(f))) }
+       .dump ( tag: 'fastas_ch' )
        .ifEmpty { exit 1, "params.fastas (${params.fastas}) was empty - no input files supplied" }
+   } else if (params.fasta_paths) {
+     fastas_ch = Channel
+       .from(params.fasta_paths)
+       .map { row -> if (row[1].size() == 2) [ row[0], [file(row[1][0]), file(row[1][1])]]
+             else [row[0], [file(row[1][0])]]}
+       .dump ( tag: 'fastas_ch' )
+       .ifEmpty { exit 1, "params.fasta_paths (${params.fastas}) was empty - no input files supplied" }
    }
 
   if (params.bam) {
@@ -258,6 +276,7 @@ if (params.read_paths) {
   }
 
   if (params.tenx_tgz) {
+    have_nucleotide_input = true
     Channel.fromPath(params.tenx_tgz, checkIfExists: true)
        .dump(tag: 'tenx_tgz_before_mri_filter')
        .filter{ ~/.+[^mri]\.tgz/ }
@@ -267,12 +286,35 @@ if (params.read_paths) {
   }
 }
 
-if (params.peptide_fasta) {
-Channel.fromPath(params.peptide_fasta, checkIfExists: true)
-     .ifEmpty { exit 1, "Peptide fasta file not found: ${params.peptide_fasta}" }
-     .set{ ch_peptide_fasta }
+////////////////////////////////////////////////////
+/* --          Parse protein fastas            -- */
+////////////////////////////////////////////////////
+if (params.protein_fastas){
+  Channel.fromPath(params.protein_fastas?.toString()?.tokenize(';'))
+      .map{ f -> tuple(f.baseName, tuple(file(f))) }
+      .ifEmpty { exit 1, "params.protein_fastas was empty - no input files supplied" }
+      .set { ch_protein_fastas }
+} else if (params.protein_fasta_paths){
+  Channel
+    .from(params.protein_fasta_paths)
+    .map { row -> [ row[0], [ file(row[1][0], checkIfExists: true)] ] }
+    .ifEmpty { exit 1, "params.protein_fasta_paths was empty - no input files supplied" }
+    .dump(tag: "protein_fasta_paths")
+    .set { ch_protein_fastas }
+} else {
+  ch_protein_fastas = Channel.empty()
 }
 
+if (params.reference_proteome_fasta) {
+Channel.fromPath(params.reference_proteome_fasta, checkIfExists: true)
+     .ifEmpty { exit 1, "Reference proteome file not found: ${params.reference_proteome_fasta}" }
+     .set{ ch_reference_proteome_fasta }
+}
+
+////////////////////////////////////////////////////
+/* --    Concatenate all nucleotide inputs     -- */
+////////////////////////////////////////////////////
+// Add _unchecked suffix because have not yet checked if these files are not empty
 if (params.subsample) {
   if (params.bam){
      exit 1, "Cannot provide both a bam file with --bam and specify --subsample"
@@ -280,15 +322,13 @@ if (params.subsample) {
     if (params.skip_trimming){
       sra_ch.concat(csv_pairs_ch, csv_singles_ch, read_pairs_ch,
         read_singles_ch, fastas_ch, read_paths_ch)
-        .ifEmpty{ exit 1, "No reads provided! Check read input files"}
-        .set{ subsample_ch_reads_for_ribosomal_removal }
+        .set{ subsample_reads_ch_unchecked }
     } else {
       sra_ch.concat(
           csv_pairs_ch, csv_singles_ch, read_pairs_ch,
           read_singles_ch, read_paths_ch)
-        .dump ( tag: 'fastqs_concatenated_for_trimming' )
-        .ifEmpty{ exit 1, "No reads provided! Check read input files"}
-        .set{ ch_read_files_trimming }
+        // .ifEmpty{ exit 1, "No reads provided! Check read input files"}
+        .set{ ch_read_files_trimming_unchecked }
     }
   }
 } else {
@@ -297,31 +337,73 @@ if (params.subsample) {
       sra_ch.concat(
           csv_pairs_ch, csv_singles_ch, read_pairs_ch,
           read_singles_ch, fastas_ch, read_paths_ch)
-       .ifEmpty{ exit 1, "No reads provided! Check read input files"}
-       .set{ ch_reads_for_ribosomal_removal }
+       .set{ reads_ch_unchecked }
     } else {
-      if (params.fastas) {
+      if (have_nucleotide_fasta_input) {
         // With fasta files - combine everything that can be trimmed
         sra_ch.concat(
             csv_pairs_ch, csv_singles_ch, read_pairs_ch,
             read_singles_ch, read_paths_ch)
-          .set{ ch_read_files_trimming }
+          .dump ( tag: 'ch_read_files_trimming_unchecked__with_fastas' )
+          .into { ch_read_files_trimming_to_trim; ch_read_files_trimming_to_check_size }
       } else {
         // No fasta files - combine everything and error out
         sra_ch.concat(
             csv_pairs_ch, csv_singles_ch, read_pairs_ch,
             read_singles_ch, read_paths_ch)
-          .ifEmpty{ exit 1, "No reads provided! Check read input files"}
-          .set{ ch_read_files_trimming }
+          .dump ( tag: 'ch_read_files_trimming_unchecked__no_fastas' )
+          .set{ ch_read_files_trimming_unchecked }
       }
     }
   } else {
-//   Do nothing - can't combine the fastq files and bam files (yet)
       sra_ch.concat(
           csv_pairs_ch, csv_singles_ch, read_pairs_ch,
           read_singles_ch, read_paths_ch)
-        .set{ ch_non_bam_reads }
+        .dump ( tag: 'ch_non_bam_reads_unchecked__concatenated' )
+        .set{ ch_non_bam_reads_unchecked }
     }
+}
+
+protein_input = params.protein_fastas || params.protein_fasta_paths
+if (!protein_input) {
+  if (params.subsample && params.skip_trimming ) {
+    subsample_reads_ch_unchecked
+      .ifEmpty{  exit 1, "No reads provided! Check read input files" }
+      .set { subsample_ch_reads_for_ribosomal_removal }
+  }
+  if (params.skip_trimming && !(params.bam || params.tenx_tgz)) {
+    reads_ch_unchecked
+      .ifEmpty{ exit 1, "No reads provided! Check read input files" }
+      .set { ch_reads_for_ribosomal_removal }
+    ch_read_files_trimming_to_check_size = Channel.empty()
+  } else if (params.bam || params.tenx_tgz) {
+    ch_non_bam_reads_unchecked
+      // No need to check if empty since there is bam input
+      .set { ch_non_bam_reads }
+  } else if (!have_nucleotide_fasta_input) {
+      // if no fastas, then definitely trimming the remaining reads
+      ch_read_files_trimming_unchecked
+        .ifEmpty{ exit 1, "No reads provided! Check read input files" }
+        .into { ch_read_files_trimming_to_trim; ch_read_files_trimming_to_check_size }
+  }
+} else {
+  // Since there exists protein input, don't check if these are empty
+  if (params.subsample) {
+    subsample_reads_ch_unchecked
+      .set { subsample_ch_reads_for_ribosomal_removal }
+  }
+  if (params.skip_trimming) {
+    reads_ch_unchecked
+      .set { ch_reads_for_ribosomal_removal }
+    ch_read_files_trimming_to_check_size = Channel.empty()
+  } else if (!have_nucleotide_fasta_input) {
+    ch_read_files_trimming_unchecked
+      .into { ch_read_files_trimming_to_trim; ch_read_files_trimming_to_check_size }
+  }
+  if (params.bam) {
+    ch_non_bam_reads_unchecked
+      .set { ch_non_bam_reads }
+  }
 }
 
 
@@ -453,6 +535,7 @@ if(params.csv_pairs)    summary['Paired-end samples.csv']            = params.cs
 if(params.csv_singles)  summary['Single-end samples.csv']    = params.csv_singles
 if(params.sra)          summary['SRA']                             = params.sra
 if(params.fastas)       summary["FASTAs"]                          = params.fastas
+if(params.protein_fastas) summary["Protein FASTAs"]                = params.protein_fastas
 if(params.bam)          summary["BAM"]                             = params.bam
 if(params.barcodes_file)          summary["Barcodes"]              = params.barcodes_file
 if(params.rename_10x_barcodes)    summary["Renamer barcodes"]      = params.rename_10x_barcodes
@@ -474,10 +557,10 @@ if(params.tenx_tgz) summary["10x Cell pattern"] = params.tenx_cell_barcode_patte
 if(params.tenx_tgz) summary["10x UMI pattern"] = params.tenx_molecular_barcode_pattern
 if(params.tenx_tgz) summary['Min UMI/cell'] = params.tenx_min_umi_per_cell
 // Extract coding parameters
-if(params.peptide_fasta) summary["Peptide fasta"] = params.peptide_fasta
-if(params.peptide_fasta) summary['Peptide ksize'] = params.translate_peptide_ksize
-if(params.peptide_fasta) summary['Peptide molecule'] = params.translate_peptide_molecule
-if(params.peptide_fasta) summary['Bloom filter table size'] = params.bloomfilter_tablesize
+if(params.reference_proteome_fasta) summary["Peptide fasta"] = params.reference_proteome_fasta
+if(params.reference_proteome_fasta) summary['Peptide ksize'] = params.translate_peptide_ksize
+if(params.reference_proteome_fasta) summary['Peptide molecule'] = params.translate_peptide_molecule
+if(params.reference_proteome_fasta) summary['Bloom filter table size'] = params.bloomfilter_tablesize
 // Resource information
 summary['Max Resources']    = "$params.max_memory memory, $params.max_cpus cpus, $params.max_time time per job"
 if(workflow.containerEngine) summary['Container'] = "$workflow.containerEngine - $workflow.container"
@@ -626,7 +709,7 @@ process get_software_versions {
     """
 }
 
-if (params.peptide_fasta){
+if (params.reference_proteome_fasta){
   process make_protein_index {
     tag "${peptides}__${bloom_id}"
     label "low_memory"
@@ -634,7 +717,7 @@ if (params.peptide_fasta){
     publishDir "${params.outdir}/protein_index", mode: 'copy'
 
     input:
-    file(peptides) from ch_peptide_fasta
+    file(peptides) from ch_reference_proteome_fasta
     peptide_ksize
     peptide_molecule
 
@@ -832,61 +915,64 @@ if (params.tenx_tgz || params.bam) {
   if (params.skip_trimming) {
     ch_reads_for_ribosomal_removal = ch_non_bam_reads.concat(per_cell_fastqs_ch)
   } else {
-    ch_read_files_trimming = ch_non_bam_reads.concat(per_cell_fastqs_ch)
+    ch_non_bam_reads
+      .mix ( per_cell_fastqs_ch )
+      .dump ( tag: 'ch_non_bam_reads__per_cell_fastqs_ch' )
+      .into{ ch_read_files_trimming_to_trim; ch_read_files_trimming_to_check_size }
   }
 }
 
 
+if ( have_nucleotide_input ) {
+  if (!params.skip_trimming){
+    process fastp {
+        label 'process_low'
+        tag "$name"
+        publishDir "${params.outdir}/fastp", mode: 'copy',
+          saveAs: {filename ->
+                      if (filename.indexOf(".fastq.gz") == -1) "logs/$filename"
+                      else if (reads[1] == null) "single_end/$filename"
+                      else if (reads[1] != null) "paired_end/$filename"
+                      else null
+                  }
 
-if (!params.skip_trimming){
-  process fastp {
-      label 'process_low'
-      tag "$name"
-      publishDir "${params.outdir}/fastp", mode: 'copy',
-        saveAs: {filename ->
-                    if (filename.indexOf(".fastq.gz") == -1) "logs/$filename"
-                    else if (reads[1] == null) "single_end/$filename"
-                    else if (reads[1] != null) "paired_end/$filename"
-                    else null
-                }
+        input:
+        set val(name), file(reads) from ch_read_files_trimming_to_trim
 
-      input:
-      set val(name), file(reads) from ch_read_files_trimming
+        output:
+        set val(name), file("*trimmed.fastq.gz") into ch_reads_all_trimmed
+        file "*fastp.json" into ch_fastp_results
+        file "*fastp.html" into ch_fastp_html
 
-      output:
-      set val(name), file("*trimmed.fastq.gz") into ch_reads_all_trimmed
-      file "*fastp.json" into ch_fastp_results
-      file "*fastp.html" into ch_fastp_html
-
-      script:
-      // One set of reads --> single end
-      if (reads[1] == null) {
+        script:
+        // One set of reads --> single end
+        if (reads[1] == null) {
+            """
+            fastp \\
+                --in1 ${reads} \\
+                --out1 ${name}_R1_trimmed.fastq.gz \\
+                --json ${name}_fastp.json \\
+                --html ${name}_fastp.html
+            """
+        } else if (reads[1] != null ){
+          // More than one set of reads --> paired end
+            """
+            fastp \\
+                --in1 ${reads[0]} \\
+                --in2 ${reads[1]} \\
+                --out1 ${name}_R1_trimmed.fastq.gz \\
+                --out2 ${name}_R2_trimmed.fastq.gz \\
+                --json ${name}_fastp.json \\
+                --html ${name}_fastp.html
+            """
+        } else {
           """
-          fastp \\
-              --in1 ${reads} \\
-              --out1 ${name}_R1_trimmed.fastq.gz \\
-              --json ${name}_fastp.json \\
-              --html ${name}_fastp.html
+          echo name ${name}
+          echo reads: ${reads}
+          echo "Number of reads is not equal to 1 or 2 --> don't know how to trim non-paired-end and non-single-end reads"
           """
-      } else if (reads[1] != null ){
-        // More than one set of reads --> paired end
-          """
-          fastp \\
-              --in1 ${reads[0]} \\
-              --in2 ${reads[1]} \\
-              --out1 ${name}_R1_trimmed.fastq.gz \\
-              --out2 ${name}_R2_trimmed.fastq.gz \\
-              --json ${name}_fastp.json \\
-              --html ${name}_fastp.html
-          """
-      } else {
-        """
-        echo name ${name}
-        echo reads: ${reads}
-        echo "Number of reads is not equal to 1 or 2 --> don't know how to trim non-paired-end and non-single-end reads"
-        """
-      }
-  }
+        }
+    }
 
   // Filtering out fastq.gz files less than 200 bytes (arbitary number)
   // ~200 bytes is about the size of a file with a single read or less
@@ -950,15 +1036,15 @@ if (params.subsample) {
     seqtk sample -s100 ${read1} ${params.subsample} > ${read1_prefix}_${params.subsample}.fastq.gz
     seqtk sample -s100 ${read2} ${params.subsample} > ${read2_prefix}_${params.subsample}.fastq.gz
     """
+    }
   }
-}
 
 /*
  * STEP 2+ - SortMeRNA - remove rRNA sequences on request
  */
 if (!params.remove_ribo_rna) {
     ch_reads_for_ribosomal_removal
-        .into { reads_ch }
+        .set { reads_ch }
     sortmerna_logs = Channel.empty()
 } else {
     process sortmerna_index {
@@ -1041,26 +1127,26 @@ if (!params.remove_ribo_rna) {
             """
         }
     }
-}
+  }
 
 
 
-if (params.peptide_fasta){
-  process translate {
-    tag "${sample_id}"
-    label "low_memory_long"
-    publishDir "${params.outdir}/translate/", mode: 'copy'
+  if (params.reference_proteome_fasta){
+    process translate {
+      tag "${sample_id}"
+      label "low_memory_long"
+      publishDir "${params.outdir}/translate/", mode: 'copy'
 
-    input:
-    set bloom_id, molecule, file(bloom_filter) from ch_sencha_bloom_filter.collect()
-    set sample_id, file(reads) from reads_ch
+      input:
+      set bloom_id, molecule, file(bloom_filter) from ch_sencha_bloom_filter.collect()
+      set sample_id, file(reads) from reads_ch
 
-    output:
-    // TODO also extract nucleotide sequence of coding reads and do sourmash compute using only DNA on that?
-    set val(sample_id), file("${sample_id}__coding_reads_peptides.fasta") into ch_coding_peptides
-    set val(sample_id), file("${sample_id}__coding_reads_nucleotides.fasta") into ch_coding_nucleotides
-    set val(sample_id), file("${sample_id}__coding_scores.csv") into ch_coding_scores_csv
-    set val(sample_id), file("${sample_id}__coding_summary.json") into ch_coding_scores_json
+      output:
+      // TODO also extract nucleotide sequence of coding reads and do sourmash compute using only DNA on that?
+      set val(sample_id), file("${sample_id}__coding_reads_peptides.fasta") into ch_translated_protein_seqs
+      set val(sample_id), file("${sample_id}__coding_reads_nucleotides.fasta") into ch_translatable_nucleotide_seqs
+      set val(sample_id), file("${sample_id}__coding_scores.csv") into ch_coding_scores_csv
+      set val(sample_id), file("${sample_id}__coding_summary.json") into ch_coding_scores_json
 
     script:
     """
@@ -1070,109 +1156,128 @@ if (params.peptide_fasta){
       --csv ${sample_id}__coding_scores.csv \\
       --json-summary ${sample_id}__coding_summary.json \\
       --jaccard-threshold ${jaccard_threshold} \\
+      --peptide-ksize ${peptide_ksize} \\
       --peptides-are-bloom-filter \\
       ${bloom_filter} \\
       ${reads} > ${sample_id}__coding_reads_peptides.fasta
     """
-  }
-  // Remove empty files
-  // it[0] = sample id
-  // it[1] = sequence fasta file
-  ch_coding_nucleotides_nonempty = ch_coding_nucleotides.filter{ it[1].size() > 0 }
-  ch_coding_peptides_nonempty = ch_coding_peptides.filter{ it[1].size() > 0 }
-
-} else {
-  // Send reads directly into coding/noncoding
-  reads_ch
-    .set{ ch_coding_nucleotides_nonempty }
-}
-
-if (params.split_kmer){
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-/* --                                                                     -- */
-/* --                     CREATE SKA SKETCH                               -- */
-/* --                                                                     -- */
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-
-  process ska_compute_sketch {
-      tag "${sketch_id}"
-      publishDir "${params.outdir}/ska/sketches/", mode: 'copy'
-      errorStrategy 'retry'
-      maxRetries 3
-
-
-    input:
-    each ksize from ksizes
-    set id, file(reads) from reads_ch
-
-    output:
-    set val(ksize), file("${sketch_id}.skf") into ska_sketches
-
-    script:
-    sketch_id = "${id}_ksize_${ksize}"
-
-      """
-      ska fastq \\
-        -k $ksize \\
-        -o ${sketch_id} \\
-        ${reads}
-      """
-
     }
-} else {
-process sourmash_compute_sketch_fastx_nucleotide {
-  tag "${sig_id}"
-  label "low_memory"
-  publishDir "${params.outdir}/sourmash/sketches_nucleotide", mode: "${params.publish_dir_mode}",
-      saveAs: {filename ->
-          if (filename.indexOf(".csv") > 0) "description/$filename"
-          else if (filename.indexOf(".sig") > 0) "sigs/$filename"
-          else null
-      }
 
-  input:
-  val sketch_style from sketch_style_for_nucleotides.collect()
-  each ksize from ksizes
-  each sketch_value from sketch_values
-  set sample_id, file(reads) from ch_coding_nucleotides_nonempty
+    // Remove empty files
+    // it[0] = sample id
+    // it[1] = sequence fasta file
+    ch_translatable_nucleotide_seqs_nonempty = ch_translatable_nucleotide_seqs.filter{ it[1].size() > 0 }
+    ch_translated_protein_seqs.filter{ it[1].size() > 0 }
+      .mix ( ch_protein_fastas )
+      .set { ch_translated_protein_seqs_nonempty }
 
-  output:
-  file(csv) into ch_sourmash_sig_describe_nucleotides
-  set val(sketch_id), val("dna"), val(ksize), val(sketch_value), file(sig) into sourmash_sketches_all_nucleotide
-
-  script:
-  sketch_style = sketch_style[0]
-  // Don't calculate DNA signature if this is protein, to minimize disk,
-  // memory and IO requirements in the future
-  ksize = ksize
-  sketch_id = make_sketch_id("dna", ksize, sketch_value, track_abundance, sketch_style)
-  sketch_value_flag = make_sketch_value_flag(sketch_style, sketch_value)
-  track_abundance_flag = track_abundance ? '--track-abundance' : ''
-  processes = "--processes ${task.cpus}"
-  sig_id = "${sample_id}__${sketch_id}"
-  sig = "${sig_id}.sig"
-  csv = "${sig_id}.csv"
-  """
-    sourmash compute \\
-      ${sketch_value_flag} \\
-      --ksizes $ksize \\
-      --dna \\
-      $processes \\
-      $track_abundance_flag \\
-      --output ${sig} \\
-      $reads
-    sourmash sig describe --csv ${csv} ${sig}
-  """
-
+  } else {
+    // Send reads directly into coding/noncoding
+    reads_ch
+      .set{ ch_translatable_nucleotide_seqs_nonempty }
   }
-  sourmash_sketches_nucleotide = sourmash_sketches_all_nucleotide.filter{ it[4].size() > 0 }
 
+  if (params.split_kmer){
+  ///////////////////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////////////////
+  /* --                                                                     -- */
+  /* --                     CREATE SKA SKETCH                               -- */
+  /* --                                                                     -- */
+  ///////////////////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////////////////
+
+    process ska_compute_sketch {
+        tag "${sketch_id}"
+        publishDir "${params.outdir}/ska/sketches/", mode: 'copy'
+        errorStrategy 'retry'
+        maxRetries 3
+
+
+      input:
+      each ksize from ksizes
+      set id, file(reads) from reads_ch
+
+      output:
+      set val(ksize), file("${sketch_id}.skf") into ska_sketches
+
+      script:
+      sketch_id = "${id}_ksize_${ksize}"
+
+        """
+        ska fastq \\
+          -k $ksize \\
+          -o ${sketch_id} \\
+          ${reads}
+        """
+
+      }
+  } else {
+    process sourmash_compute_sketch_fastx_nucleotide {
+      tag "${sig_id}"
+      label "low_memory"
+      publishDir "${params.outdir}/sourmash/sketches_nucleotide", mode: "${params.publish_dir_mode}",
+          saveAs: {filename ->
+              if (filename.indexOf(".csv") > 0) "description/$filename"
+              else if (filename.indexOf(".sig") > 0) "sigs/$filename"
+              else null
+          }
+
+      input:
+      val sketch_style from sketch_style_for_nucleotides.collect()
+      each ksize from ksizes
+      each sketch_value from sketch_values
+      set sample_id, file(reads) from ch_translatable_nucleotide_seqs_nonempty
+
+      output:
+      file(csv) into ch_sourmash_sig_describe_nucleotides
+      set val(sketch_id), val("dna"), val(ksize), val(sketch_value), file(sig) into sourmash_sketches_all_nucleotide
+
+      script:
+      sketch_style = sketch_style[0]
+      // Don't calculate DNA signature if this is protein, to minimize disk,
+      // memory and IO requirements in the future
+      ksize = ksize
+      sketch_id = make_sketch_id("dna", ksize, sketch_value, track_abundance, sketch_style)
+      sketch_value_flag = make_sketch_value_flag(sketch_style, sketch_value)
+      track_abundance_flag = track_abundance ? '--track-abundance' : ''
+      processes = "--processes ${task.cpus}"
+      sig_id = "${sample_id}__${sketch_id}"
+      sig = "${sig_id}.sig"
+      csv = "${sig_id}.csv"
+      """
+        sourmash compute \\
+          ${sketch_value_flag} \\
+          --ksizes $ksize \\
+          --dna \\
+          $processes \\
+          $track_abundance_flag \\
+          --output ${sig} \\
+          $reads
+        sourmash sig describe --csv ${csv} ${sig}
+      """
+    }
+    sourmash_sketches_nucleotide = sourmash_sketches_all_nucleotide.filter{ it[4].size() > 0 }
+  }
+} else {
+  sourmash_sketches_nucleotide = Channel.empty()
+  ch_protein_fastas
+    .set { ch_translated_protein_seqs_nonempty }
 }
 
 
-if (params.peptide_fasta){
+
+if ((!have_nucleotide_input) || params.skip_trimming || have_nucleotide_fasta_input) {
+  // Only protein input or skip trimming, or fastas which can't be trimmed.
+  ch_fastp_results = Channel.from(false)
+}
+
+if (!have_nucleotide_input) {
+  // Only protein input, can't do sortMeRNA
+  sortmerna_logs = Channel.empty()
+}
+
+
+if (protein_input || params.reference_proteome_fasta){
   process sourmash_compute_sketch_fastx_peptide {
     tag "${sig_id}"
     label "low_memory"
@@ -1188,7 +1293,7 @@ if (params.peptide_fasta){
     each ksize from ksizes
     each molecule from peptide_molecules
     each sketch_value from sketch_values
-    set sample_id, file(reads) from ch_coding_peptides_nonempty
+    set sample_id, file(reads) from ch_translated_protein_seqs_nonempty
 
     output:
     file(csv) into ch_sourmash_sig_describe_peptides
@@ -1211,6 +1316,7 @@ if (params.peptide_fasta){
         --ksizes $ksize \\
         --input-is-protein \\
         --$molecule \\
+        --name ${sample_id} \\
         --no-dna \\
         $processes \\
         $track_abundance_flag \\

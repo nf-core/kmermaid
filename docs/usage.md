@@ -212,6 +212,23 @@ Please note the following requirements:
 
 If left unspecified, no samples are used.
 
+
+### `--protein_fastas`
+
+Use this to specify the location of *protein* fasta sequence files. No trimming, subsampling, or protein translation is done on these. Multiple inputs can be separated by seimcolons (`;`). For example:
+
+```bash
+--protein_fastas 'path/to/data/elephant.fasta;more/data/*.fasta'
+```
+
+Please note the following requirements:
+
+1. The path must be enclosed in quotes
+2. The path *may* have at one or more `*` wildcard character
+
+If left unspecified, no samples are used.
+
+
 ### `--sra`
 
 Use this to specify the location of fasta sequence files. Multiple inputs can be separated by seimcolons (`;`). For example:
@@ -380,7 +397,7 @@ The log2 sketch size specifies the number of k-mers to use for the sketch. We us
 
 This allows to skip the sourmash or SKA compare process when there are:
 
-1. Too many samples to compare so it'll take too long/run out of memory anyway 
+1. Too many samples to compare so it'll take too long/run out of memory anyway
 2. Won't actually use the compare result that has been trimmed already.
 
 
