@@ -87,10 +87,10 @@ def helpMessage() {
       --skip_compare                If provided, skip comparison of hashes using sourmash compare
 
      Sketch size options:
-      --sketch_size                 Number of hashes to use for making the sketches.
-                                    Mutually exclusive with --sketch_size_log2
-      --sketch_size_log2            Which log2 sketch sizes to use. Multiple are separated by commas.
-                                    Default is '10,12,14,16'. Mutually exclusive with --sketch_size
+      --sketch_num_hashes                 Number of hashes to use for making the sketches.
+                                    Mutually exclusive with --sketch_num_hashes_log2
+      --sketch_num_hashes_log2            Which log2 sketch sizes to use. Multiple are separated by commas.
+                                    Default is '10,12,14,16'. Mutually exclusive with --sketch_num_hashes
       --sketch_scaled               Observe every 1/N hashes per sample, rather than a "flat rate" of N hashes
                                     per sample. This way, the number of hashes scales by the sequencing depth.
                                     Mutually exclusive with --sketch_scaled_log2
@@ -184,6 +184,13 @@ tenx_tgz_ch = Channel.empty()
 // Boolean for if an nucleotide input exists anywhere
 have_nucleotide_fasta_input = params.fastas || params.fasta_paths
 have_nucleotide_input = params.read_paths || params.sra || params.csv_pairs || params.csv_singles || params.read_pairs || params.read_singles || have_nucleotide_fasta_input || params.bam || params.tenx_tgz
+
+if (!params.split_kmer){
+  have_sketch_num_hashes = params.sketch_num_hashes || params.sketch_num_hashes_log2 || params.sketch_scaled || params.sketch_scaled_log2
+  if (!have_sketch_num_hashes) {
+    exit 1, "Must provide one of --sketch_num_hashes, --sketch_num_hashes_log2, --sketch_scaled, --sketch_scaled_log2 for Sourmash!"
+  }
+}
 
 // Parameters for testing
 if (params.read_paths) {
@@ -481,21 +488,21 @@ jaccard_threshold = params.translate_jaccard_threshold
 track_abundance = params.track_abundance
 
 // Parse sketch value and style parameters
-sketch_size = params.sketch_size
-sketch_size_log2 = params.sketch_size_log2
+sketch_num_hashes = params.sketch_num_hashes
+sketch_num_hashes_log2 = params.sketch_num_hashes_log2
 sketch_scaled = params.sketch_scaled
 sketch_scaled_log2 = params.sketch_scaled_log2
-have_sketch_value = params.sketch_size || params.sketch_size_log2 || params.sketch_scaled || params.sketch_scaled_log2
+have_sketch_value = params.sketch_num_hashes || params.sketch_num_hashes_log2 || params.sketch_scaled || params.sketch_scaled_log2
 
 if (!have_sketch_value && !params.split_kmer) {
-  exit 1, "None of --sketch_size, --sketch_size_log2, --sketch_scaled, --sketch_scaled_log2 was provided! Provide one (1) and only one to specify the style and amount of hashes per sourmash sketch"
+  exit 1, "None of --sketch_num_hashes, --sketch_num_hashes_log2, --sketch_scaled, --sketch_scaled_log2 was provided! Provide one (1) and only one to specify the style and amount of hashes per sourmash sketch"
 }
 
 if (params.bam){
   // Extract the fasta just once using sourmash
   single_ksize = ksizes[0]
   single_molecule = molecules[0]
-  single_log2_sketch_size = sketch_size_log2[0]
+  single_log2_sketch_num_hashes = sketch_num_hashes_log2[0]
 }
 
 // Tenx parameters
@@ -546,8 +553,8 @@ summary['K-mer sizes']            = params.ksizes
 summary['Molecule']               = params.molecules
 summary['Track Abundance']        = params.track_abundance
 // -- Sketch size parameters --
-if (params.sketch_size) summary['Sketch Sizes']                  = params.sketch_size
-if (params.sketch_size_log2) summary['Sketch Sizes (log2)']      = params.sketch_size_log2
+if (params.sketch_num_hashes) summary['Sketch Sizes']                  = params.sketch_num_hashes
+if (params.sketch_num_hashes_log2) summary['Sketch Sizes (log2)']      = params.sketch_num_hashes_log2
 if (params.sketch_scaled) summary['Sketch scaled']               = params.sketch_scaled
 if (params.sketch_scaled_log2) summary['Sketch scaled (log2)']   = params.sketch_scaled_log2
 // 10x parameters
@@ -616,8 +623,8 @@ if ( !params.split_kmer && have_sketch_value ) {
           else null
       }
       input:
-      val sketch_size
-      val sketch_size_log2
+      val sketch_num_hashes
+      val sketch_num_hashes_log2
       val sketch_scaled
       val sketch_scaled_log2
 
@@ -630,8 +637,8 @@ if ( !params.split_kmer && have_sketch_value ) {
       sketch_values = 'sketch_values.txt'
       """
       validate_sketch_values.py \\
-        --sketch_size ${sketch_size} \\
-        --sketch_size_log2 ${sketch_size_log2} \\
+        --sketch_num_hashes ${sketch_num_hashes} \\
+        --sketch_num_hashes_log2 ${sketch_num_hashes_log2} \\
         --sketch_scaled ${sketch_scaled} \\
         --sketch_scaled_log2 ${sketch_scaled_log2} \\
         --output ${sketch_values} \\
