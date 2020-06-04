@@ -26,38 +26,38 @@ def value_or_bool(value):
     if value == 'false':
         return False
     if value == 'true':
-        logger.exception("Must set a value for the --sketch_size, "
-                        "--sketch_size_log2, --sketch_scaled, "
+        logger.exception("Must set a value for the --sketch_num_hashes, "
+                        "--sketch_num_hashes_log2, --sketch_scaled, "
                         "--sketch_scaled_log2 options! Cannot simply set the "
-                        "flag. E.g. '--sketch_size 5' is valid but "
-                        "'--sketch_size' on its own is not")
+                        "flag. E.g. '--sketch_num_hashes 5' is valid but "
+                        "'--sketch_num_hashes' on its own is not")
         sys.exit(1)
     else:
         return value
 
 
-def main(sketch_size, sketch_size_log2, sketch_scaled, sketch_scaled_log2, out,
+def main(sketch_num_hashes, sketch_num_hashes_log2, sketch_scaled, sketch_scaled_log2, out,
          sketch_style):
-    sketch_size = value_or_bool(sketch_size)
-    sketch_size_log2 = value_or_bool(sketch_size_log2)
+    sketch_num_hashes = value_or_bool(sketch_num_hashes)
+    sketch_num_hashes_log2 = value_or_bool(sketch_num_hashes_log2)
     sketch_scaled = value_or_bool(sketch_scaled)
     sketch_scaled_log2 = value_or_bool(sketch_scaled_log2)
 
-    using_size = sketch_size or sketch_size_log2
+    using_size = sketch_num_hashes or sketch_num_hashes_log2
     using_scaled = sketch_scaled or sketch_scaled_log2
 
     if using_size and using_scaled:
         logger.exception("Cannot specify both sketch scales and sizes! Can only"
-                         " use one of --sketch_size, --sketch_size_log2, --sketch_scaled, "
+                         " use one of --sketch_num_hashes, --sketch_num_hashes_log2, --sketch_scaled, "
                          "--sketch_scaled_log2. Exiting.")
         sys.exit(1)
 
 
     if using_size:
-        if sketch_size and sketch_size_log2:
-            logger.exception("Cannot specify both --sketch_size and --sketch_size_log2! Exiting.")
+        if sketch_num_hashes and sketch_num_hashes_log2:
+            logger.exception("Cannot specify both --sketch_num_hashes and --sketch_num_hashes_log2! Exiting.")
             sys.exit(1)
-        sketch_values = get_sketch_values(sketch_size, sketch_size_log2)
+        sketch_values = get_sketch_values(sketch_num_hashes, sketch_num_hashes_log2)
         with open(sketch_style, 'w') as f:
             f.write('size')
     elif using_scaled:
@@ -70,7 +70,7 @@ def main(sketch_size, sketch_size_log2, sketch_scaled, sketch_scaled_log2, out,
 
     else:
         logger.info("Did not specify a sketch size or scale with any of "
-                    "--sketch_size, --sketch_size_log2, --sketch_scaled, --sketch_scaled_log2! "
+                    "--sketch_num_hashes, --sketch_num_hashes_log2, --sketch_scaled, --sketch_scaled_log2! "
                     "Falling back on sourmash's default of --sketch_scaled 500")
         sketch_values = [500]
 
@@ -80,8 +80,8 @@ def main(sketch_size, sketch_size_log2, sketch_scaled, sketch_scaled_log2, out,
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="""Ensure that sketch sizes/scaleds provided are valid""")
-    parser.add_argument("--sketch_size", type=str, help="Flat size of the sketches")
-    parser.add_argument("--sketch_size_log2", type=str, help="Flat size of the sketches, log2")
+    parser.add_argument("--sketch_num_hashes", type=str, help="Flat size of the sketches")
+    parser.add_argument("--sketch_num_hashes_log2", type=str, help="Flat size of the sketches, log2")
     parser.add_argument("--sketch_scaled", type=str, help="Fraction of total observed hashes to observe")
     parser.add_argument("--sketch_scaled_log2", type=str, help="Fraction of total observed hashes to observe, log2")
     parser.add_argument("-o", "--output", dest='output', default='sketch_values.txt',
@@ -89,5 +89,5 @@ if __name__ == "__main__":
     parser.add_argument("--sketch_style", default='sketch_style.txt', type=str, help="file indicating 'size' or 'scaled'")
 
     args = parser.parse_args()
-    main(args.sketch_size, args.sketch_size_log2, args.sketch_scaled,
+    main(args.sketch_num_hashes, args.sketch_num_hashes_log2, args.sketch_scaled,
          args.sketch_scaled_log2, args.output, args.sketch_style)
