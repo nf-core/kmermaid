@@ -23,8 +23,8 @@ matrix:
   - name: "Test --sketch_scaled"
     env: NXF_VER='' SUITE=test FLAGS='--sketch_scaled 2,4 --sketch_num_hashes_log2 false'
   - name: "Test can't specify both --sketch_scaled_log2 and --sketch_scaled_log2"
-      script:
-        - nextflow run ${TRAVIS_BUILD_DIR} -profile test,docker --sketch_scaled_log2 2,4 --sketch_num_hashes_log2 2,4 ; if [ $? -eq 0 ]; then echo "Must specify at least one sketch size/scale" && exit 1 ; else echo "Correctly failed --sketch_num_hashes + --sketch_num_hashes_log2 empty" ; fi
+    script:
+      - nextflow run ${TRAVIS_BUILD_DIR} -profile test,docker --sketch_scaled_log2 2,4 --sketch_num_hashes_log2 2,4 ; if [ $? -eq 0 ]; then echo "Must specify at least one sketch size/scale" && exit 1 ; else echo "Correctly failed --sketch_num_hashes + --sketch_num_hashes_log2 empty" ; fi
   - name: "Test nextflow kmermaid, with --skip_trimming"
     env: NXF_VER='' SUITE=test FLAGS='--skip_trimming'
   - name: "Text nextflow kmermaid, with removing ribosomal reads"
