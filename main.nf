@@ -1233,6 +1233,7 @@ if (!params.remove_ribo_rna) {
       val sketch_style from sketch_style_for_nucleotides.collect()
       each ksize from ksizes
       each sketch_value from sketch_values
+      val track_abundance
       set sample_id, file(reads) from ch_translatable_nucleotide_seqs_nonempty
 
       output:
@@ -1300,6 +1301,7 @@ if (protein_input || params.reference_proteome_fasta){
     each ksize from ksizes
     each molecule from peptide_molecules
     each sketch_value from sketch_values
+    val track_abundance
     set sample_id, file(reads) from ch_translated_protein_seqs_nonempty
 
     output:
