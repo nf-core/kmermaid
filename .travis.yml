@@ -19,7 +19,7 @@ matrix:
   - name: "Test --sketch_num_hashes"
     env: NXF_VER='' SUITE=test FLAGS='--sketch_num_hashes 2,4 --sketch_num_hashes_log2 false'
   - name: "Test --sketch_scaled_log2"
-    env: NXF_VER='' SUITE=test FLAGS='--sketch_scaled_log2 2,4'
+    env: NXF_VER='' SUITE=test FLAGS='--sketch_scaled_log2 2,4 --sketch_num_hashes_log2 false'
   - name: "Test --sketch_scaled"
     env: NXF_VER='' SUITE=test FLAGS='--sketch_scaled 2,4 --sketch_num_hashes_log2 false'
   - name: "Test can't specify both --sketch_scaled_log2 and --sketch_scaled_log2"
