@@ -35,14 +35,15 @@
 * [Sketch parameters](#sketch-parameters)
     * [`--molecule`](#--molecule)
     * [`--ksize`](#--ksize)
-    * [`--log2_sketch_size`](#--log2_sketch_size)
+    * [Sketch Size Parameters](#sketch-size-parameters)
+      * [`--sketch_num_hashes` / `--sketch_num_hashes_log2`](#--log2_sketch_size)
+      * [`--sketch_scaled` / `--sketch_scaled_log2`](#--log2_sketch_size)
     * [`--track_abundance`](#--track_abundance)
     * [`--skip_compare`](#--skip_compare)
 * [Bam optional parameters](#bam-optional-parameters)
     * [`--tenx_min_umi_per_cell`](#--tenx_min_umi_per_cell)
     * [`--write_barcode_meta_csv`](#--write_barcode_meta_csv)
     * [`--shard_size`](#--shard_size)
-
 * [Job Resources](#job-resources)
 * [Automatic resubmission](#automatic-resubmission)
 * [Custom resource requests](#custom-resource-requests)
@@ -381,7 +382,7 @@ The fundamental unit of the sketch is a [hashed](https://en.wikipedia.org/wiki/H
 
 
 
-### Sketch size Parameters
+### Sketch Size Parameters
 
 #### `--sketch_num_hashes` / `--sketch_num_hashes_log2`
 
