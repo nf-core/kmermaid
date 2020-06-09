@@ -19,7 +19,7 @@ regexes = {
 results = OrderedDict()
 results['nf-core/kmermaid'] = '<span style="color:#999999;">N/A</span>'
 results['Nextflow'] = '<span style="color:#999999;">N/A</span>'
-results['Bam2fasta'] = '<span style="color:#999999;">N/A</span>'
+results['bam2fasta'] = '<span style="color:#999999;">N/A</span>'
 results['fastp'] = '<span style="color:#999999;">N/A</span>'
 results['htslib'] = '<span style="color:#999999;">N/A</span>'
 results['Samtools'] = '<span style="color:#999999;">N/A</span>'
