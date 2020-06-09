@@ -23,7 +23,7 @@
     * [`--barcodes_file`](#--barcodes_file)
     * [`--rename_10x_barcodes`](#--rename_10x_barcodes)
     * [`--save_fastas`](#--save_fastas)
-* [Adapter Trimming][#adapter-trimming]
+* [Adapter Trimming](#adapter-trimming)
     * [`--skip_trimming`](#--skip_trimming)
 * [K-merization/Sketching program options](#k-merization-sketching-program-options)
 * [Ribosomal RNA removal](#ribosomal-rna-removal)
@@ -35,14 +35,15 @@
 * [Sketch parameters](#sketch-parameters)
     * [`--molecule`](#--molecule)
     * [`--ksize`](#--ksize)
-    * [`--log2_sketch_size`](#--log2_sketch_size)
+    * [Sketch Size Parameters](#sketch-size-parameters)
+      * [`--sketch_num_hashes` / `--sketch_num_hashes_log2`](#--sketch_num_hashes----sketch_num_hashes_log2)
+      * [`--sketch_scaled` / `--sketch_scaled_log2`](#--sketch_scaled----sketch_scaled_log2)
     * [`--track_abundance`](#--track_abundance)
     * [`--skip_compare`](#--skip_compare)
 * [Bam optional parameters](#bam-optional-parameters)
     * [`--tenx_min_umi_per_cell`](#--tenx_min_umi_per_cell)
     * [`--write_barcode_meta_csv`](#--write_barcode_meta_csv)
     * [`--shard_size`](#--shard_size)
-
 * [Job Resources](#job-resources)
 * [Automatic resubmission](#automatic-resubmission)
 * [Custom resource requests](#custom-resource-requests)
@@ -381,16 +382,38 @@ The fundamental unit of the sketch is a [hashed](https://en.wikipedia.org/wiki/H
 
 
 
-### `--log2_sketch_size`
+### Sketch Size Parameters
 
-The log2 sketch size specifies the number of k-mers to use for the sketch. We use the log2 of the sketch size instead of the raw number of k-mers to be compatible for comparison with [`dashing`](https://github.com/dnbaker/dashing) that uses HyperLogLog instead of MinHash.
+#### `--sketch_num_hashes` / `--sketch_num_hashes_log2`
+
+The log2 sketch size specifies the number of hashes (approximately the same as the number of k-mers) to use for the sketch. We have the option of using the log2 of the sketch size instead of the raw number of k-mers to be compatible for comparison with [`dashing`](https://github.com/dnbaker/dashing) that uses HyperLogLog instead of MinHash.
 
 **Example parameters**
 
 * Default:
-  * `--log2_sketch_size 10,12,14,16`
+  * `--sketch_num_hashes_log2 10,12,14,16`
 * Only a log2 sketch size of 8 (2^8 = 256):
-  * `--log2_sketch_size 8`
+  * `--sketch_num_hashes_log2 8`
+* Only compute one signature for each sample, at 500 hashes each
+  * `--sketch_num_hashes 500`
+* Compute three signatures for each sample, at 500, 1000, and 2000 hashes each
+  * `--sketch_num_hashes 500,1000,2000`
+
+
+#### `--sketch_scaled` / `--sketch_scaled_log2`
+
+Unique to [sourmash](https://sourmash.readthedocs.io/),  the `--scaled` option is another way to subsample k-mers, but instead of taking a "flat rate" of the same number of k-mers per sample, this subsamples every 1/N k-mers, where N is the `--scaled` parameter.
+
+**Example parameters**
+
+* Compute three signatures for each sample, subsampling 1/500, 1/1000 and 1/10 total k-mers:
+  * `--sketch_scaled 500,1000,10`
+* Compute a single signature for each sample, subsampling 1/500 k-mers:
+  * `--sketch_scaled 500`
+* Compute two signatures for each sample, subsampling 1/(2^8) = 1/256 and 1/(2^10) = 1/1024, 1/(2^14) of total k-mers:
+  * `--sketch_scaled_log2 8,10`
+* Compute one signature for each sample, subsampling 1/(2^2) = 1/4 total k-mers
+  * `--sketch_scaled_log2 2`
 
 
 ### `--skip_compare`

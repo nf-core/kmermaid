@@ -9,6 +9,7 @@
 * Add option to use Dayhoff encoding for sourmash
 * Add option to remove ribosomal RNA using sortMeRNA ([#74](https://github.com/nf-core/kmermaid/issues/74))
 * Actually propagate `--translate_peptide_ksize` down to `sencha` ([#83](https://github.com/nf-core/kmermaid/pull/83/))
+* Add option for `--scaled` signatures from [sourmash](https://sourmash.readthedocs.io/), specifically added the parameters `--sketch_scaled_log2`, `--sketch_scaled_log2` and renamed `--log2_sketch_size` --> `--sketch_num_hashes_log2`, and added `--sketch_num_hashes` ([#81](https://github.com/nf-core/kmermaid/pull/81))
 
 ### Dependency Updates
 

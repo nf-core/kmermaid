@@ -8,11 +8,23 @@ matrix:
   fast_finish: true
   include:
   - name: "Minimum Nextflow version, regular test suite"
-    env: NXF_VER='0.32.0' SUITE=test FLAGS=
+    env: NXF_VER='19.10.0' SUITE=test FLAGS=
     language: java
     jdk: openjdk8
-  - name: "Latest Nextflow version, regular test suite"
+  - name: "Latest Nextflow version, regular test suite (--sketch_num_hashes_log2 in test.config)"
     env: NXF_VER='' SUITE=test FLAGS=
+  - name: "Test empty --sketch_num_hashes"
+    script:
+      - nextflow run ${TRAVIS_BUILD_DIR} -profile test,docker --sketch_num_hashes_log2 false ; if [ $? -eq 0 ]; then echo "Must specify at least one sketch size/scale" && exit 1 ; else echo "Correctly failed --sketch_num_hashes + --sketch_num_hashes_log2 empty" ; fi
+  - name: "Test --sketch_num_hashes"
+    env: NXF_VER='' SUITE=test FLAGS='--sketch_num_hashes 2,4 --sketch_num_hashes_log2 false'
+  - name: "Test --sketch_scaled_log2"
+    env: NXF_VER='' SUITE=test FLAGS='--sketch_scaled_log2 2,4 --sketch_num_hashes_log2 false'
+  - name: "Test --sketch_scaled"
+    env: NXF_VER='' SUITE=test FLAGS='--sketch_scaled 2,4 --sketch_num_hashes_log2 false'
+  - name: "Test can't specify both --sketch_scaled_log2 and --sketch_scaled_log2"
+    script:
+      - nextflow run ${TRAVIS_BUILD_DIR} -profile test,docker --sketch_scaled_log2 2,4 --sketch_num_hashes_log2 2,4 ; if [ $? -eq 0 ]; then echo "Must specify at least one sketch size/scale" && exit 1 ; else echo "Correctly failed --sketch_num_hashes + --sketch_num_hashes_log2 empty" ; fi
   - name: "Test nextflow kmermaid, with --skip_trimming"
     env: NXF_VER='' SUITE=test FLAGS='--skip_trimming'
   - name: "Text nextflow kmermaid, with removing ribosomal reads"
