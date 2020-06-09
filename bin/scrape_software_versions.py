@@ -11,7 +11,7 @@ regexes = {
     'Bam2fasta': ['v_bam2fasta.txt', r"bam2fasta version (\S+)"],
     'fastp': ['v_fastp.txt', r"fastp (\S+)"],
     'Samtools': ['v_samtools.txt', r"samtools (\S+)"],
-    'SKA': ['v_ska.txt', r"Version: (\S+)"],
+    'SKA': ['v_ska.txt', r"SKA Version: (\S+)"],
     'htslib': ['v_samtools.txt', r"htslib (\S+)"],
     'Sourmash': ['v_sourmash.txt', r"sourmash (\S+)"],
     'SortMeRNA': ['v_sortmerna.txt', r"SortMeRNA version (\S+),"],
