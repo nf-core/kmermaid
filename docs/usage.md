@@ -40,6 +40,7 @@
       * [`--sketch_scaled` / `--sketch_scaled_log2`](#--sketch_scaled----sketch_scaled_log2)
     * [`--track_abundance`](#--track_abundance)
     * [`--skip_compare`](#--skip_compare)
+    * [`--skip_compute`](#--skip_compute)
 * [Bam optional parameters](#bam-optional-parameters)
     * [`--tenx_min_umi_per_cell`](#--tenx_min_umi_per_cell)
     * [`--write_barcode_meta_csv`](#--write_barcode_meta_csv)
@@ -422,6 +423,12 @@ This allows to skip the sourmash or SKA compare process when there are:
 
 1. Too many samples to compare so it'll take too long/run out of memory anyway
 2. Won't actually use the compare result that has been trimmed already.
+
+### `--skip_compute`
+
+This allows to skip the sourmash or SKA compute process when there are:
+
+1. Won't actually use the compute result
 
 
 ### `--save_fastas`

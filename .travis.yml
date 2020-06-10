@@ -55,6 +55,8 @@ matrix:
     env: NXF_VER='' SUITE=test_tenx_tgz FLAGS=--skip_trimming
   - name: "Test nextflow kmermaid, with 10x .tgz file, skip compare"
     env: NXF_VER='' SUITE=test_tenx_tgz FLAGS=--skip_compare
+  - name: "Test nextflow kmermaid, with 10x .tgz file, skip compute, compare"
+    env: NXF_VER='' SUITE=test_tenx_tgz FLAGS=--skip_compute --skip_compare
   - name: "Test nextflow kmermaid, with 10x .tgz file and min 2 UMI per cell"
     env: NXF_VER='' SUITE=test_tenx_tgz FLAGS='--tenx_min_umi_per_cell 2'
   - name: "Test nextflow kmermaid, with 10x .tgz file and min 5 UMI per cell (test extract_per_cell_fastqs failure)"
