@@ -85,6 +85,7 @@ def helpMessage() {
       --track_abundance             Track abundance of each hashed k-mer, could be useful for cancer RNA-seq or ATAC-seq analyses
       --skip_trimming               If provided, skip fastp trimming of reads
       --skip_compare                If provided, skip comparison of hashes using sourmash compare
+      --skip_compute                If provided, skip computing of signatures using sourmash compute, ska
 
      Sketch size options:
       --sketch_num_hashes                 Number of hashes to use for making the sketches.
@@ -1184,7 +1185,7 @@ if (!params.remove_ribo_rna) {
       .set{ ch_translatable_nucleotide_seqs_nonempty }
   }
 
-  if (params.split_kmer){
+  if (params.split_kmer && !params.skip_compute){
   ///////////////////////////////////////////////////////////////////////////////
   ///////////////////////////////////////////////////////////////////////////////
   /* --                                                                     -- */
@@ -1218,7 +1219,7 @@ if (!params.remove_ribo_rna) {
         """
 
       }
-  } else {
+  } else if (!params.skip_compute) {
     process sourmash_compute_sketch_fastx_nucleotide {
       tag "${sig_id}"
       label "low_memory"
@@ -1285,7 +1286,7 @@ if (!have_nucleotide_input) {
 }
 
 
-if (protein_input || params.reference_proteome_fasta){
+if (protein_input && !params.skip_compute || params.reference_proteome_fasta){
   process sourmash_compute_sketch_fastx_peptide {
     tag "${sig_id}"
     label "low_memory"
