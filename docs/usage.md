@@ -426,9 +426,7 @@ This allows to skip the sourmash or SKA compare process when there are:
 
 ### `--skip_compute`
 
-This allows to skip the sourmash or SKA compute process when there are:
-
-1. Won't actually use the compute result
+This allows to skip the sourmash or SKA compute process when you won't actually use the compute result. If skip_compute is true, skip compare must be specified as true as well.
 
 
 ### `--save_fastas`
