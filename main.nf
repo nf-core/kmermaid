@@ -550,6 +550,9 @@ if(params.rename_10x_barcodes)    summary["Renamer barcodes"]      = params.rena
 if(params.read_paths)   summary['Read paths (paired-end)']         = params.read_paths
 // Sketch parameters
 summary['Skip trimming?'] = params.skip_trimming
+summary['Skip compare?'] = params.skip_compare
+summary['Skip compute?'] = params.skip_compute
+summary['Skip multiqc?'] = params.skip_multiqc
 summary['K-mer sizes']            = params.ksizes
 summary['Molecule']               = params.molecules
 summary['Track Abundance']        = params.track_abundance
@@ -1341,7 +1344,7 @@ if (protein_input && !params.skip_compute || params.reference_proteome_fasta){
 }
 
 
-if (params.split_kmer && !params.skip_compare){
+if (params.split_kmer && !params.skip_compare &&!params.skip_compute){
      process ska_compare_sketches {
     tag "${sketch_id}"
     publishDir "${params.outdir}/ska/compare/", mode: 'copy'
@@ -1360,7 +1363,7 @@ if (params.split_kmer && !params.skip_compare){
 
     }
   }
-if (!params.split_kmer && !params.skip_compare) {
+if (!params.split_kmer && !params.skip_compare &&!params.skip_compute) {
   process sourmash_compare_sketches {
     // Combine peptide and nucleotide sketches
     sourmash_sketches = sourmash_sketches_peptide.concat(sourmash_sketches_nucleotide)
