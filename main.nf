@@ -1343,7 +1343,7 @@ if (protein_input && !params.skip_compute || params.reference_proteome_fasta){
   sourmash_sketches_peptide = Channel.empty()
 }
 
-
+// If skip_compute is true, skip compare must be specified as true as well.
 if (params.split_kmer && !params.skip_compare &&!params.skip_compute){
      process ska_compare_sketches {
     tag "${sketch_id}"
@@ -1363,6 +1363,7 @@ if (params.split_kmer && !params.skip_compare &&!params.skip_compute){
 
     }
   }
+// If skip_compute is true, skip compare must be specified as true as well
 if (!params.split_kmer && !params.skip_compare &&!params.skip_compute) {
   process sourmash_compare_sketches {
     // Combine peptide and nucleotide sketches
