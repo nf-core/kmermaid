@@ -12,7 +12,6 @@ dependencies:
   - conda-forge::r-markdown=1.1
   - bioconda::sourmash=3.2.2
   - bioconda::samtools=1.10
-  - conda-forge::gxx_linux-64
   - bioconda::screed=1.0.4
   - conda-forge::tqdm=4.43.0
   - bioconda::khmer=3.0.0a3
