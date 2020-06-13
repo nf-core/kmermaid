@@ -85,7 +85,7 @@ def helpMessage() {
       --track_abundance             Track abundance of each hashed k-mer, could be useful for cancer RNA-seq or ATAC-seq analyses
       --skip_trimming               If provided, skip fastp trimming of reads
       --skip_compare                If provided, skip comparison of hashes using sourmash compare
-      --skip_compute                If provided, skip computing of signatures using sourmash compute, ska
+      --skip_compute                If provided, skip computing of signatures using sourmash compute
 
      Sketch size options:
       --sketch_num_hashes                 Number of hashes to use for making the sketches.
@@ -1188,7 +1188,7 @@ if (!params.remove_ribo_rna) {
       .set{ ch_translatable_nucleotide_seqs_nonempty }
   }
 
-  if (params.split_kmer && !params.skip_compute){
+  if (params.split_kmer){
   ///////////////////////////////////////////////////////////////////////////////
   ///////////////////////////////////////////////////////////////////////////////
   /* --                                                                     -- */
@@ -1344,7 +1344,7 @@ if (protein_input && !params.skip_compute || params.reference_proteome_fasta){
 }
 
 // If skip_compute is true, skip compare must be specified as true as well.
-if (params.split_kmer && !params.skip_compare &&!params.skip_compute){
+if (params.split_kmer){
      process ska_compare_sketches {
     tag "${sketch_id}"
     publishDir "${params.outdir}/ska/compare/", mode: 'copy'
@@ -1364,7 +1364,7 @@ if (params.split_kmer && !params.skip_compare &&!params.skip_compute){
     }
   }
 // If skip_compute is true, skip compare must be specified as true as well
-if (!params.split_kmer && !params.skip_compare &&!params.skip_compute) {
+if (!params.split_kmer && !params.skip_compare && !params.skip_compute) {
   process sourmash_compare_sketches {
     // Combine peptide and nucleotide sketches
     sourmash_sketches = sourmash_sketches_peptide.concat(sourmash_sketches_nucleotide)
