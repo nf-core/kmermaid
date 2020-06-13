@@ -36,7 +36,7 @@ barcode fastq
 * Add `--protein_fastas` option for translated protein input
 * Rename splitkmer to `split_kmer` and add `--skip_compare option` to skip `sourmash_compare_sketches` process
 * Increase CPUs in `high_memory_long` profile from 1 to 10
-* add `--skip_compute option` to skip `sourmash_compute_sketch_*` and `ska_compute_sketch`
+* add `--skip_compute option` to skip `sourmash_compute_sketch_*`
 
 ### Dependency updates
 
