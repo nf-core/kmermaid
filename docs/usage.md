@@ -426,7 +426,7 @@ This allows to skip the sourmash or SKA compare process when there are:
 
 ### `--skip_compute`
 
-If one wants to only translate protein sequences or extract per-cell fastqs from single-cell `.bam` files, then the `--skip_compute` option may be useful. This allows the user to skip the `sourmash` or `SKA` compute process when you won't actually use the compute result. If `--skip_compute` is true, then `--skip_compare` must be specified as true as well.
+If one wants to only translate protein sequences or extract per-cell fastqs from single-cell `.bam` files, then the `--skip_compute` option may be useful. This allows the user to skip the `sourmash` process you won't actually use the compute result. If `--skip_compute` is true, then `--skip_compare` must be specified as true as well.
 
 
 ### `--save_fastas`
