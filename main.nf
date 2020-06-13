@@ -1343,7 +1343,6 @@ if (protein_input && !params.skip_compute || params.reference_proteome_fasta){
   sourmash_sketches_peptide = Channel.empty()
 }
 
-// If skip_compute is true, skip compare must be specified as true as well.
 if (params.split_kmer){
      process ska_compare_sketches {
     tag "${sketch_id}"
