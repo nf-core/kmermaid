@@ -1289,7 +1289,7 @@ if (!have_nucleotide_input) {
 }
 
 
-if (protein_input && !params.skip_compute || params.reference_proteome_fasta){
+if (!params.skip_compute && (protein_input || params.reference_proteome_fasta)){
   process sourmash_compute_sketch_fastx_peptide {
     tag "${sig_id}"
     label "low_memory"
