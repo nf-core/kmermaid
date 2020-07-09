@@ -442,7 +442,7 @@ If one wants to only translate protein sequences or extract per-cell fastqs from
 ## Bam optional parameters
 
 ### `--write_barcode_meta_csv`
-This creates a CSV containing the number of reads and number of UMIs per barcode, written in a path relative to `${params.outdir}/barcode_metadata`. This csv file is empty with just header when the tenx_min_umi_per_cell is zero i.e reads and UMIs per barcode are calculated only when the barcodes are filtered based on [tenx_min_umi_per_cell](#--tenx_min_umi_per_cell)
+This creates a CSV containing the barcode and number of UMIs per barcode, written in a path relative to `${params.outdir}/barcode_metadata`. This csv file is empty with just header when the tenx_min_umi_per_cell is zero i.e reads and UMIs per barcode are calculated only when the barcodes are filtered based on [tenx_min_umi_per_cell](#--tenx_min_umi_per_cell)
 
 **Example parameters**
 
