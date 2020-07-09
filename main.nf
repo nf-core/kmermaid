@@ -1154,6 +1154,7 @@ if (!params.remove_ribo_rna) {
 
       output:
       // TODO also extract nucleotide sequence of coding reads and do sourmash compute using only DNA on that?
+      set val(sample_id), file("${sample_id}__noncoding_reads_nucleotides.fasta") into ch_noncoding_nucleotides_potentially_empty
       set val(sample_id), file("${sample_id}__coding_reads_peptides.fasta") into ch_translated_protein_seqs
       set val(sample_id), file("${sample_id}__coding_reads_nucleotides.fasta") into ch_translatable_nucleotide_seqs
       set val(sample_id), file("${sample_id}__coding_scores.csv") into ch_coding_scores_csv
@@ -1164,6 +1165,7 @@ if (!params.remove_ribo_rna) {
     sencha translate \\
       --molecule ${molecule} \\
       --coding-nucleotide-fasta ${sample_id}__coding_reads_nucleotides.fasta \\
+      --noncoding-nucleotide-fasta ${sample_id}__noncoding_reads_nucleotides.fasta \\
       --csv ${sample_id}__coding_scores.csv \\
       --json-summary ${sample_id}__coding_summary.json \\
       --jaccard-threshold ${jaccard_threshold} \\
@@ -1177,10 +1179,15 @@ if (!params.remove_ribo_rna) {
     // Remove empty files
     // it[0] = sample id
     // it[1] = sequence fasta file
-    ch_translatable_nucleotide_seqs_nonempty = ch_translatable_nucleotide_seqs.filter{ it[1].size() > 0 }
     ch_translated_protein_seqs.filter{ it[1].size() > 0 }
       .mix ( ch_protein_fastas )
       .set { ch_translated_protein_seqs_nonempty }
+    // Remove empty files
+    // it[0] = sample bloom id
+    // it[1] = sequence fasta file
+    ch_translatable_nucleotide_seqs.filter{ it[1].size() > 0 }
+      .mix( ch_noncoding_nucleotides_potentially_empty )
+      .set { ch_translatable_nucleotide_seqs_nonempty }
 
   } else {
     // Send reads directly into coding/noncoding
