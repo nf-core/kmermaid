@@ -1185,8 +1185,9 @@ if (!params.remove_ribo_rna) {
     // Remove empty files
     // it[0] = sample bloom id
     // it[1] = sequence fasta file
+    ch_noncoding_nucleotides_nonempty =  ch_noncoding_nucleotides_potentially_empty.filter{ it[1].size() > 0 }
     ch_translatable_nucleotide_seqs.filter{ it[1].size() > 0 }
-      .mix( ch_noncoding_nucleotides_potentially_empty )
+      .mix( ch_noncoding_nucleotides_nonempty)
       .set { ch_translatable_nucleotide_seqs_nonempty }
 
   } else {
