@@ -1188,12 +1188,12 @@ if (!params.remove_ribo_rna) {
     ch_noncoding_nucleotides_nonempty =  ch_noncoding_nucleotides_potentially_empty.filter{ it[1].size() > 0 }
     ch_translatable_nucleotide_seqs.filter{ it[1].size() > 0 }
       .mix( ch_noncoding_nucleotides_nonempty)
-      .set { ch_translatable_nucleotide_seqs_nonempty }
+      .set { ch_nucleotide_seqs_nonempty }
 
   } else {
     // Send reads directly into coding/noncoding
     reads_ch
-      .set{ ch_translatable_nucleotide_seqs_nonempty }
+      .set{ ch_nucleotide_seqs_nonempty }
   }
 
   if (params.split_kmer){
@@ -1246,7 +1246,7 @@ if (!params.remove_ribo_rna) {
       each ksize from ksizes
       each sketch_value from sketch_values
       val track_abundance
-      set sample_id, file(reads) from ch_translatable_nucleotide_seqs_nonempty
+      set sample_id, file(reads) from ch_nucleotide_seqs_nonempty
 
       output:
       file(csv) into ch_sourmash_sig_describe_nucleotides
