@@ -322,7 +322,6 @@ The molecule can be either `dna`, `protein`, or `dayhoff`, and if all of them ar
 | I, L, M, V    | Hydrophobic           | e       |
 | F, W, Y       | Aromatic              | f       |
 
-**Example parameters**
 * Default:
   * `--molecule dna,protein,dayhoff`
 * DNA only:
@@ -388,7 +387,7 @@ If one wants to only translate protein sequences or extract per-cell fastqs from
 
 ### `--save_fastas`
 
-1. The [save_fastas ](#--save_fastas) used to save the sequences of each unique barcode in the bam file. It is a path relative to outdir to save unique barcodes to files namely {CELL_BARCODE}.fasta. These fastas are computed once for one permutation of ksize, molecule, and log2_sketch_size, further used to compute the signatures and compare signature matrix for all permutations of ksizes, molecules, and log2_sketch_size. This is done to save the time on saving the computational time and storage in obtaining unique barcodes, sharding the bam file.
+1. The [save_fastas](#--save_fastas) used to save the sequences of each unique barcode in the bam file. It is a path relative to outdir to save unique barcodes to files namely {CELL_BARCODE}.fasta. These fastas are computed once for one permutation of ksize, molecule, and log2_sketch_size, further used to compute the signatures and compare signature matrix for all permutations of ksizes, molecules, and log2_sketch_size. This is done to save the time on saving the computational time and storage in obtaining unique barcodes, sharding the bam file.
 **Example parameters**
 
 * Default: Save fastas in a directory called fastsas inside outdir:
