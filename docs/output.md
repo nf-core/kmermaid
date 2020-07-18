@@ -13,10 +13,15 @@ and processes data using the following steps:
 * [Sourmash compare](#sourmash-compare) - Compare all samples on k-mer sketches
 
 ## FastQC
+* [MultiQC](#multiqc) - aggregate report, describing results of the whole pipeline
+
+## FastQC
+
 [FastQC](http://www.bioinformatics.babraham.ac.uk/projects/fastqc/) gives general quality metrics about your reads. It provides information about the quality score distribution across your reads, the per base sequence content (%T/A/G/C). You get information about adapter contamination and other overrepresented sequences.
 
 For further reading and documentation see the [FastQC help](http://www.bioinformatics.babraham.ac.uk/projects/fastqc/Help/).
 
+> **NB:** The FastQC plots displayed in the MultiQC report shows _untrimmed_ reads. They may contain adapter sequence and potentially regions with low quality. To see how your reads look after trimming, look at the FastQC reports in the `trim_galore` directory.
 
 **Output directory: `results/fastqc`**
 

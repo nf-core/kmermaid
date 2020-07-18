@@ -6,10 +6,11 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - conda-forge::r-data.table=1.12.4
-  - conda-forge::r-gplots=3.0.1.1
-  - bioconda::bioconductor-edger=3.28.0
-  - conda-forge::r-markdown=1.1
+  - conda-forge::python=3.7.3
+  - conda-forge::markdown=3.1.1
+  - conda-forge::pymdown-extensions=6.0
+  - conda-forge::pygments=2.5.2
+  # TODO nf-core: Add required software dependencies here
   - bioconda::sourmash=3.2.2
   - bioconda::samtools=1.10
   - bioconda::screed=1.0.4
