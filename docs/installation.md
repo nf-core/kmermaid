@@ -35,11 +35,11 @@ See [nextflow.io](https://www.nextflow.io/) for further instructions on how to i
 
 ## 2) Install the pipeline
 
-#### 2.1) Automatic
+### 2.1) Automatic
 
 This pipeline itself needs no installation - NextFlow will automatically fetch it from GitHub if `nf-core/nf-kmer-similarity` is specified as the pipeline name.
 
-#### 2.2) Offline
+### 2.2) Offline
 
 The above method requires an internet connection so that Nextflow can download the pipeline files. If you're running on a system that has no internet connection, you'll need to download and transfer the pipeline files manually:
 
@@ -57,7 +57,7 @@ To stop nextflow from looking for updates online, you can tell it to run in offl
 export NXF_OFFLINE='TRUE'
 ```
 
-#### 2.3) Development
+### 2.3) Development
 
 If you would like to make changes to the pipeline, it's best to make a fork on GitHub and then clone the files. Once cloned you can run the pipeline directly as above.
 
@@ -72,13 +72,13 @@ Be warned of two important points about this default configuration:
     * See the [nextflow docs](https://www.nextflow.io/docs/latest/executor.html) for information about running with other hardware backends. Most job scheduler systems are natively supported.
 2. Nextflow will expect all software to be installed and available on the `PATH`
 
-#### 3.1) Software deps: Docker
+### 3.1) Software deps: Docker
 
 First, install docker on your system: [Docker Installation Instructions](https://docs.docker.com/engine/installation/)
 
 Then, running the pipeline with the option `-profile standard,docker` tells Nextflow to enable Docker for this run. An image containing all of the software requirements will be automatically fetched and used from dockerhub (<https://hub.docker.com/r/nfcore/nf-kmer-similarity>).
 
-#### 3.1) Software deps: Singularity
+### 3.1) Software deps: Singularity
 
 If you're not able to use Docker then [Singularity](http://singularity.lbl.gov/) is a great alternative.
 The process is very similar: running the pipeline with the option `-profile standard,singularity` tells Nextflow to enable singularity for this run. An image containing all of the software requirements will be automatically fetched and used from singularity hub.
@@ -97,8 +97,7 @@ nextflow run /path/to/nf-core-nf-kmer-similarity -with-singularity nf-core-nf-km
 
 Remember to pull updated versions of the singularity image if you update the pipeline.
 
-
-#### 3.2) Software deps: conda
+### 3.2) Software deps: conda
 
 If you're not able to use Docker _or_ Singularity, you can instead use conda to manage the software requirements.
 This is slower and less reproducible than the above, but is still better than having to install all requirements yourself!
@@ -107,7 +106,7 @@ To use it first ensure that you have conda installed (we recommend [miniconda](h
 
 ## Appendices
 
-#### Running on UPPMAX
+### Running on UPPMAX
 
 To run the pipeline on the [Swedish UPPMAX](https://www.uppmax.uu.se/) clusters (`rackham`, `irma`, `bianca` etc), use the command line flag `-profile uppmax`. This tells Nextflow to submit jobs using the SLURM job executor with Singularity for software dependencies.
 

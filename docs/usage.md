@@ -294,6 +294,7 @@ For example:
 ```bash
 --rename_10x_barcodes /path/to/data/10x-example/barcodes_renamer.tsv
 ```
+
 If left unspecified, barcodes in bam as given in barcodes_file are not renamed.
 
 ## Sketch parameters
@@ -320,8 +321,8 @@ The molecule can be either `dna`, `protein`, or `dayhoff`, and if all of them ar
 | H, K, R       | Basic                 | d       |
 | I, L, M, V    | Hydrophobic           | e       |
 | F, W, Y       | Aromatic              | f       |
-**Example parameters**
 
+**Example parameters**
 * Default:
   * `--molecule dna,protein,dayhoff`
 * DNA only:
@@ -332,7 +333,6 @@ The molecule can be either `dna`, `protein`, or `dayhoff`, and if all of them ar
 The fundamental unit of the sketch is a [hashed](https://en.wikipedia.org/wiki/Hash_function) [k-mer](https://en.wikipedia.org/wiki/K-mer). The `--ksize` parameter determines how long of a DNA word to use to create the k-mers. When the  molecule is `protein` or `dayhoff`, then the `ksize/3` is used to create each k-mer.
 
 *NB: if either `protein` or `dayhoff` is specified, the k-mer size must be divisible by 3*
-
 **Example parameters**
 
 * Default:
@@ -388,7 +388,7 @@ If one wants to only translate protein sequences or extract per-cell fastqs from
 
 ### `--save_fastas`
 
-1. The [save_fastas ](#--save_fastas ) used to save the sequences of each unique barcode in the bam file. It is a path relative to outdir to save unique barcodes to files namely {CELL_BARCODE}.fasta. These fastas are computed once for one permutation of ksize, molecule, and log2_sketch_size, further used to compute the signatures and compare signature matrix for all permutations of ksizes, molecules, and log2_sketch_size. This is done to save the time on saving the computational time and storage in obtaining unique barcodes, sharding the bam file.
+1. The [save_fastas ](#--save_fastas) used to save the sequences of each unique barcode in the bam file. It is a path relative to outdir to save unique barcodes to files namely {CELL_BARCODE}.fasta. These fastas are computed once for one permutation of ksize, molecule, and log2_sketch_size, further used to compute the signatures and compare signature matrix for all permutations of ksizes, molecules, and log2_sketch_size. This is done to save the time on saving the computational time and storage in obtaining unique barcodes, sharding the bam file.
 **Example parameters**
 
 * Default: Save fastas in a directory called fastsas inside outdir:
@@ -422,7 +422,6 @@ The parameter `--shard_size` specifies the number of alignments/lines in each ba
 * Default: shard_size is 350
 * Save fastas in a directory called fastas inside outdir:
   * `--shard_size 400`
-
 
 ## Reference Genomes
 

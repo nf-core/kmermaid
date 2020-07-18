@@ -15,10 +15,6 @@
 
 The pipeline is built using [Nextflow](https://www.nextflow.io), a workflow tool to run tasks across multiple compute infrastructures in a very portable manner. It comes with docker containers making installation trivial and results highly reproducible.
 
-## Documentation
-
-The pipeline is built using [Nextflow](https://www.nextflow.io), a workflow tool to run tasks across multiple compute infrastructures in a very portable manner. It comes with docker containers making installation trivial and results highly reproducible.
-
 ## Quick Start
 
 i. Install [`nextflow`](https://nf-co.re/usage/installation)
@@ -58,26 +54,26 @@ The nf-core/kmermaid pipeline comes with documentation about the pipeline, found
 
 ## Usage
 
-### With a samples.csv file:
+### With a samples.csv file
 
 ```bash
 nextflow run nf-core/kmermaid --outdir s3://olgabot-maca/nf-kmer-similarity/ --samples samples.csv
 ```
 
-### With R1, R2 read pairs:
+### With R1, R2 read pairs
 
 ```bash
 nextflow run nf-core/kmermaid --outdir s3://olgabot-maca/nf-kmer-similarity/ \
   --read_pairs 's3://olgabot-maca/sra/homo_sapiens/smartseq2_quartzseq/*{R1,R2}*.fastq.gz,s3://olgabot-maca/sra/danio_rerio/smart-seq/whole_kidney_marrow_prjna393431/*{1,2}.fastq.gz'
 ```
 
-### With SRA ids:
+### With SRA ids
 
 ```bash
 nextflow run nf-core/kmermaid --outdir s3://olgabot-maca/nf-kmer-similarity/ --sra SRP016501
 ```
 
-### With fasta files:
+### With fasta files
 
 ```bash
 nextflow run nf-core/kmermaid --outdir s3://olgabot-maca/nf-kmer-similarity/ \
