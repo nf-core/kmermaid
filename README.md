@@ -13,11 +13,10 @@
 
 ![Workflow overview](docs/images/kmermaid_workflow.png)
 
-
 The pipeline is built using [Nextflow](https://www.nextflow.io), a workflow tool to run tasks across multiple compute infrastructures in a very portable manner. It comes with docker containers making installation trivial and results highly reproducible.
 
-
 ## Documentation
+
 The pipeline is built using [Nextflow](https://www.nextflow.io), a workflow tool to run tasks across multiple compute infrastructures in a very portable manner. It comes with docker containers making installation trivial and results highly reproducible.
 
 ## Quick Start
@@ -61,44 +60,45 @@ The nf-core/kmermaid pipeline comes with documentation about the pipeline, found
 
 ### With a samples.csv file:
 
-```
+```bash
 nextflow run nf-core/kmermaid --outdir s3://olgabot-maca/nf-kmer-similarity/ --samples samples.csv
 ```
 
 ### With R1, R2 read pairs:
 
-```
+```bash
 nextflow run nf-core/kmermaid --outdir s3://olgabot-maca/nf-kmer-similarity/ \
   --read_pairs 's3://olgabot-maca/sra/homo_sapiens/smartseq2_quartzseq/*{R1,R2}*.fastq.gz,s3://olgabot-maca/sra/danio_rerio/smart-seq/whole_kidney_marrow_prjna393431/*{1,2}.fastq.gz'
 ```
 
 ### With SRA ids:
 
-```
+```bash
 nextflow run nf-core/kmermaid --outdir s3://olgabot-maca/nf-kmer-similarity/ --sra SRP016501
 ```
 
 ### With fasta files:
 
-```
+```bash
 nextflow run nf-core/kmermaid --outdir s3://olgabot-maca/nf-kmer-similarity/ \
   --fastas '*.fasta'
 ```
 
 ### With bam file
 
-```
+```bash
 nextflow run czbiohub/nf-kmer-similarity --outdir s3://olgabot-maca/nf-kmer-similarity/ \
   --bam 'possorted_genome_bam.bam'
 ```
 
 ### With split kmer
 
-```
+```bash
 nextflow run czbiohub/nf-kmer-similarity --outdir s3://olgabot-maca/nf-kmer-similarity/ --samples samples.csv --split_kmer --subsample 1000
 ```
 
 ## Credits
+
 nf-core/kmermaid was originally written by Olga Botvinnik.
 
 ## Contributions and Support
