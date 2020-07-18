@@ -50,6 +50,7 @@ NXF_OPTS='-Xms1g -Xmx4g'
 ```
 
 ## Running the pipeline
+
 The typical command for running the pipeline is as follows:
 ```bash
 nextflow run run nf-core/kmermaid --reads '*_R{1,2}.fastq.gz' -profile standard,docker
@@ -67,6 +68,7 @@ results         # Finished results (configurable, see below)
 ```
 
 ### Updating the pipeline
+
 When you run the above command, Nextflow automatically pulls the pipeline code from GitHub and stores it as a cached version. When running the pipeline after this, it will always use the cached version if available - even if the pipeline has been updated since. To make sure that you're running the latest version of the pipeline, make sure that you regularly update the cached version of the pipeline:
 
 ```bash
@@ -74,6 +76,7 @@ nextflow pull nf-core/kmermaid
 ```
 
 ### Reproducibility
+
 It's a good idea to specify a pipeline version when running the pipeline on your data. This ensures that a specific version of the pipeline code and software are used when you run your pipeline. If you keep using the same tag, you'll be running the same version of the pipeline, even if there have been changes to the code since.
 
 
@@ -130,6 +133,7 @@ Please note the following requirements:
 If left unspecified, no reads are used.
 
 ### `--csv_pairs`
+
 Use this to specify the location of a csv containing the columns `sample_id`, `read1`, `read2` to your input *paired-end* FastQ files. For example:
 
 ```bash
@@ -146,6 +150,7 @@ Please note the following requirements:
 If left unspecified, no reads are used.
 
 ### `--csv_singles`
+
 Use this to specify the location of a csv containing the columns `sample_id`, `read1` to your input *single-end* FastQ files. For example:
 
 ```bash
@@ -261,18 +266,19 @@ The meaning of `ksize` is different with split k-mers, so now the value specifie
 
 The `subsample` command is often necessary because the `ska` tool uses ALL the reads rather than a MinHash subsampling of them. If your input files are rather big, then the `ska` sketching command (`ska fastq`) runs out of memory, or it takes so long that it's untenable. The `--subsample` command specifies the number of reads to be used. When e.g. `--subsample 1000` is set, then 1000 reads (or read pairs) are randomly subsampled from the data using [seqtk](https://github.com/lh3/seqtk).
 
-
 #### Which `--molecules` are valid when `--split_kmer` is set?
 
 Currently, `--split_kmer` only works with DNA sequence and not protein sequence, and thus will fail if `protein` or `dayhoff` is specified in `--molecules`.
 
 ### `--bam`
+
 For bam/10x files, Use this to specify the location of the bam file. For example:
 
 ```bash
 --bam /path/to/data/10x-example/possorted_genome_bam
 ```
 ### `--barcodes_file`
+
 For bam/10x files, Use this to specify the location of tsv (tab separated file) containing cell barcodes. For example:
 
 ```bash
@@ -282,6 +288,7 @@ For bam/10x files, Use this to specify the location of tsv (tab separated file) 
 If left unspecified, barcodes are derived from bam are used.
 
 ### `--rename_10x_barcodes`
+
 For bam/10x files, Use this to specify the location of your tsv (tab separated file) containing map of cell barcodes and their corresponding new names(e.g row in the tsv file: AAATGCCCAAACTGCT-1    lung_epithelial_cell|AAATGCCCAAACTGCT-1).
 For example:
 
@@ -322,7 +329,6 @@ The molecule can be either `dna`, `protein`, or `dayhoff`, and if all of them ar
 * DNA only:
   * `--molecule dna`
 
-
 ### `--ksize`
 
 The fundamental unit of the sketch is a [hashed](https://en.wikipedia.org/wiki/Hash_function) [k-mer](https://en.wikipedia.org/wiki/K-mer). The `--ksize` parameter determines how long of a DNA word to use to create the k-mers. When the  molecule is `protein` or `dayhoff`, then the `ksize/3` is used to create each k-mer.
@@ -336,13 +342,10 @@ The fundamental unit of the sketch is a [hashed](https://en.wikipedia.org/wiki/H
 * k-mer size of 21 only:
   * `--ksize 21`
 
-
 ### `--track_abundance`
 
 * Tracking abundance - add this parameter if we want to keep track of the number of times a hashed kmer appears.
   * `--track_abundance`
-
-
 
 ### Sketch Size Parameters
 
@@ -361,7 +364,6 @@ The log2 sketch size specifies the number of hashes (approximately the same as t
 * Compute three signatures for each sample, at 500, 1000, and 2000 hashes each
   * `--sketch_num_hashes 500,1000,2000`
 
-
 #### `--sketch_scaled` / `--sketch_scaled_log2`
 
 Unique to [sourmash](https://sourmash.readthedocs.io/),  the `--scaled` option is another way to subsample k-mers, but instead of taking a "flat rate" of the same number of k-mers per sample, this subsamples every 1/N k-mers, where N is the `--scaled` parameter.
@@ -377,7 +379,6 @@ Unique to [sourmash](https://sourmash.readthedocs.io/),  the `--scaled` option i
 * Compute one signature for each sample, subsampling 1/(2^2) = 1/4 total k-mers
   * `--sketch_scaled_log2 2`
 
-
 ### `--skip_compare`
 
 This allows to skip the sourmash or SKA compare process when there are:
@@ -389,7 +390,6 @@ This allows to skip the sourmash or SKA compare process when there are:
 
 If one wants to only translate protein sequences or extract per-cell fastqs from single-cell `.bam` files, then the `--skip_compute` option may be useful. This allows the user to skip the `sourmash` process you won't actually use the compute result. If `--skip_compute` is true, then `--skip_compare` must be specified as true as well.
 
-
 ### `--save_fastas`
 
 1. The [save_fastas ](#--save_fastas ) used to save the sequences of each unique barcode in the bam file. It is a path relative to outdir to save unique barcodes to files namely {CELL_BARCODE}.fasta. These fastas are computed once for one permutation of ksize, molecule, and log2_sketch_size, further used to compute the signatures and compare signature matrix for all permutations of ksizes, molecules, and log2_sketch_size. This is done to save the time on saving the computational time and storage in obtaining unique barcodes, sharding the bam file.
@@ -398,7 +398,6 @@ If one wants to only translate protein sequences or extract per-cell fastqs from
 
 * Default: Save fastas in a directory called fastsas inside outdir:
   * `--save_fastas "fastas"`
-
 
 ## Bam optional parameters
 
@@ -411,7 +410,6 @@ This creates a CSV containing the number of reads and number of UMIs per barcode
 * Save fastas in a file cinside outdir/barcode/metadata:
   * `--write_barcode_meta_csv "barcodes_counts.csv"`
 
-
 ### `--tenx_min_umi_per_cell`
 The parameter `--tenx_min_umi_per_cell` ensures that a barcode is only considered a valid barcode read and its sketch is written if number of unique molecular identifiers (UMIs, aka molecular barcodes) are greater than the value specified.
 
@@ -420,7 +418,6 @@ The parameter `--tenx_min_umi_per_cell` ensures that a barcode is only considere
 * Default: tenx_min_umi_per_cell is 0
 * Set minimum UMI per cellular barcode as 10:
   * `--tenx_min_umi_per_cell 10`
-
 
 ### `--shard_size`
 The parameter `--shard_size` specifies the number of alignments/lines in each bam shard.
@@ -436,6 +433,7 @@ The parameter `--shard_size` specifies the number of alignments/lines in each ba
 The pipeline config files come bundled with paths to the illumina iGenomes reference index files. If running with docker or AWS, the configuration is set up to use the [AWS-iGenomes](https://ewels.github.io/AWS-iGenomes/) resource.
 
 ### `--genome` (using iGenomes)
+
 There are 31 different species supported in the iGenomes references. To run the pipeline, you must specify which to use with the `--genome` flag.
 
 You can find the keys to specify the genomes in the [iGenomes config file](../conf/igenomes.config). Common genomes that are supported are:
@@ -467,6 +465,7 @@ params {
 ```
 
 ### `--fasta`
+
 If you prefer, you can specify the full path to your reference genome when you run the pipeline:
 
 ```bash

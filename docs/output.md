@@ -3,8 +3,8 @@
 
 This document describes the output produced by the pipeline.
 
-
 ## Pipeline overview
+
 The pipeline is built using [Nextflow](https://www.nextflow.io/)
 and processes data using the following steps:
 
@@ -13,6 +13,7 @@ and processes data using the following steps:
 * [Sourmash compare](#sourmash-compare) - Compare all samples on k-mer sketches
 
 ## FastQC
+
 * [MultiQC](#multiqc) - aggregate report, describing results of the whole pipeline
 
 ## FastQC
