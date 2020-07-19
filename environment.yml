@@ -25,6 +25,7 @@ dependencies:
   - multiqc=1.8
   - numpy=1.17.5
   - pathos=0.2.5
+  - pysam=0.15.4
   - pip=20.0.2
   - pytest=5.3.4
   - seqtk=1.3
