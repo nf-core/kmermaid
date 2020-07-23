@@ -16,7 +16,6 @@ dependencies:
   - bioconda::screed=1.0.4
   - conda-forge::tqdm=4.43.0
   - bioconda::khmer=3.0.0a3
-  - conda-forge::gxx_linux-64=7.3.0
   - conda-forge::rust=1.40.0
   - alabaster=0.7.12
   - fastp=0.20.0
