@@ -153,7 +153,6 @@ if (params.help){
  * SET UP CONFIGURATION VARIABLES
  */
 
-multiqc_config = file(params.multiqc_config)
 output_docs = file("$baseDir/docs/output.md")
 
 // Has the run name been specified by the user?
