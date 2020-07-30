@@ -499,12 +499,6 @@ if (!have_sketch_value && !params.split_kmer) {
   exit 1, "None of --sketch_num_hashes, --sketch_num_hashes_log2, --sketch_scaled, --sketch_scaled_log2 was provided! Provide one (1) and only one to specify the style and amount of hashes per sourmash sketch"
 }
 
-if (params.bam){
-  // Extract the fasta just once using sourmash
-  single_ksize = ksizes[0]
-  single_molecule = molecules[0]
-  single_log2_sketch_num_hashes = sketch_num_hashes_log2[0]
-}
 
 // Tenx parameters
 tenx_tags = params.tenx_tags
