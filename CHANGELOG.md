@@ -37,6 +37,7 @@ barcode fastq
 * Rename splitkmer to `split_kmer` and add `--skip_compare option` to skip `sourmash_compare_sketches` process
 * Increase CPUs in `high_memory_long` profile from 1 to 10
 * add `--skip_compute option` to skip `sourmash_compute_sketch_*`
+* add option to write non-coding nucleotide sequences fasta files while doing sencha translate
 
 ### Dependency updates
 
