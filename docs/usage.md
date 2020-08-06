@@ -344,6 +344,7 @@ The molecule can be either `dna`, `protein`, or `dayhoff`, and if all of them ar
 * `dna` indicates to use the raw nucleotide sequence from each input file to create k-mers
 * `protein` indicates to translate each DNA k-mer into protein using [6-frame translation](https://en.wikipedia.org/wiki/Reading_frame#/media/File:Open_reading_frame.jpg), and hash the translated peptide fragment k-mers
 * `dayhoff`, developed by [Margaret Oakley Dayhoff](https://en.wikipedia.org/wiki/Margaret_Oakley_Dayhoff) is an extension of `protein`, where in addition to translating each amino acid k-mer in six frames, each amino acid is remapped to a degenerate amino acid encoding. This degenerate encoding doesn't penalize large evolutionary distances as a k-mer changing. For example, an small residue change of an Alanine (`A`) to a Glycine (`G`) doesn't hash to the same value and thus do not match, but a Dayhoff-encoded amino acid would allow for these small changes.
+* While translating protein sequences both coding and non-coding nucleotide sequences are written to fasta files by sencha translate
 
 | Amino acid    | Property              | Dayhoff |
 |---------------|-----------------------|---------|
@@ -426,7 +427,7 @@ This allows to skip the sourmash or SKA compare process when there are:
 
 ### `--skip_compute`
 
-If one wants to only translate protein sequences or extract per-cell fastqs from single-cell `.bam` files, then the `--skip_compute` option may be useful. This allows the user to skip the `sourmash` process you won't actually use the compute result. If `--skip_compute` is true, then `--skip_compare` must be specified as true as well.
+If one wants to only translate protein sequences or extract per-cell fastqs from single-cell `.bam` files, then the `--skip_compute` option may be useful. This allows the user to skip the `sourmash` process you won't actually use the compute result. If `--skip_compute` is true, then `--skip_compare` must be specified as true as well. While translating protein sequences both coding and non-coding nucleotide sequences are written to fasta files by sencha translate
 
 
 ### `--save_fastas`

@@ -1236,7 +1236,7 @@ if (!params.remove_ribo_rna) {
     process sourmash_compute_sketch_fastx_nucleotide {
       tag "${sig_id}"
       label "low_memory"
-      publishDir "${params.outdir}/sourmash/sketches_nucleotide", mode: "${params.publish_dir_mode}",
+      publishDir "${params.outdir}/sketches_nucleotide/${sketch_id}", mode: "${params.publish_dir_mode}",
           saveAs: {filename ->
               if (filename.indexOf(".csv") > 0) "description/$filename"
               else if (filename.indexOf(".sig") > 0) "sigs/$filename"
@@ -1303,7 +1303,7 @@ if (!params.skip_compute && (protein_input || params.reference_proteome_fasta)){
   process sourmash_compute_sketch_fastx_peptide {
     tag "${sig_id}"
     label "low_memory"
-    publishDir "${params.outdir}/sourmash/sketches_peptide", mode: "${params.publish_dir_mode}",
+    publishDir "${params.outdir}/sketches_peptide/${sketch_id}", mode: "${params.publish_dir_mode}",
         saveAs: {filename ->
             if (filename.indexOf(".csv") > 0) "description/$filename"
             else if (filename.indexOf(".sig") > 0) "sigs/$filename"
@@ -1356,7 +1356,7 @@ if (!params.skip_compute && (protein_input || params.reference_proteome_fasta)){
 if (params.split_kmer){
      process ska_compare_sketches {
     tag "${sketch_id}"
-    publishDir "${params.outdir}/ska/compare/", mode: 'copy'
+    publishDir "${params.outdir}/compare_sketches", mode: 'copy'
 
     input:
     set val(ksize), file (sketches) from ska_sketches.groupTuple()
@@ -1378,7 +1378,7 @@ if (!params.split_kmer && !params.skip_compare && !params.skip_compute) {
     // Combine peptide and nucleotide sketches
     sourmash_sketches = sourmash_sketches_peptide.concat(sourmash_sketches_nucleotide)
     tag "${sketch_id}"
-    publishDir "${params.outdir}/sourmash/compare", mode: 'copy'
+    publishDir "${params.outdir}/compare_sketches", mode: 'copy'
 
     input:
     set val(sketch_id), val(molecule), val(ksize), val(sketch_value), file ("sourmash/sketches/*.sig") \
