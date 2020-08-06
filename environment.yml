@@ -34,4 +34,4 @@ dependencies:
   - sortmerna=2.1b # for metatranscriptomics
   - pip:
     - git+https://github.com/czbiohub/bam2fasta.git@master#egg=bam2fasta # master
-    - git+https://github.com/czbiohub/sencha.git@master#egg=sencha==1.0.0 # master - need to fix the version
+    - git+https://github.com/czbiohub/sencha.git@pranathi-translate#egg=sencha # master - need to fix the version
