@@ -11,7 +11,7 @@ dependencies:
   - conda-forge::pymdown-extensions=6.0
   - conda-forge::pygments=2.5.2
   # TODO nf-core: Add required software dependencies here
-  - bioconda::sourmash=3.2.2
+  - bioconda::sourmash-minimal=3.4.1
   - bioconda::samtools=1.10
   - bioconda::screed=1.0.4
   - conda-forge::tqdm=4.43.0
