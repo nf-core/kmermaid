@@ -1264,6 +1264,7 @@ if (!params.remove_ribo_rna) {
           $processes \\
           $track_abundance_flag \\
           --output ${sig} \\
+          --name '${sample_id}' \\
           $reads
         sourmash sig describe --csv ${csv} ${sig}
       """
@@ -1329,7 +1330,7 @@ if (!params.skip_compute && (protein_input || params.reference_proteome_fasta)){
         --ksizes $ksize \\
         --input-is-protein \\
         --$molecule \\
-        --name ${sample_id} \\
+        --name '${sample_id}' \\
         --no-dna \\
         $processes \\
         $track_abundance_flag \\
