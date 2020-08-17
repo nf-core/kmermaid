@@ -16,6 +16,7 @@ dependencies:
   - bioconda::screed=1.0.4
   - conda-forge::tqdm=4.43.0
   - bioconda::khmer=3.0.0a3
+  - gcc_linux-64=8.2.0  # Required for bam2fasta and pysam
   - alabaster=0.7.12
   - fastp=0.20.0
   - fastqc=0.11.9
