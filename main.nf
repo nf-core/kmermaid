@@ -1162,9 +1162,11 @@ if (!params.remove_ribo_rna) {
 
     script:
     processes = "--processes ${task.cpus}"
+    intermediate_directory = "--intermediate-directory ${params.save_intermediate_files}"
     """
     sencha translate \\
       $processes \\
+      $intermediate_directory \\
       --molecule ${molecule} \\
       --coding-nucleotide-fasta ${sample_id}__coding_reads_nucleotides.fasta \\
       --noncoding-nucleotide-fasta ${sample_id}__noncoding_reads_nucleotides.fasta \\
