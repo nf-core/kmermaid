@@ -1145,7 +1145,7 @@ if (!params.remove_ribo_rna) {
   if (params.reference_proteome_fasta){
     process translate {
       tag "${sample_id}"
-      label "low_memory_long"
+      label "high_processes_long"
       publishDir "${params.outdir}/translate/", mode: 'copy'
 
       input:
