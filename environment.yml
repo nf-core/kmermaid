@@ -11,12 +11,14 @@ dependencies:
   - conda-forge::pymdown-extensions=6.0
   - conda-forge::pygments=2.5.2
   # TODO nf-core: Add required software dependencies here
-  - conda-forge::sourmash-minimal=3.4.1
+  - conda-forge::sourmash-minimal=3.5.0
+  - bioconda::sourmash=3.5.0
   - bioconda::samtools=1.10
   - bioconda::screed=1.0.4
   - conda-forge::tqdm=4.43.0
   - bioconda::khmer=3.0.0a3
-  - gcc_linux-64=8.2.0  # Required for bam2fasta and pysam
+  - gcc_linux-64 # Required for bam2fasta and pysam
+  - make # Required for bam2fasta and pysam
   - alabaster=0.7.12
   - fastp=0.20.0
   - fastqc=0.11.9
