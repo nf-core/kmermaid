@@ -901,6 +901,30 @@ if (params.tenx_tgz || params.bam) {
     """
   }
   
+  process extract_per_cell_bams {
+    tag "${is_aligned_channel_id}"
+    label "high_memory_long"
+    publishDir "${params.outdir}/10x-fastqs/per-cell/${channel_id}/", mode: 'copy', pattern: '*.fastq.gz', saveAs: { filename -> "${filename.replace("|", "-")}"}
+
+    input:
+    // Example input:
+    // ['mouse_lung', 'aligned', mouse_lung__aligned.fastq.gz, mouse_lung__aligned__barcodes.tsv]
+    set val(channel_id), val(is_aligned), file(reads), file(barcodes) from tenx_reads_with_good_barcodes_ch
+
+    output:
+    file("*${channel_id}__*.bam")
+    
+    script:
+    barcode_pattern = "CB:Z:${cell_barcode}-1|XC:Z:${cell_barcode}" 
+   
+    """
+    samtools view ${channel_bam} \\
+      | rg --threads ${task.cpus}  '${barcode_pattern}' - \\
+      | cat ${header_sam} - \\
+      | samtools view -Sb > ${cell_barcode_bam}
+    """
+  }
+
   // Make per-cell fastqs into a flat channel that matches the read channels of yore
   // Filtering out fastq.gz files less than 200 bytes (arbitary number)
   // ~200 bytes is about the size of a file with a single read or less
