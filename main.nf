@@ -885,6 +885,7 @@ if (params.tenx_tgz || params.bam) {
     is_aligned_channel_id = "${channel_id}__${is_aligned}"
     def rename_10x_barcodes = params.rename_10x_barcodes ? "--rename-10x-barcodes ${rename_10x_barcodes.baseName}.tsv": ''
     processes = "--processes ${task.cpus}"
+    
     """
     bam2fasta make_fastqs_percell \\
         $processes \\
@@ -899,6 +900,7 @@ if (params.tenx_tgz || params.bam) {
     touch empty.fastq.gz
     """
   }
+  
   // Make per-cell fastqs into a flat channel that matches the read channels of yore
   // Filtering out fastq.gz files less than 200 bytes (arbitary number)
   // ~200 bytes is about the size of a file with a single read or less
