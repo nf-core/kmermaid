@@ -499,13 +499,6 @@ if (!have_sketch_value && !params.split_kmer) {
   exit 1, "None of --sketch_num_hashes, --sketch_num_hashes_log2, --sketch_scaled, --sketch_scaled_log2 was provided! Provide one (1) and only one to specify the style and amount of hashes per sourmash sketch"
 }
 
-if (params.bam){
-  // Extract the fasta just once using sourmash
-  single_ksize = ksizes[0]
-  single_molecule = molecules[0]
-  single_log2_sketch_num_hashes = sketch_num_hashes_log2[0]
-}
-
 // Tenx parameters
 tenx_tags = params.tenx_tags
 tenx_cell_barcode_pattern = params.tenx_cell_barcode_pattern
@@ -1144,9 +1137,9 @@ if (!params.remove_ribo_rna) {
 
   if (params.reference_proteome_fasta){
     process translate {
-      tag "${sample_id}"
+      tag "${sample_bloom_id}"
       label "high_processes_long"
-      publishDir "${params.outdir}/translate/", mode: 'copy'
+      publishDir "${params.outdir}/translate/${bloom_id}", mode: 'copy'
 
       input:
       set bloom_id, molecule, file(bloom_filter) from ch_sencha_bloom_filter.collect()
@@ -1154,13 +1147,14 @@ if (!params.remove_ribo_rna) {
 
       output:
       // TODO also extract nucleotide sequence of coding reads and do sourmash compute using only DNA on that?
-      set val(sample_id), file("${sample_id}__noncoding_reads_nucleotides.fasta") into ch_noncoding_nucleotides_potentially_empty
-      set val(sample_id), file("${sample_id}__coding_reads_peptides.fasta") into ch_translated_protein_seqs
-      set val(sample_id), file("${sample_id}__coding_reads_nucleotides.fasta") into ch_translatable_nucleotide_seqs
-      set val(sample_id), file("${sample_id}__coding_scores.csv") into ch_coding_scores_csv
-      set val(sample_id), file("${sample_id}__coding_summary.json") into ch_coding_scores_json
+      set val(sample_bloom_id), file("${sample_bloom_id}__noncoding_reads_nucleotides.fasta") into ch_noncoding_nucleotides_potentially_empty
+      set val(sample_bloom_id), file("${sample_bloom_id}__coding_reads_peptides.fasta") into ch_translated_protein_seqs
+      set val(sample_bloom_id), file("${sample_bloom_id}__coding_reads_nucleotides.fasta") into ch_translatable_nucleotide_seqs
+      set val(sample_bloom_id), file("${sample_bloom_id}__coding_scores.csv") into ch_coding_scores_csv
+      set val(sample_bloom_id), file("${sample_bloom_id}__coding_summary.json") into ch_coding_scores_json
 
     script:
+    sample_bloom_id = "${sample_id}__${bloom_id}"
     processes = "--processes ${task.cpus}"
     intermediate_directory = "--intermediate-directory ${params.save_intermediate_files}"
     """
@@ -1168,15 +1162,15 @@ if (!params.remove_ribo_rna) {
       $processes \\
       $intermediate_directory \\
       --molecule ${molecule} \\
-      --coding-nucleotide-fasta ${sample_id}__coding_reads_nucleotides.fasta \\
-      --noncoding-nucleotide-fasta ${sample_id}__noncoding_reads_nucleotides.fasta \\
-      --csv ${sample_id}__coding_scores.csv \\
-      --json-summary ${sample_id}__coding_summary.json \\
+      --coding-nucleotide-fasta ${sample_bloom_id}__coding_reads_nucleotides.fasta \\
+      --noncoding-nucleotide-fasta ${sample_bloom_id}__noncoding_reads_nucleotides.fasta \\
+      --csv ${sample_bloom_id}__coding_scores.csv \\
+      --json-summary ${sample_bloom_id}__coding_summary.json \\
       --jaccard-threshold ${jaccard_threshold} \\
       --peptide-ksize ${peptide_ksize} \\
       --peptides-are-bloom-filter \\
       ${bloom_filter} \\
-      ${reads} > ${sample_id}__coding_reads_peptides.fasta
+      ${reads} > ${sample_bloom_id}__coding_reads_peptides.fasta
     """
     }
 
@@ -1250,7 +1244,7 @@ if (!params.remove_ribo_rna) {
       each ksize from ksizes
       each sketch_value from sketch_values
       val track_abundance
-      set sample_id, file(reads) from ch_nucleotide_seqs_nonempty
+      set sample_bloom_id, file(reads) from ch_nucleotide_seqs_nonempty
 
       output:
       file(csv) into ch_sourmash_sig_describe_nucleotides
@@ -1265,7 +1259,7 @@ if (!params.remove_ribo_rna) {
       sketch_value_flag = make_sketch_value_flag(sketch_style, sketch_value)
       track_abundance_flag = track_abundance ? '--track-abundance' : ''
       processes = "--processes ${task.cpus}"
-      sig_id = "${sample_id}__${sketch_id}"
+      sig_id = "${sample_bloom_id}__${sketch_id}"
       sig = "${sig_id}.sig"
       csv = "${sig_id}.csv"
       """
@@ -1276,7 +1270,7 @@ if (!params.remove_ribo_rna) {
           $processes \\
           $track_abundance_flag \\
           --output ${sig} \\
-          --name '${sample_id}' \\
+          --name '${sample_bloom_id}' \\
           $reads
         sourmash sig describe --csv ${csv} ${sig}
       """
@@ -1319,7 +1313,7 @@ if (!params.skip_compute && (protein_input || params.reference_proteome_fasta)){
     each molecule from peptide_molecules
     each sketch_value from sketch_values
     val track_abundance
-    set sample_id, file(reads) from ch_translated_protein_seqs_nonempty
+    set sample_bloom_id, file(reads) from ch_translated_protein_seqs_nonempty
 
     output:
     file(csv) into ch_sourmash_sig_describe_peptides
@@ -1333,7 +1327,7 @@ if (!params.skip_compute && (protein_input || params.reference_proteome_fasta)){
     sketch_value_flag = make_sketch_value_flag(sketch_style, sketch_value)
     track_abundance_flag = track_abundance ? '--track-abundance' : ''
     processes = "--processes ${task.cpus}"
-    sig_id = "${sample_id}__${sketch_id}"
+    sig_id = "${sample_bloom_id}__${sketch_id}"
     sig = "${sig_id}.sig"
     csv = "${sig_id}.csv"
     """
@@ -1342,7 +1336,7 @@ if (!params.skip_compute && (protein_input || params.reference_proteome_fasta)){
         --ksizes $ksize \\
         --input-is-protein \\
         --$molecule \\
-        --name '${sample_id}' \\
+        --name '${sample_bloom_id}' \\
         --no-dna \\
         $processes \\
         $track_abundance_flag \\
