@@ -10,4 +10,3 @@ RUN sourmash info
 RUN bam2fasta info
 RUN sencha index --help
 RUN sencha translate --help
-COPY docker/sysctl.conf /etc/sysctl.conf
