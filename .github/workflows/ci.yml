@@ -7,7 +7,7 @@ jobs:
   test:
     name: Run workflow tests
     # Only run on push if this is the nf-core dev branch (merged PRs)
-    if: ${{ github.event_name != 'push' || (github.event_name == 'push' && github.repository == 'nf-core/rnaseq') }}
+    if: ${{ github.event_name != 'push' || (github.event_name == 'push' && github.repository == 'nf-core/kmermaid') }}
     runs-on: ubuntu-latest
     env:
       NXF_VER: '20.07.1'
@@ -28,13 +28,13 @@ jobs:
             environment.yml
       - name: Build new docker image
         if: env.GIT_DIFF
-        run: docker build --no-cache . -t nfcore/rnaseq:dev
+        run: docker build --no-cache . -t nfcore/kmermaid:dev
 
       - name: Pull docker image
         if: ${{ !env.GIT_DIFF }}
         run: |
-          docker pull nfcore/rnaseq:dev
-          docker tag nfcore/rnaseq:dev nfcore/rnaseq:dev
+          docker pull nfcore/kmermaid:dev
+          docker tag nfcore/kmermaid:dev nfcore/kmermaid:dev
       - name: Install Nextflow
         run: |
           wget -qO- get.nextflow.io | bash
@@ -45,7 +45,7 @@ jobs:
 
   parameters:
     name: Test workflow parameters
-    if: ${{ github.event_name != 'push' || (github.event_name == 'push' && github.repository == 'nf-core/rnaseq') }}
+    if: ${{ github.event_name != 'push' || (github.event_name == 'push' && github.repository == 'nf-core/kmermaid') }}
     runs-on: ubuntu-latest
     env:
       NXF_VER: '20.07.1'
@@ -74,13 +74,13 @@ jobs:
             environment.yml
       - name: Build new docker image
         if: env.GIT_DIFF
-        run: docker build --no-cache . -t nfcore/rnaseq:dev
+        run: docker build --no-cache . -t nfcore/kmermaid:dev
 
       - name: Pull docker image
         if: ${{ !env.GIT_DIFF }}
         run: |
-          docker pull nfcore/rnaseq:dev
-          docker tag nfcore/rnaseq:dev nfcore/rnaseq:dev
+          docker pull nfcore/kmermaid:dev
+          docker tag nfcore/kmermaid:dev nfcore/kmermaid:dev
       - name: Install Nextflow
         run: |
           wget -qO- get.nextflow.io | bash
