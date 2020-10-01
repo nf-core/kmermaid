@@ -1,7 +1,12 @@
 name: nf-core CI
-# This workflow is triggered on pushes and PRs to the repository.
-# It runs the pipeline with the minimal test dataset to check that it completes without any syntax errors
-on: [push, pull_request]
+# This workflow runs the pipeline with the minimal test dataset to check that it completes without any syntax errors
+on:
+  push:
+    branches:
+      - dev
+  pull_request:
+  release:
+    types: [published]
 
 jobs:
   test:
@@ -26,6 +31,7 @@ jobs:
           PREFIX_FILTER: |
             Dockerfile
             environment.yml
+
       - name: Build new docker image
         if: env.GIT_DIFF
         run: docker build --no-cache . -t nfcore/kmermaid:dev
@@ -35,10 +41,12 @@ jobs:
         run: |
           docker pull nfcore/kmermaid:dev
           docker tag nfcore/kmermaid:dev nfcore/kmermaid:dev
+
       - name: Install Nextflow
         run: |
           wget -qO- get.nextflow.io | bash
           sudo mv nextflow /usr/local/bin/
+
       - name: Run pipeline with test data
         run: |
           nextflow run ${GITHUB_WORKSPACE} -profile test,docker
@@ -51,7 +59,7 @@ jobs:
       NXF_VER: '20.07.1'
       NXF_ANSI_LOG: false
     strategy:
-      matrix:
+      matrix: 
         profile_flags: [
         'test --sketch_num_hashes 2,4 --sketch_num_hashes_log2 false',
         'test --sketch_scaled 2,4 --sketch_num_hashes_log2 false',
@@ -70,6 +78,7 @@ jobs:
           PREFIX_FILTER: |
             Dockerfile
             environment.yml
+
       - name: Build new docker image
         if: env.GIT_DIFF
         run: docker build --no-cache . -t nfcore/kmermaid:dev
@@ -79,10 +88,12 @@ jobs:
         run: |
           docker pull nfcore/kmermaid:dev
           docker tag nfcore/kmermaid:dev nfcore/kmermaid:dev
+
       - name: Install Nextflow
         run: |
           wget -qO- get.nextflow.io | bash
           sudo mv nextflow /usr/local/bin/
+
       - name: Run pipeline with various parameters
         run: |
           nextflow run ${GITHUB_WORKSPACE} -profile ${{ matrix.profile_flags }}
