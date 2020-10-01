@@ -444,6 +444,9 @@
 			"$ref": "#/definitions/process_skipping_options"
 		},
 		{
+			"$ref": "#/definitions/sortmerna_options"
+		},
+		{
 			"$ref": "#/definitions/institutional_config_options"
 		},
 		{
