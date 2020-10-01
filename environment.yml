@@ -5,6 +5,7 @@ channels:
   - bioconda
   - conda-forge
   - defaults
+  - anaconda
 dependencies:
   - conda-forge::python=3.7.3
   - conda-forge::markdown=3.1.1
@@ -16,8 +17,8 @@ dependencies:
   - bioconda::screed=1.0.4
   - conda-forge::tqdm=4.43.0
   - bioconda::khmer=3.0.0a3
-  - gcc_linux-64 # Required for bam2fasta and pysam
-  - make # Required for bam2fasta and pysam
+  - anaconda::gcc_linux-64 # Required for bam2fasta and pysam
+  - anaconda::make # Required for bam2fasta and pysam
   - alabaster=0.7.12
   - fastp=0.20.0
   - fastqc=0.11.9
@@ -35,5 +36,5 @@ dependencies:
   - conda-forge::s3fs=0.4.2
   - sortmerna=2.1b # for metatranscriptomics
   - pip:
-    - git+https://github.com/czbiohub/bam2fasta.git@master#egg=bam2fasta # master
-    - git+https://github.com/czbiohub/sencha.git@master#egg=sencha==1.0.1 # master - need to fix the version
+    - bam2fasta==1.0.7
+    - sencha==1.0.0 # need to release a new version and change this
