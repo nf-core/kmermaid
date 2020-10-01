@@ -59,9 +59,7 @@ jobs:
         'test_bam --rename_10x_barcodes false --write_barcodes_meta_csv false',
         'test_bam --write_barcodes_meta_csv false',
         'test_bam --barcodes_file false --rename_10x_barcodes false',
-        'test_bam --rename_10x_barcodes false',
-        'tes' 
-        ]
+        'test_bam --rename_10x_barcodes false']
     steps:
       - name: Check out pipeline code
         uses: actions/checkout@v2
@@ -87,4 +85,4 @@ jobs:
           sudo mv nextflow /usr/local/bin/
       - name: Run pipeline with various parameters
         run: |
-          nextflow run ${GITHUB_WORKSPACE} -profile docker,${{ matrix.profile_flags }}
+          nextflow run ${GITHUB_WORKSPACE} -profile ${{ matrix.profile_flags }}
