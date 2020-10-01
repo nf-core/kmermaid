@@ -20,7 +20,7 @@ dependencies:
   - bioconda::screed=1.0.4
   - bioconda::khmer=3.0.0a3
   - bioconda::pysam=0.16.0
-  - anaconda::make==4.2.1
+  - anaconda::make=4.2.1
   - alabaster=0.7.12
   - fastp=0.20.0
   - fastqc=0.11.9
