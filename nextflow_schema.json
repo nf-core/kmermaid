@@ -46,6 +46,11 @@
 					"description": "Path to bam input.",
 					"fa_icon": "fas fa-file-code"
 				},
+				"tenx_tgz": {
+						"type": "string",
+						"description": "Path to input tgz folder containing bam and bai files.",
+						"fa_icon": "fas fa-folder-open"
+				},
 				"sra": {
 					"type": "string",
 					"description": "SRR, ERR, SRP IDs representing a project. Only compatible with Nextflow 19.03-edge or greater",
@@ -220,6 +225,21 @@
 						"type": "string",
 						"description": "Path to single barcode save the fastas inside the output directory where the results will be saved.",
 						"fa_icon": "fas fa-folder-open"
+					},
+					"tenx_tags": {
+						"type": "string",
+						"description": "10x sam tags",
+						"fa_icon": "fas fa-database"
+					},
+					"tenx_cell_barcode_pattern": {
+						"type": "string",
+						"description": "10x Cell pattern",
+						"fa_icon": "fas fa-database"
+					},
+					"tenx_molecular_barcode_pattern": {
+						"type": "string",
+						"description": "10x UMI pattern",
+						"fa_icon": "fas fa-database"
 					}
 				}
 		},
