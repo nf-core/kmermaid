@@ -1138,7 +1138,7 @@ if (!params.remove_ribo_rna) {
   if (params.reference_proteome_fasta){
     process translate {
       tag "${sample_bloom_id}"
-      label "high_processes_long"
+      label "low_memory_long"
       publishDir "${params.outdir}/translate/${bloom_id}", mode: 'copy'
 
       input:
@@ -1155,12 +1155,8 @@ if (!params.remove_ribo_rna) {
 
     script:
     sample_bloom_id = "${sample_id}__${bloom_id}"
-    processes = "--processes ${task.cpus}"
-    intermediate_directory = "--intermediate-directory ${params.save_intermediate_files}"
     """
     sencha translate \\
-      $processes \\
-      $intermediate_directory \\
       --molecule ${molecule} \\
       --coding-nucleotide-fasta ${sample_bloom_id}__coding_reads_nucleotides.fasta \\
       --noncoding-nucleotide-fasta ${sample_bloom_id}__noncoding_reads_nucleotides.fasta \\
