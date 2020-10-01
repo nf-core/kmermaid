@@ -5,31 +5,86 @@ on: [push, pull_request]
 
 jobs:
   test:
-    env:
-      NXF_VER: ${{ matrix.nxf_ver }}
-      NXF_ANSI_LOG: false
+    name: Run workflow tests
+    # Only run on push if this is the nf-core dev branch (merged PRs)
+    if: ${{ github.event_name != 'push' || (github.event_name == 'push' && github.repository == 'nf-core/rnaseq') }}
     runs-on: ubuntu-latest
+    env:
+      NXF_VER: '20.07.1'
+      NXF_ANSI_LOG: false
     strategy:
       matrix:
         # Nextflow versions: check pipeline minimum and current latest
-        nxf_ver: ['19.10.0', '']
-        profile_flags: [
-        'test',
-        'test --sketch_num_hashes 2,4 --sketch_num_hashes_log2 false',
-        'test --sketch_scaled 2,4 --sketch_num_hashes_log2 false',
-        ]
+        nxf_ver: ['20.07.1', '']
     steps:
-      - uses: actions/checkout@v2
+      - name: Check out pipeline code
+        uses: actions/checkout@v2
+
+      - name: Check if Dockerfile or Conda environment changed
+        uses: technote-space/get-diff-action@v1
+        with:
+          PREFIX_FILTER: |
+            Dockerfile
+            environment.yml
+      - name: Build new docker image
+        if: env.GIT_DIFF
+        run: docker build --no-cache . -t nfcore/rnaseq:dev
+
+      - name: Pull docker image
+        if: ${{ !env.GIT_DIFF }}
+        run: |
+          docker pull nfcore/rnaseq:dev
+          docker tag nfcore/rnaseq:dev nfcore/rnaseq:dev
       - name: Install Nextflow
         run: |
           wget -qO- get.nextflow.io | bash
           sudo mv nextflow /usr/local/bin/
-      - name: Pull docker image
-        run: |
-          docker pull nfcore/kmermaid:dev
-          docker tag nfcore/kmermaid:dev nfcore/kmermaid:dev
       - name: Run pipeline with test data
         run: |
-          # TODO nf-core: You can customise CI pipeline run tests as required
-          # (eg. adding multiple test runs with different parameters)
+          nextflow run ${GITHUB_WORKSPACE} -profile test,docker
+
+  parameters:
+    name: Test workflow parameters
+    if: ${{ github.event_name != 'push' || (github.event_name == 'push' && github.repository == 'nf-core/rnaseq') }}
+    runs-on: ubuntu-latest
+    env:
+      NXF_VER: '20.07.1'
+      NXF_ANSI_LOG: false
+    strategy:
+      matrix:
+        profile_flags: [
+        'test --sketch_num_hashes 2,4 --sketch_num_hashes_log2 false',
+        'test --sketch_scaled 2,4 --sketch_num_hashes_log2 false',
+        'test_bam --barcodes_file false --rename_10x_barcodes false --save_fastas false --write_barcodes_meta_csv false',
+        'test_bam --rename_10x_barcodes false --write_barcodes_meta_csv false',
+        'test_bam --write_barcodes_meta_csv false',
+        'test_bam --barcodes_file false --rename_10x_barcodes false',
+        'test_bam --rename_10x_barcodes false',
+        'tes' 
+        ]
+    steps:
+      - name: Check out pipeline code
+        uses: actions/checkout@v2
+
+      - name: Check if Dockerfile or Conda environment changed
+        uses: technote-space/get-diff-action@v1
+        with:
+          PREFIX_FILTER: |
+            Dockerfile
+            environment.yml
+      - name: Build new docker image
+        if: env.GIT_DIFF
+        run: docker build --no-cache . -t nfcore/rnaseq:dev
+
+      - name: Pull docker image
+        if: ${{ !env.GIT_DIFF }}
+        run: |
+          docker pull nfcore/rnaseq:dev
+          docker tag nfcore/rnaseq:dev nfcore/rnaseq:dev
+      - name: Install Nextflow
+        run: |
+          wget -qO- get.nextflow.io | bash
+          sudo mv nextflow /usr/local/bin/
+      - name: Run pipeline with various parameters
+        run: |
           nextflow run ${GITHUB_WORKSPACE} -profile docker,${{ matrix.profile_flags }}
