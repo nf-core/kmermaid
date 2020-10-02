@@ -1,0 +1,99 @@
+name: nf-core CI
+# This workflow runs the pipeline with the minimal test dataset to check that it completes without any syntax errors
+on:
+  push:
+    branches:
+      - dev
+  pull_request:
+  release:
+    types: [published]
+
+jobs:
+  test:
+    name: Run workflow tests
+    # Only run on push if this is the nf-core dev branch (merged PRs)
+    if: ${{ github.event_name != 'push' || (github.event_name == 'push' && github.repository == 'nf-core/kmermaid') }}
+    runs-on: ubuntu-latest
+    env:
+      NXF_VER: '20.07.1'
+      NXF_ANSI_LOG: false
+    strategy:
+      matrix:
+        # Nextflow versions: check pipeline minimum and current latest
+        nxf_ver: ['20.07.1', '']
+    steps:
+      - name: Check out pipeline code
+        uses: actions/checkout@v2
+
+      - name: Check if Dockerfile or Conda environment changed
+        uses: technote-space/get-diff-action@v1
+        with:
+          PREFIX_FILTER: |
+            Dockerfile
+            environment.yml
+
+      - name: Build new docker image
+        if: env.GIT_DIFF
+        run: docker build --no-cache . -t nfcore/kmermaid:dev
+
+      - name: Pull docker image
+        if: ${{ !env.GIT_DIFF }}
+        run: |
+          docker pull nfcore/kmermaid:dev
+          docker tag nfcore/kmermaid:dev nfcore/kmermaid:dev
+
+      - name: Install Nextflow
+        run: |
+          wget -qO- get.nextflow.io | bash
+          sudo mv nextflow /usr/local/bin/
+
+      - name: Run pipeline with test data
+        run: |
+          nextflow run ${GITHUB_WORKSPACE} -profile test,docker
+
+  parameters:
+    name: Test workflow parameters
+    if: ${{ github.event_name != 'push' || (github.event_name == 'push' && github.repository == 'nf-core/kmermaid') }}
+    runs-on: ubuntu-latest
+    env:
+      NXF_VER: '20.07.1'
+      NXF_ANSI_LOG: false
+    strategy:
+      matrix: 
+        profile_flags: 
+          - "test --sketch_num_hashes 2,4 --sketch_num_hashes_log2 false"
+          - "test --sketch_scaled 2,4 --sketch_num_hashes_log2 false"
+          - "test_bam --barcodes_file false --rename_10x_barcodes false --save_fastas false --write_barcodes_meta_csv false"
+          - "test_bam --rename_10x_barcodes false --write_barcodes_meta_csv false"
+          - "test_bam --write_barcodes_meta_csv false"
+          - "test_bam --barcodes_file false --rename_10x_barcodes false"
+          - "test_bam --rename_10x_barcodes false"
+    steps:
+      - name: Check out pipeline code
+        uses: actions/checkout@v2
+
+      - name: Check if Dockerfile or Conda environment changed
+        uses: technote-space/get-diff-action@v1
+        with:
+          PREFIX_FILTER: |
+            Dockerfile
+            environment.yml
+
+      - name: Build new docker image
+        if: env.GIT_DIFF
+        run: docker build --no-cache . -t nfcore/kmermaid:dev
+
+      - name: Pull docker image
+        if: ${{ !env.GIT_DIFF }}
+        run: |
+          docker pull nfcore/kmermaid:dev
+          docker tag nfcore/kmermaid:dev nfcore/kmermaid:dev
+
+      - name: Install Nextflow
+        run: |
+          wget -qO- get.nextflow.io | bash
+          sudo mv nextflow /usr/local/bin/
+
+      - name: Run pipeline with various parameters
+        run: |
+          nextflow run ${GITHUB_WORKSPACE} -profile docker,${{ matrix.profile_flags }}
