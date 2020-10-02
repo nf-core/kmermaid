@@ -96,4 +96,4 @@ jobs:
 
       - name: Run pipeline with various parameters
         run: |
-          nextflow run ${GITHUB_WORKSPACE} -profile ${{ matrix.profile_flags }}
+          nextflow run ${GITHUB_WORKSPACE} -profile docker,${{ matrix.profile_flags }}
