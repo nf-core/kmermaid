@@ -3,8 +3,8 @@
 
 This document describes the output produced by the pipeline.
 
-
 ## Pipeline overview
+
 The pipeline is built using [Nextflow](https://www.nextflow.io/)
 and processes data using the following steps:
 
@@ -12,11 +12,15 @@ and processes data using the following steps:
 * [Sourmash sketch](#sourmash-sketch) - Compute a k-mer sketch of each sample
 * [Sourmash compare](#sourmash-compare) - Compare all samples on k-mer sketches
 
+* [MultiQC](#multiqc) - aggregate report, describing results of the whole pipeline
+
 ## FastQC
+
 [FastQC](http://www.bioinformatics.babraham.ac.uk/projects/fastqc/) gives general quality metrics about your reads. It provides information about the quality score distribution across your reads, the per base sequence content (%T/A/G/C). You get information about adapter contamination and other overrepresented sequences.
 
 For further reading and documentation see the [FastQC help](http://www.bioinformatics.babraham.ac.uk/projects/fastqc/Help/).
 
+> **NB:** The FastQC plots displayed in the MultiQC report shows _untrimmed_ reads. They may contain adapter sequence and potentially regions with low quality. To see how your reads look after trimming, look at the FastQC reports in the `trim_galore` directory.
 
 **Output directory: `results/fastqc`**
 
@@ -37,7 +41,7 @@ For each sample and provided `molecule`, `ksize` and `log2_sketch_size`, a file 
 
 For example:
 
-```
+```bash
 SRR4050379_molecule-dayhoff_ksize-3_log2sketchsize-2.sig
 SRR4050379_molecule-dayhoff_ksize-3_log2sketchsize-4.sig
 SRR4050379_molecule-dayhoff_ksize-9_log2sketchsize-2.sig
@@ -62,7 +66,7 @@ For each provided `molecule`, `ksize` and `log2_sketch_size`, a file is created 
 
 For example,
 
-```
+```bash
 similarities_molecule-dna_ksize-3_log2sketchsize-2.csv
 similarities_molecule-dna_ksize-3_log2sketchsize-4.csv
 similarities_molecule-dna_ksize-9_log2sketchsize-2.csv
@@ -72,4 +76,3 @@ similarities_molecule-protein_ksize-3_log2sketchsize-4.csv
 similarities_molecule-protein_ksize-9_log2sketchsize-2.csv
 similarities_molecule-protein_ksize-9_log2sketchsize-4.csv
 ```
-
