@@ -1098,7 +1098,7 @@ if (!params.remove_ribo_rna) {
         file(db) from sortmerna_db.collect()
 
         output:
-        set val(name), file("*.fq.gz") into reads_ch
+        set val(name), file("*.fq.gz") into ch_reads_to_translate
         file "*_rRNA_report.txt" into sortmerna_logs
 
 
