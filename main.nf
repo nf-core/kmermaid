@@ -893,7 +893,6 @@ if (params.tenx_tgz || params.bam) {
   process extract_per_cell_fastqs {
     tag "${is_aligned_channel_id}__${cell_barcode}"
     label "low_memory"
-    label "cpus_2"
     errorStrategy 'ignore'
     publishDir "${params.outdir}/10x-fastqs/per-cell/${channel_id}/", mode: 'copy', pattern: '*.fastq.gz', saveAs: { filename -> "${filename.replace("|", "-")}"}
 
