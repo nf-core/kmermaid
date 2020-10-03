@@ -19,6 +19,7 @@ Initial release of nf-core/kmermaid, created with the [nf-core](http://nf-co.re/
 * Add samtools_fastq_unaligned and samtools_fastq_aligned process for converting bam to per cell
 barcode fastq
 
+
 ### `Fixed`
 
 * Remove `one_signature_per_record` flag and add bam2fasta count_umis_percell and make_fastqs_percell instead of bam2fasta sharding method
@@ -30,6 +31,7 @@ barcode fastq
 * add `--skip_compute option` to skip `sourmash_compute_sketch_*`
 * add option to write non-coding nucleotide sequences fasta files while doing sencha translate
 * Used `.combine()` instead of `each` to do cartesian product of all possible molecules, ksizes, and sketch values
+* Use ripgrep instead of bam2fasta to make per-cell fastq, which will hopefully make resuming long-running pipelines on bams much faster
 
 ### `Dependencies`
 
