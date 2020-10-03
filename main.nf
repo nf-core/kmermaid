@@ -705,8 +705,6 @@ if ( !params.split_kmer && have_sketch_value ) {
     .splitText()
     .map { it -> it.replaceAll('\\n', '')}
     .dump ( tag : 'sketch_values_parsed' )
-    .collect()
-    .dump ( tag : 'sketch_values_parsed__collected' )
     .into { ch_sketch_values_for_proteins; ch_sketch_values_for_dna }
 
 }
@@ -715,11 +713,13 @@ if ( !params.split_kmer && have_sketch_value ) {
 
 ch_peptide_molecules
   .combine ( ch_ksizes_for_proteins )
+  .combine ( ch_sketch_style_for_proteins )
   .combine ( ch_sketch_values_for_proteins )
   .set { ch_sourmash_protein_sketch_params }
 
 
 ch_ksizes_for_dna
+  .combine ( ch_sketch_style_for_nucleotides )
   .combine ( ch_sketch_values_for_dna )
   .set { ch_sourmash_dna_sketch_params }
 
@@ -1184,16 +1184,16 @@ if (!params.remove_ribo_rna) {
     // Remove empty files
     // it[0] = sample id
     // it[1] = sequence fasta file
-    ch_translated_protein_seqs.filter{ it[1].size() > 0 }
+    ch_translated_protein_seqs
       .mix ( ch_protein_fastas )
-      .set { ch_translated_protein_seqs_nonempty }
+      .set { ch_protein_seq_to_sketch }
     // Remove empty files
     // it[0] = sample bloom id
     // it[1] = sequence fasta file
     ch_noncoding_nucleotides_nonempty =  ch_noncoding_nucleotides_potentially_empty.filter{ it[1].size() > 0 }
     ch_translatable_nucleotide_seqs.filter{ it[1].size() > 0 }
       .mix( ch_noncoding_nucleotides_nonempty)
-      .set { ch_nucleotide_seqs_nonempty }
+      .set { ch_reads_to_sketch }
 
   } else {
     // Send reads directly into coding/noncoding
@@ -1253,8 +1253,7 @@ if (!params.remove_ribo_rna) {
           }
 
       input:
-      val sketch_style from ch_sketch_style_for_nucleotides.collect()
-      set val(ksize), val(sketch_value), val(sample_id), file(reads) from ch_sourmash_sketch_params_with_reads
+      set val(ksize), val(sketch_style), val(sketch_value), val(sample_id), file(reads) from ch_sourmash_sketch_params_with_reads
       val track_abundance
 
       output:
@@ -1289,7 +1288,7 @@ if (!params.remove_ribo_rna) {
 } else {
   sourmash_sketches_nucleotide = Channel.empty()
   ch_protein_fastas
-    .set { ch_translated_protein_seqs_nonempty }
+    .set { ch_protein_seq_to_sketch }
 }
 
 
@@ -1307,7 +1306,7 @@ if (!have_nucleotide_input) {
 
 if (!params.skip_compute && (protein_input || params.reference_proteome_fasta)){
   ch_sourmash_protein_sketch_params
-    .combine ( ch_translated_protein_seqs_nonempty )
+    .combine ( ch_protein_seq_to_sketch )
     .dump ( tag: 'ch_sourmash_protein_params_with_reads' )
     .set { ch_sourmash_protein_sketch_params_with_reads }
 
@@ -1322,18 +1321,14 @@ if (!params.skip_compute && (protein_input || params.reference_proteome_fasta)){
         }
 
     input:
-    val sketch_style from ch_sketch_style_for_proteins.collect()
     val track_abundance
-    set val(molecule), val(ksize), val(sketch_value), val(sample_id), file(reads) from ch_sourmash_protein_sketch_params_with_reads
+    set val(molecule), val(ksize), val(sketch_style), val(sketch_value), val(sample_id), file(reads) from ch_sourmash_protein_sketch_params_with_reads
 
     output:
     file(csv) into ch_sourmash_sig_describe_peptides
     set val(sketch_id), val(molecule), val(ksize), val(sketch_value), file(sig) into sourmash_sketches_all_peptide
 
     script:
-    sketch_style = sketch_style[0]
-    molecule = molecule
-    ksize = ksize
     sketch_id = make_sketch_id(molecule, ksize, sketch_value, track_abundance, sketch_style)
     sketch_value_flag = make_sketch_value_flag(sketch_style, sketch_value)
     track_abundance_flag = track_abundance ? '--track-abundance' : ''
