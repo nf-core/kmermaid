@@ -88,9 +88,9 @@ def helpMessage() {
       --skip_compute                If provided, skip computing of signatures using sourmash compute
 
      Sketch size options:
-      --sketch_num_hashes                 Number of hashes to use for making the sketches.
+      --sketch_num_hashes           Number of hashes to use for making the sketches.
                                     Mutually exclusive with --sketch_num_hashes_log2
-      --sketch_num_hashes_log2            Which log2 sketch sizes to use. Multiple are separated by commas.
+      --sketch_num_hashes_log2      Which log2 sketch sizes to use. Multiple are separated by commas.
                                     Default is '10,12,14,16'. Mutually exclusive with --sketch_num_hashes
       --sketch_scaled               Observe every 1/N hashes per sample, rather than a "flat rate" of N hashes
                                     per sample. This way, the number of hashes scales by the sequencing depth.
@@ -1253,6 +1253,7 @@ if (!params.remove_ribo_rna) {
           $processes \\
           $track_abundance_flag \\
           --output ${sig} \\
+          --name '${sample_id}' \\
           $reads
         sourmash sig describe --csv ${csv} ${sig}
       """
@@ -1318,7 +1319,7 @@ if (!params.skip_compute && (protein_input || params.reference_proteome_fasta)){
         --ksizes $ksize \\
         --input-is-protein \\
         --$molecule \\
-        --name ${sample_id} \\
+        --name '${sample_id}' \\
         --no-dna \\
         $processes \\
         $track_abundance_flag \\
