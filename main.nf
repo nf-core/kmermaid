@@ -437,11 +437,32 @@ Channel
     .set { sortmerna_fasta }
 
 
-// Parse the parameters
-
+// --- Parse the Sourmash parameters ----
 ksizes = params.ksizes?.toString().tokenize(',')
+Channel.from(params.ksizes?.toString().tokenize(','))
+  .into { ch_ksizes_for_proteins; ch_ksizes_for_dna }
+
 molecules = params.molecules?.toString().tokenize(',')
 peptide_molecules = molecules.findAll { it != "dna" }
+
+Channel.from( molecules )
+  .set { ch_molecules }
+
+Channel.from( peptide_molecules )
+  .set { ch_peptide_molecules }
+
+// Parse sketch value and style parameters
+sketch_num_hashes = params.sketch_num_hashes
+sketch_num_hashes_log2 = params.sketch_num_hashes_log2
+sketch_scaled = params.sketch_scaled
+sketch_scaled_log2 = params.sketch_scaled_log2
+have_sketch_value = params.sketch_num_hashes || params.sketch_num_hashes_log2 || params.sketch_scaled || params.sketch_scaled_log2
+
+if (!have_sketch_value && !params.split_kmer) {
+  exit 1, "None of --sketch_num_hashes, --sketch_num_hashes_log2, --sketch_scaled, --sketch_scaled_log2 was provided! Provide one (1) and only one to specify the style and amount of hashes per sourmash sketch"
+}
+
+
 
 
 def make_sketch_id (molecule, ksize, sketch_value, track_abundance, sketch_style) {
@@ -473,17 +494,6 @@ peptide_ksize = params.translate_peptide_ksize
 peptide_molecule = params.translate_peptide_molecule
 jaccard_threshold = params.translate_jaccard_threshold
 track_abundance = params.track_abundance
-
-// Parse sketch value and style parameters
-sketch_num_hashes = params.sketch_num_hashes
-sketch_num_hashes_log2 = params.sketch_num_hashes_log2
-sketch_scaled = params.sketch_scaled
-sketch_scaled_log2 = params.sketch_scaled_log2
-have_sketch_value = params.sketch_num_hashes || params.sketch_num_hashes_log2 || params.sketch_scaled || params.sketch_scaled_log2
-
-if (!have_sketch_value && !params.split_kmer) {
-  exit 1, "None of --sketch_num_hashes, --sketch_num_hashes_log2, --sketch_scaled, --sketch_scaled_log2 was provided! Provide one (1) and only one to specify the style and amount of hashes per sourmash sketch"
-}
 
 // Tenx parameters
 tenx_tags = params.tenx_tags
@@ -661,8 +671,8 @@ if ( !params.split_kmer && have_sketch_value ) {
       val sketch_scaled_log2
 
       output:
-      file sketch_values into ch_sketch_values
-      file sketch_style into ch_sketch_style
+      file sketch_values into ch_sketch_values_unparsed
+      file sketch_style into ch_sketch_style_unparsed
 
       script:
       sketch_style = "sketch_style.txt"
@@ -679,27 +689,41 @@ if ( !params.split_kmer && have_sketch_value ) {
   }
 
   // Parse sketch style into value
-  ch_sketch_style
+  ch_sketch_style_unparsed
     .splitText()
     .dump ( tag: 'ch_sketch_style' )
     .map { it -> it.replaceAll('\\n', '' ) }
     // .first()
     .dump ( tag: 'sketch_style_parsed' )
-    .into { sketch_style_for_nucleotides; sketch_style_for_proteins }
+    .into { ch_sketch_style_for_nucleotides; ch_sketch_style_for_proteins }
   // sketch_style = sketch_styles[0]
   // println "sketch_style_parsed: ${sketch_style_parsed}"
   // println "sketch_style: ${sketch_style}"
 
   // Parse file into values
-  ch_sketch_values
+  ch_sketch_values_unparsed
     .splitText()
     .map { it -> it.replaceAll('\\n', '')}
     .dump ( tag : 'sketch_values_parsed' )
     .collect()
     .dump ( tag : 'sketch_values_parsed__collected' )
-    .set { sketch_values }
+    .into { ch_sketch_values_for_proteins; ch_sketch_values_for_dna }
 
 }
+
+// Combine sketch values with ksize and molecule types
+
+ch_peptide_molecules
+  .combine ( ch_ksizes_for_proteins )
+  .combine ( ch_sketch_values_for_proteins )
+  .set { ch_sourmash_protein_sketch_params }
+
+
+ch_ksizes_for_dna
+  .combine ( ch_sketch_values_for_dna )
+  .set { ch_sourmash_dna_sketch_params }
+
+
 
 if (params.reference_proteome_fasta){
   process make_protein_index {
@@ -1036,7 +1060,7 @@ if (params.subsample) {
  */
 if (!params.remove_ribo_rna) {
     ch_reads_for_ribosomal_removal
-        .set { reads_ch }
+        .set { ch_reads_to_translate }
     sortmerna_logs = Channel.empty()
 } else {
     process sortmerna_index {
@@ -1131,7 +1155,7 @@ if (!params.remove_ribo_rna) {
 
       input:
       set bloom_id, molecule, file(bloom_filter) from ch_sencha_bloom_filter.collect()
-      set sample_id, file(reads) from reads_ch
+      set sample_id, file(reads) from ch_reads_to_translate
 
       output:
       // TODO also extract nucleotide sequence of coding reads and do sourmash compute using only DNA on that?
@@ -1173,9 +1197,10 @@ if (!params.remove_ribo_rna) {
 
   } else {
     // Send reads directly into coding/noncoding
-    reads_ch
-      .set{ ch_nucleotide_seqs_nonempty }
+    ch_reads_to_translate
+      .set{ ch_reads_to_sketch }
   }
+
 
   if (params.split_kmer){
   ///////////////////////////////////////////////////////////////////////////////
@@ -1195,7 +1220,7 @@ if (!params.remove_ribo_rna) {
 
       input:
       each ksize from ksizes
-      set id, file(reads) from reads_ch
+      set id, file(reads) from ch_reads_to_sketch
 
       output:
       set val(ksize), file("${sketch_id}.skf") into ska_sketches
@@ -1212,6 +1237,11 @@ if (!params.remove_ribo_rna) {
 
       }
   } else if (!params.skip_compute) {
+    ch_sourmash_dna_sketch_params
+      .combine ( ch_reads_to_sketch )
+      .dump ( tag: 'ch_sourmash_dna_params_with_reads' )
+      .set { ch_sourmash_sketch_params_with_reads }
+
     process sourmash_compute_sketch_fastx_nucleotide {
       tag "${sig_id}"
       label "low_memory"
@@ -1223,21 +1253,17 @@ if (!params.remove_ribo_rna) {
           }
 
       input:
-      val sketch_style from sketch_style_for_nucleotides.collect()
-      each ksize from ksizes
-      each sketch_value from sketch_values
+      val sketch_style from ch_sketch_style_for_nucleotides.collect()
+      set val(ksize), val(sketch_value), val(sample_id), file(reads) from ch_sourmash_sketch_params_with_reads
       val track_abundance
-      set sample_id, file(reads) from ch_nucleotide_seqs_nonempty
 
       output:
       file(csv) into ch_sourmash_sig_describe_nucleotides
       set val(sketch_id), val("dna"), val(ksize), val(sketch_value), file(sig) into sourmash_sketches_all_nucleotide
 
       script:
-      sketch_style = sketch_style[0]
       // Don't calculate DNA signature if this is protein, to minimize disk,
       // memory and IO requirements in the future
-      ksize = ksize
       sketch_id = make_sketch_id("dna", ksize, sketch_value, track_abundance, sketch_style)
       sketch_value_flag = make_sketch_value_flag(sketch_style, sketch_value)
       track_abundance_flag = track_abundance ? '--track-abundance' : ''
@@ -1280,6 +1306,11 @@ if (!have_nucleotide_input) {
 
 
 if (!params.skip_compute && (protein_input || params.reference_proteome_fasta)){
+  ch_sourmash_protein_sketch_params
+    .combine ( ch_translated_protein_seqs_nonempty )
+    .dump ( tag: 'ch_sourmash_protein_params_with_reads' )
+    .set { ch_sourmash_protein_sketch_params_with_reads }
+
   process sourmash_compute_sketch_fastx_peptide {
     tag "${sig_id}"
     label "low_memory"
@@ -1291,12 +1322,9 @@ if (!params.skip_compute && (protein_input || params.reference_proteome_fasta)){
         }
 
     input:
-    val sketch_style from sketch_style_for_proteins.collect()
-    each ksize from ksizes
-    each molecule from peptide_molecules
-    each sketch_value from sketch_values
+    val sketch_style from ch_sketch_style_for_proteins.collect()
     val track_abundance
-    set sample_id, file(reads) from ch_translated_protein_seqs_nonempty
+    set val(molecule), val(ksize), val(sketch_value), val(sample_id), file(reads) from ch_sourmash_protein_sketch_params_with_reads
 
     output:
     file(csv) into ch_sourmash_sig_describe_peptides
