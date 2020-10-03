@@ -833,7 +833,8 @@ if (params.tenx_tgz || params.bam) {
   }
 
   // Put fastqs from aligned and unaligned reads into a single channel
-  tenx_reads_aligned_concatenation_ch.mix(tenx_reads_unaligned_ch)
+  tenx_reads_aligned_concatenation_ch
+    .mix( tenx_reads_unaligned_ch )
     .dump(tag: "tenx_ch_reads_for_ribosomal_removal")
     .set{ tenx_ch_reads_for_ribosomal_removal }
 
@@ -881,8 +882,9 @@ if (params.tenx_tgz || params.bam) {
     good_barcodes_ch = tenx_bam_barcodes_ch
   }
 
-  tenx_ch_reads_for_ribosomal_removal.combine(good_barcodes_ch, by: 0)
-    .dump(tag: 'tenx_ch_reads_for_ribosomal_removal__combine__good_barcodes_ch' )
+  tenx_ch_reads_for_ribosomal_removal
+    .combine( good_barcodes_ch, by: 0 )
+    .dump( tag: 'tenx_ch_reads_for_ribosomal_removal__combine__good_barcodes_ch' )
     .map{ it -> [it[0], it[1], it[2], it[3].splitText()] }
     .transpose()
     .dump( tag: 'tenx_ch_reads_for_ribosomal_removal__combine__good_barcodes_ch__transpose' )
