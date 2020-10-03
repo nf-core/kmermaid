@@ -443,7 +443,24 @@
 					"type": "boolean",
 					"description": "Run this workflow with Conda.",
 					"hidden": true
-        		}
+				},
+				"read_paths": {
+					"type": "string",
+					"description": "Test paths for input reads",
+					"hidden": true
+				},
+				"fasta_paths": {
+					"type": "string",
+					"description": "Test paths for fastas",
+					"hidden": true
+				},
+				"protein_fasta_paths": {
+					"type": "string",
+					"description": "Test paths for protein fastas",
+					"hidden": true
+				},
+
+
             }
         }
     },
