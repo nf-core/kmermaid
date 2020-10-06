@@ -30,6 +30,7 @@ barcode fastq
 * add `--skip_compute option` to skip `sourmash_compute_sketch_*`
 * add option to write non-coding nucleotide sequences fasta files while doing sencha translate
 * Used `.combine()` instead of `each` to do cartesian product of all possible molecules, ksizes, and sketch values
+* Use ripgrep instead of bam2fasta to make per-cell fastq, which will hopefully make resuming long-running pipelines on bams much faster
 
 ### `Dependencies`
 
