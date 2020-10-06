@@ -1396,36 +1396,37 @@ if (!params.split_kmer && !params.skip_compare && !params.skip_compute) {
 /*
  * STEP 16 - MultiQC
  */
-process multiqc {
-    publishDir "${params.outdir}/MultiQC", mode: "${params.publish_dir_mode}"
+if (!params.skip_multiqc) {
+    process multiqc {
+        publishDir "${params.outdir}/MultiQC", mode: "${params.publish_dir_mode}"
 
-    when:
-    !params.skip_multiqc
+        when:
+        !params.skip_multiqc
 
-    input:
-    file multiqc_config from ch_multiqc_config
-    file ('fastp/*') from ch_fastp_results.collect().ifEmpty([])
-    file ('sortmerna/*') from sortmerna_logs.collect().ifEmpty([])
-    file ('software_versions/*') from ch_software_versions_yaml.collect()
-    file workflow_summary from ch_workflow_summary.collectFile(name: "workflow_summary_mqc.yaml")
+        input:
+        file multiqc_config from ch_multiqc_config
+        file ('fastp/*') from ch_fastp_results.collect().ifEmpty([])
+        file ('sortmerna/*') from sortmerna_logs.collect().ifEmpty([])
+        file ('software_versions/*') from ch_software_versions_yaml.collect()
+        file workflow_summary from ch_workflow_summary.collectFile(name: "workflow_summary_mqc.yaml")
 
-    output:
-    file "*multiqc_report.html" into ch_multiqc_report
-    file "*_data"
-    file "multiqc_plots"
+        output:
+        file "*multiqc_report.html" into ch_multiqc_report
+        file "*_data"
+        file "multiqc_plots"
 
-    script:
-    rtitle = custom_runName ? "--title \"$custom_runName\"" : ''
-    rfilename = custom_runName ? "--filename " + custom_runName.replaceAll('\\W','_').replaceAll('_+','_') + "_multiqc_report" : ''
-    custom_config_file = params.multiqc_config ? "--config $multiqc_config" : ''
-    """
-    multiqc . -f $rtitle $rfilename $custom_config_file \\
-        -m custom_content \\
-        -m fastp \\
-        -m sortmerna
-    """
+        script:
+        rtitle = custom_runName ? "--title \"$custom_runName\"" : ''
+        rfilename = custom_runName ? "--filename " + custom_runName.replaceAll('\\W','_').replaceAll('_+','_') + "_multiqc_report" : ''
+        custom_config_file = params.multiqc_config ? "--config $multiqc_config" : ''
+        """
+        multiqc . -f $rtitle $rfilename $custom_config_file \\
+          -m custom_content \\
+          -m fastp \\
+          -m sortmerna
+        """
+    }
 }
-
 
 
 /*
