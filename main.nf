@@ -1408,12 +1408,9 @@ if (!params.split_kmer && !params.skip_compare && !params.skip_compute) {
 /*
  * STEP 16 - MultiQC
  */
-if (params.split_kmer){
+if (!params.skip_multiqc){
     process multiqc {
       publishDir "${params.outdir}/MultiQC", mode: "${params.publish_dir_mode}"
-
-      when:
-      !params.skip_multiqc
 
       input:
       file multiqc_config from ch_multiqc_config
