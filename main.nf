@@ -833,7 +833,8 @@ if (params.tenx_tgz || params.bam) {
   }
 
   // Put fastqs from aligned and unaligned reads into a single channel
-  tenx_reads_aligned_concatenation_ch.mix(tenx_reads_unaligned_ch)
+  tenx_reads_aligned_concatenation_ch
+    .mix( tenx_reads_unaligned_ch )
     .dump(tag: "tenx_ch_reads_for_ribosomal_removal")
     .set{ tenx_ch_reads_for_ribosomal_removal }
 
@@ -881,55 +882,69 @@ if (params.tenx_tgz || params.bam) {
     good_barcodes_ch = tenx_bam_barcodes_ch
   }
 
-  tenx_ch_reads_for_ribosomal_removal.combine(good_barcodes_ch, by: 0)
-    .dump(tag: 'tenx_ch_reads_for_ribosomal_removal__combine__good_barcodes_ch')
+  tenx_ch_reads_for_ribosomal_removal
+    .combine( good_barcodes_ch, by: 0 )
+    .dump( tag: 'tenx_ch_reads_for_ribosomal_removal__combine__good_barcodes_ch' )
+    .map{ it -> [it[0], it[1], it[2], it[3].splitText()] }
+    .transpose()
+    .dump( tag: 'tenx_ch_reads_for_ribosomal_removal__combine__good_barcodes_ch__transpose' )
+    .map{ it -> [it[0], it[1], it[2], it[3].replaceAll("\\s+", "") ] }
+    .dump( tag: 'tenx_ch_reads_for_ribosomal_removal__combine__good_barcodes_ch__transpose__no_newlines' )
     .set{ tenx_reads_with_good_barcodes_ch }
 
   process extract_per_cell_fastqs {
-    tag "${is_aligned_channel_id}"
-    label "high_memory_long"
+    tag "${is_aligned_channel_id}__${cell_barcode}"
+    label "low_memory"
+    errorStrategy 'ignore'
     publishDir "${params.outdir}/10x-fastqs/per-cell/${channel_id}/", mode: 'copy', pattern: '*.fastq.gz', saveAs: { filename -> "${filename.replace("|", "-")}"}
 
     input:
     // Example input:
-    // ['mouse_lung', 'aligned', mouse_lung__aligned.fastq.gz, mouse_lung__aligned__barcodes.tsv]
-    set val(channel_id), val(is_aligned), file(reads), file(barcodes) from tenx_reads_with_good_barcodes_ch
+    // ['mouse_lung', 'aligned', mouse_lung__aligned.fastq.gz, CTGAAGTCAATGGTCT]
+    set val(channel_id), val(is_aligned), file(reads), val(cell_barcode) from tenx_reads_with_good_barcodes_ch
 
     output:
-    file('*.fastq.gz') into per_channel_cell_ch_reads_for_ribosomal_removal
+    set val(fastq_id), file(this_cell_fastq_gz) into per_cell_fastqs_ch_possibly_empty
+    set val(fastq_id), val(cell_id), val(is_aligned) into ch_fastq_id_to_cell_id_is_aligned
 
     script:
     is_aligned_channel_id = "${channel_id}__${is_aligned}"
-    def rename_10x_barcodes = params.rename_10x_barcodes ? "--rename-10x-barcodes ${rename_10x_barcodes.baseName}.tsv": ''
     processes = "--processes ${task.cpus}"
+    this_cell_barcode = tenx_cell_barcode_pattern.replace('([ACGT]+)', cell_barcode)
+    fastq_id = "${is_aligned_channel_id}__${is_aligned}__${cell_barcode}"
+    cell_id = "${channel_id}__${cell_barcode}"
+    this_cell_fastq_gz = "${fastq_id}.fastq.gz"
     """
-    bam2fasta make_fastqs_percell \\
-        $processes \\
-        --filename ${reads} \\
-        --barcodes-significant-umis-fil ${barcodes} \\
-        $rename_10x_barcodes \\
-        --cell-barcode-pattern '${tenx_cell_barcode_pattern}' \\
-        --channel-id ${is_aligned_channel_id}__ \\
-        --output-format 'fastq.gz'
-    # Decoy file just in case there are no reads found,
-    # to prevent this process from erroring out
-    touch empty.fastq.gz
+    rg \\
+      --search-zip \\
+      --after-context 3 \\
+      --threads ${task.cpus} \\
+      '${this_cell_barcode}' \\
+      ${reads} \\
+      | gzip -c - \\
+      > ${this_cell_fastq_gz}
     """
   }
-  // Make per-cell fastqs into a flat channel that matches the read channels of yore
-  // Filtering out fastq.gz files less than 200 bytes (arbitary number)
-  // ~200 bytes is about the size of a file with a single read or less
-  // We can't use .size() > 0 because it's fastq.gz is gzipped content
-  per_channel_cell_ch_reads_for_ribosomal_removal
-    .dump(tag: 'per_channel_cell_ch_reads_for_ribosomal_removal')
-    .flatten()
-    .filter{ it -> it.size() > 200 }   // each item is just a single file, no need to do it[1]
-    .map{ it -> tuple(it.simpleName, file(it)) }
-    .dump(tag: 'per_cell_fastqs_ch')
-    .set{ per_cell_fastqs_ch }
+  per_cell_fastqs_ch_possibly_empty
+    // gzipped files are 20 bytes
+    .filter { it -> it[1].size() > 20 }
+    .set { per_cell_fastqs_ch }
+  // // Make per-cell fastqs into a flat channel that matches the read channels of yore
+  // // Filtering out fastq.gz files less than 200 bytes (arbitary number)
+  // // ~200 bytes is about the size of a file with a single read or less
+  // // We can't use .size() > 0 because it's fastq.gz is gzipped content
+  // per_channel_cell_ch_reads_for_ribosomal_removal
+  //   .dump(tag: 'per_channel_cell_ch_reads_for_ribosomal_removal')
+  //   .flatten()
+  //   .filter{ it -> it.size() > 200 }   // each item is just a single file, no need to do it[1]
+  //   .map{ it -> tuple(it.simpleName, file(it)) }
+  //   .dump(tag: 'per_cell_fastqs_ch')
+  //   .set{ per_cell_fastqs_ch }
 
   if (params.skip_trimming) {
-    ch_reads_for_ribosomal_removal = ch_non_bam_reads.concat(per_cell_fastqs_ch)
+    ch_non_bam_reads
+      .concat(per_cell_fastqs_ch)
+      .set { ch_reads_for_ribosomal_removal }
   } else {
     ch_non_bam_reads
       .mix ( per_cell_fastqs_ch )
