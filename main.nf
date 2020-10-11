@@ -1448,6 +1448,7 @@ if (!params.skip_multiqc){
           -m fastp \\
           -m sortmerna
       """
+ }
 }
 
 
