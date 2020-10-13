@@ -650,6 +650,7 @@ process get_software_versions {
     ska version &> v_ska.txt
     sortmerna --version &> v_sortmerna.txt
     sourmash -v &> v_sourmash.txt
+    pip show sencha &> v_sencha.txt
     scrape_software_versions.py &> software_versions_mqc.yaml
     """
 }
