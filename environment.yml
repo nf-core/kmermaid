@@ -37,5 +37,5 @@ dependencies:
   - sortmerna=2.1b # for metatranscriptomics
   - ripgrep=12.1.1
   - pip:
-    - bam2fasta==1.0.7
-    - sencha==1.0.0 # need to release a new version and change this
+    - bam2fasta==1.0.8
+    - sencha==1.0.2

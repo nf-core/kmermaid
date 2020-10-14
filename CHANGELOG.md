@@ -18,6 +18,7 @@ Initial release of nf-core/kmermaid, created with the [nf-core](http://nf-co.re/
 * Add option to use compressed `.tgz` file containing output from 10X Genomics' `cellranger count` outputs, including `possorted_genome_bam.bam` and `barcodes.tsv` files
 * Add samtools_fastq_unaligned and samtools_fastq_aligned process for converting bam to per cell
 barcode fastq
+* Add version printing for sencha, bam2fasta, and sourmash in Dockerfile, update versions in environment.yml
 
 ### `Fixed`
 
@@ -31,6 +32,7 @@ barcode fastq
 * add option to write non-coding nucleotide sequences fasta files while doing sencha translate
 * Used `.combine()` instead of `each` to do cartesian product of all possible molecules, ksizes, and sketch values
 * Use ripgrep instead of bam2fasta to make per-cell fastq, which will hopefully make resuming long-running pipelines on bams much faster
+* Fix the use of `skip_multiqc` flag condition with if and not when
 
 ### `Dependencies`
 
