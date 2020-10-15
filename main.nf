@@ -1171,8 +1171,6 @@ if (!params.remove_ribo_rna) {
       --molecule ${molecule} \\
       --coding-nucleotide-fasta ${sample_id}__coding_reads_nucleotides.fasta \\
       --noncoding-nucleotide-fasta ${sample_id}__noncoding_reads_nucleotides.fasta \\
-      --csv ${sample_id}__coding_scores.csv \\
-      --json-summary ${sample_id}__coding_summary.json \\
       --jaccard-threshold ${jaccard_threshold} \\
       --peptide-ksize ${peptide_ksize} \\
       --peptides-are-bloom-filter \\
