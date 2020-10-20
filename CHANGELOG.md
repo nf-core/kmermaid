@@ -19,6 +19,7 @@ Initial release of nf-core/kmermaid, created with the [nf-core](http://nf-co.re/
 * Add samtools_fastq_unaligned and samtools_fastq_aligned process for converting bam to per cell
 barcode fastq
 * Add version printing for sencha, bam2fasta, and sourmash in Dockerfile, update versions in environment.yml
+* For translate, sourmash compute processes add cpus = 1 so as they are only serial
 
 ### `Fixed`
 
@@ -33,6 +34,7 @@ barcode fastq
 * Used `.combine()` instead of `each` to do cartesian product of all possible molecules, ksizes, and sketch values
 * Use ripgrep instead of bam2fasta to make per-cell fastq, which will hopefully make resuming long-running pipelines on bams much faster
 * Fix the use of `skip_multiqc` flag condition with if and not when
+* Updated sencha=1.0.3 to fix the bug in memory errors possibly with the numpy array on unique filenames ([PR #96 on sencha](https://github.com/czbiohub/leaftea/pull/96))
 
 ### `Dependencies`
 
