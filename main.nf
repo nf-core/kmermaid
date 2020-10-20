@@ -1080,7 +1080,8 @@ if (!params.remove_ribo_rna) {
     sortmerna_logs = Channel.empty()
 } else {
     process sortmerna_index {
-        label 'low_memory'
+        label 'mid_memory_long'
+        label 'mid_cpu'
         tag "${fasta.baseName}"
 
         input:
@@ -1098,7 +1099,8 @@ if (!params.remove_ribo_rna) {
     }
 
     process sortmerna {
-        label 'low_memory'
+        label 'mid_memory_long'
+        label 'mid_cpu'
         tag "$name"
         publishDir "${params.outdir}/SortMeRNA", mode: "${params.publish_dir_mode}",
             saveAs: {filename ->
