@@ -19,7 +19,7 @@ Initial release of nf-core/kmermaid, created with the [nf-core](http://nf-co.re/
 * Add samtools_fastq_unaligned and samtools_fastq_aligned process for converting bam to per cell
 barcode fastq
 * Add version printing for sencha, bam2fasta, and sourmash in Dockerfile, update versions in environment.yml
-* For processes translate, sourmash compute  add cpus=1 as they are only serial
+* For processes translate, sourmash compute  add cpus=1 as they are only serial ([#107](https://github.com/nf-core/kmermaid/pull/107))
 
 ### `Fixed`
 
