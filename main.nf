@@ -1049,20 +1049,20 @@ if ( have_nucleotide_input ) {
 
 if (params.subsample) {
   process subsample_input {
-  	tag "${id}_subsample"
-  	publishDir "${params.outdir}/seqtk/", mode: 'copy'
+    tag "${id}_subsample"
+    publishDir "${params.outdir}/seqtk/", mode: 'copy'
 
-  	input:
-  	set val(id), file(reads) from subsample_ch_reads_for_ribosomal_removal
+    input:
+    set val(id), file(reads) from subsample_ch_reads_for_ribosomal_removal
 
-  	output:
-  	set val(id), file("*_${params.subsample}.fastq.gz") into ch_reads_for_ribosomal_removal
+    output:
+    set val(id), file("*_${params.subsample}.fastq.gz") into ch_reads_for_ribosomal_removal
 
-  	script:
-  	read1 = reads[0]
-  	read2 = reads[1]
-  	read1_prefix = read1.simpleName
-  	read2_prefix = read2.simpleName
+    script:
+    read1 = reads[0]
+    read2 = reads[1]
+    read1_prefix = read1.simpleName
+    read2_prefix = read2.simpleName
 
     """
     seqtk sample -s100 ${read1} ${params.subsample} > ${read1_prefix}_${params.subsample}.fastq.gz
