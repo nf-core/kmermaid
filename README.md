@@ -31,7 +31,6 @@ nextflow run nf-core/kmermaid -profile test,<docker/singularity/conda/institute>
 
 iv. Start running your own analysis!
 
-<!-- TODO nf-core: Update the default command above used to run the pipeline -->
 
 ```bash
 nextflow run nf-core/kmermaid -profile <docker/singularity/conda/institute> --reads '*_R{1,2}.fastq.gz' --genome GRCh37
@@ -57,40 +56,40 @@ The nf-core/kmermaid pipeline comes with documentation about the pipeline, found
 ### With a samples.csv file
 
 ```bash
-nextflow run nf-core/kmermaid --outdir s3://olgabot-maca/nf-kmer-similarity/ --samples samples.csv
+nextflow run nf-core/kmermaid --outdir s3://bucket/sub-bucket --samples samples.csv
 ```
 
 ### With R1, R2 read pairs
 
 ```bash
 nextflow run nf-core/kmermaid --outdir s3://olgabot-maca/nf-kmer-similarity/ \
-  --read_pairs 's3://olgabot-maca/sra/homo_sapiens/smartseq2_quartzseq/*{R1,R2}*.fastq.gz,s3://olgabot-maca/sra/danio_rerio/smart-seq/whole_kidney_marrow_prjna393431/*{1,2}.fastq.gz'
+  --read_pairs 's3://bucket/sub-bucket/*{R1,R2}*.fastq.gz,s3://bucket/sub-bucket2/*{1,2}.fastq.gz'
 ```
 
 ### With SRA ids
 
 ```bash
-nextflow run nf-core/kmermaid --outdir s3://olgabot-maca/nf-kmer-similarity/ --sra SRP016501
+nextflow run nf-core/kmermaid --outdir s3://bucket/sub-bucket --sra SRP016501
 ```
 
 ### With fasta files
 
 ```bash
-nextflow run nf-core/kmermaid --outdir s3://olgabot-maca/nf-kmer-similarity/ \
+nextflow run nf-core/kmermaid --outdir s3://bucket/sub-bucket \
   --fastas '*.fasta'
 ```
 
 ### With bam file
 
 ```bash
-nextflow run czbiohub/nf-kmer-similarity --outdir s3://olgabot-maca/nf-kmer-similarity/ \
+nextflow run nf-core/kmermaid  --outdir s3://bucket/sub-bucket \
   --bam 'possorted_genome_bam.bam'
 ```
 
 ### With split kmer
 
 ```bash
-nextflow run czbiohub/nf-kmer-similarity --outdir s3://olgabot-maca/nf-kmer-similarity/ --samples samples.csv --split_kmer --subsample 1000
+nextflow run nf-core/kmermaid --outdir s3://bucket/sub-bucket --samples samples.csv --split_kmer --subsample 1000
 ```
 
 ## Credits

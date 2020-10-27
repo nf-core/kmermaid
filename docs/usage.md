@@ -222,16 +222,16 @@ If rRNA removal is desired (for example, metatranscriptomics),
 add the following command line parameters.
 Please be adviced that by default these steps make use of the SILVA v119 database that requires [`licencing for commercial/non-academic entities`](https://www.arb-silva.de/silva-license-information).
 
-### `--removeRiboRNA`
+### `--remove_ribo_rna`
 
-Instructs to use SortMeRNA to remove reads related to ribosomal RNA (or any patterns found in the sequences defined by `--rRNA_database_manifest`).
+Instructs to use SortMeRNA to remove reads related to ribosomal RNA (or any patterns found in the sequences defined by `--rrna_database_manifest`).
 
-### `--saveNonRiboRNAReads`
+### `--save_non_rrna_reads`
 
 By default, non-rRNA FastQ files will not be saved to the results directory. Specify this
 flag (or set to true in your config file) to copy these files when complete.
 
-### `--rRNA_database_manifest`
+### `--rrna_database_manifest`
 
 By default, rRNA databases in github [`biocore/sortmerna/rRNA_databases`](https://github.com/biocore/sortmerna/tree/master/data/rRNA_databases) are used. Here the path to a text file can be provided that contains paths to fasta files (one per line, no ' or " for file names) that will be used for database creation for SortMeRNA instead of the default ones. You can see an example in the directory `assets/rrna-default-dbs.txt`. Consequently, similar reads to these sequences will be removed.
 Be aware that commercial/non-academic entities require [`licensing for SILVA`](https://www.arb-silva.de/silva-license-information) with these default databases.
@@ -244,9 +244,9 @@ By default, the k-merization and sketch creation program is [sourmash](https://s
 
 If `--split_kmer` is specified, then the [Split K-mer Analysis (SKA)](https://github.com/simonrharris/SKA) program ([publication](https://www.biorxiv.org/content/10.1101/453142v1)) is used to obtain k-mers from the data. This allows for a SNP to be present in the middle of a k-mer which can be advantageous for metagenomic analyses or with single-cell ATAC-seq data.
 
-#### What does `--ksize` mean when `--split_kmer` is set
+#### What does `--ksizes` mean when `--split_kmer` is set
 
-The meaning of `ksize` is different with split k-mers, so now the value specified by `--ksize` is just under half of the total sampled sequence size, where the middle base can be any base (`N`) `[---ksize---]N[---ksize---]`. When `--split_kmer` is set, then the default k-mer sizes are 9 and 15, for a total sequence unit size of `2*15+1 = 31` and `2*9+1 = 19` which is as if you specified on the command line `--split_kmer --ksize 9,15`. Additionally k-mer sizes with `--split_kmer` must be divisible by 3 (yes, this is inconvenient) and between 3 and 60 (inclusive). So the "total" `2*k+1` sizes can be:
+The meaning of `ksizes` is different with split k-mers, so now the value specified by `--ksizes` is just under half of the total sampled sequence size, where the middle base can be any base (`N`) `[---ksizes---]N[---ksizes---]`. When `--split_kmer` is set, then the default k-mer sizes are 9 and 15, for a total sequence unit size of `2*15+1 = 31` and `2*9+1 = 19` which is as if you specified on the command line `--split_kmer --ksizes 9,15`. Additionally k-mer sizes with `--split_kmer` must be divisible by 3 (yes, this is inconvenient) and between 3 and 60 (inclusive). So the "total" `2*k+1` sizes can be:
 
 * k = 3 --> 2*3 + 1 = 7 total length
 * k = 6 --> 2*6 + 1 = 13 total length
@@ -297,13 +297,13 @@ If left unspecified, barcodes in bam as given in barcodes_file are not renamed.
 
 [K-mer](https://en.wikipedia.org/wiki/K-mer) [MinHash](https://en.wikipedia.org/wiki/MinHash) sketches are defined by three parameters:
 
-1. The [molecule](#--molecule) used to create k-mer words from each sample
-1. The [ksize](#--ksize) used to extract k-mer words from each sample
-1. The number of k-mer words specified by the [log2 sketch size](#--log2_sketch_size)
+1. The [molecules](#--molecules) used to create k-mer words from each sample
+1. The [ksizes](#--ksizes) used to extract k-mer words from each sample
+1. The number of k-mer words specified by the [log2 sketch size](#--sketch_num_hashes_log2)
 
-### `--molecule`
+### `--molecules`
 
-The molecule can be either `dna`, `protein`, or `dayhoff`, and if all of them are desired, then they can be separated by columns.
+The molecules can be either `dna`, `protein`, or `dayhoff`, and if all of them are desired, then they can be separated by columns.
 
 * `dna` indicates to use the raw nucleotide sequence from each input file to create k-mers
 * `protein` indicates to translate each DNA k-mer into protein using [6-frame translation](https://en.wikipedia.org/wiki/Reading_frame#/media/File:Open_reading_frame.jpg), and hash the translated peptide fragment k-mers
@@ -320,21 +320,21 @@ The molecule can be either `dna`, `protein`, or `dayhoff`, and if all of them ar
 | F, W, Y       | Aromatic              | f       |
 
 * Default:
-  * `--molecule dna,protein,dayhoff`
+  * `--molecules dna,protein,dayhoff`
 * DNA only:
-  * `--molecule dna`
+  * `--molecules dna`
 
-### `--ksize`
+### `--ksizes`
 
-The fundamental unit of the sketch is a [hashed](https://en.wikipedia.org/wiki/Hash_function) [k-mer](https://en.wikipedia.org/wiki/K-mer). The `--ksize` parameter determines how long of a DNA word to use to create the k-mers. When the  molecule is `protein` or `dayhoff`, then the `ksize/3` is used to create each k-mer.
+The fundamental unit of the sketch is a [hashed](https://en.wikipedia.org/wiki/Hash_function) [k-mer](https://en.wikipedia.org/wiki/K-mer). The `--ksizes` parameter determines how long of a DNA word to use to create the k-mers. When the  molecules is `protein` or `dayhoff`, then the `ksizes/3` is used to create each k-mer.
 
 *NB: if either `protein` or `dayhoff` is specified, the k-mer size must be divisible by 3*
 **Example parameters**
 
 * Default:
-  * `--ksize 21,27,33,51`
+  * `--ksizes 21,27,33,51`
 * k-mer size of 21 only:
-  * `--ksize 21`
+  * `--ksizes 21`
 
 ### `--track_abundance`
 
@@ -384,7 +384,7 @@ If one wants to only translate protein sequences or extract per-cell fastqs from
 
 ### `--save_fastas`
 
-1. The [save_fastas](#--save_fastas) used to save the sequences of each unique barcode in the bam file. It is a path relative to outdir to save unique barcodes to files namely {CELL_BARCODE}.fasta. These fastas are computed once for one permutation of ksize, molecule, and log2_sketch_size, further used to compute the signatures and compare signature matrix for all permutations of ksizes, molecules, and log2_sketch_size. This is done to save the time on saving the computational time and storage in obtaining unique barcodes, sharding the bam file.
+1. The [save_fastas](#--save_fastas) used to save the sequences of each unique barcode in the bam file. It is a path relative to outdir to save unique barcodes to files namely {CELL_BARCODE}.fasta. These fastas are computed once for one permutation of ksizes, molecules, and sketch_num_hashes_log2, further used to compute the signatures and compare signature matrix for all permutations of ksizes, molecules, and sketch_num_hashes_log2. This is done to save the time on saving the computational time and storage in obtaining unique barcodes, sharding the bam file.
 **Example parameters**
 
 * Default: Save fastas in a directory called fastsas inside outdir:

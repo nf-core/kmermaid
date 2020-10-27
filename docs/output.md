@@ -8,26 +8,9 @@ This document describes the output produced by the pipeline.
 The pipeline is built using [Nextflow](https://www.nextflow.io/)
 and processes data using the following steps:
 
-* [FastQC](#fastqc) - read quality control
 * [Sourmash sketch](#sourmash-sketch) - Compute a k-mer sketch of each sample
 * [Sourmash compare](#sourmash-compare) - Compare all samples on k-mer sketches
-
 * [MultiQC](#multiqc) - aggregate report, describing results of the whole pipeline
-
-## FastQC
-
-[FastQC](http://www.bioinformatics.babraham.ac.uk/projects/fastqc/) gives general quality metrics about your reads. It provides information about the quality score distribution across your reads, the per base sequence content (%T/A/G/C). You get information about adapter contamination and other overrepresented sequences.
-
-For further reading and documentation see the [FastQC help](http://www.bioinformatics.babraham.ac.uk/projects/fastqc/Help/).
-
-> **NB:** The FastQC plots displayed in the MultiQC report shows _untrimmed_ reads. They may contain adapter sequence and potentially regions with low quality. To see how your reads look after trimming, look at the FastQC reports in the `trim_galore` directory.
-
-**Output directory: `results/fastqc`**
-
-* `sample_fastqc.html`
-  * FastQC report, containing quality metrics for your untrimmed raw fastq files
-* `zips/sample_fastqc.zip`
-  * zip file containing the FastQC report, tab-delimited data file and plot images
 
 ## Sourmash Sketch
 
@@ -35,44 +18,15 @@ For further reading and documentation see the [FastQC help](http://www.bioinform
 
 **Output directory: `results/sourmash/sketches`**
 
-For each sample and provided `molecule`, `ksize` and `log2_sketch_size`, a file is created:
+For each sample and provided `molecules`, `ksizes` and `sketch_num_hashes_log2`, a file is created:
 
-* `sample_molecule-$molecule_ksize-$ksize_log2sketchsize-$log2_sketch_size.sig`
+* `sample_molecule-${molecule}__ksize-${ksize}__${sketch_value}__track_abundance-${track_abundance}.sig`
 
-For example:
-
-```bash
-SRR4050379_molecule-dayhoff_ksize-3_log2sketchsize-2.sig
-SRR4050379_molecule-dayhoff_ksize-3_log2sketchsize-4.sig
-SRR4050379_molecule-dayhoff_ksize-9_log2sketchsize-2.sig
-SRR4050379_molecule-dayhoff_ksize-9_log2sketchsize-4.sig
-SRR4050379_molecule-dna_ksize-3_log2sketchsize-2.sig
-SRR4050379_molecule-dna_ksize-3_log2sketchsize-4.sig
-SRR4050379_molecule-dna_ksize-9_log2sketchsize-2.sig
-SRR4050379_molecule-dna_ksize-9_log2sketchsize-4.sig
-SRR4050379_molecule-protein_ksize-3_log2sketchsize-2.sig
-SRR4050379_molecule-protein_ksize-3_log2sketchsize-4.sig
-SRR4050379_molecule-protein_ksize-9_log2sketchsize-2.sig
-SRR4050379_molecule-protein_ksize-9_log2sketchsize-4.sig
-```
 
 ## Sourmash Compare
 
-**Output directory: `results/sourmash`**
+**Output directory: `results/compare_sketches`**
 
-For each provided `molecule`, `ksize` and `log2_sketch_size`, a file is created containing a symmetric matrix of the similarity between all samples, written as a comma-separated variable file:
+For each provided `molecules`, `ksizes` and `sketch_num_hashes_log2`, a file is created containing a symmetric matrix of the similarity between all samples, written as a comma-separated variable file:
 
-* `molecule-$molecule_ksize-$ksize_log2sketchsize-$log2_sketch_size.csv`
-
-For example,
-
-```bash
-similarities_molecule-dna_ksize-3_log2sketchsize-2.csv
-similarities_molecule-dna_ksize-3_log2sketchsize-4.csv
-similarities_molecule-dna_ksize-9_log2sketchsize-2.csv
-similarities_molecule-dna_ksize-9_log2sketchsize-4.csv
-similarities_molecule-protein_ksize-3_log2sketchsize-2.csv
-similarities_molecule-protein_ksize-3_log2sketchsize-4.csv
-similarities_molecule-protein_ksize-9_log2sketchsize-2.csv
-similarities_molecule-protein_ksize-9_log2sketchsize-4.csv
-```
+* `similarities_molecule-${molecule}__ksize-${ksize}__${sketch_value}__track_abundance-${track_abundance}.csv`
