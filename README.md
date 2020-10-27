@@ -31,7 +31,6 @@ nextflow run nf-core/kmermaid -profile test,<docker/singularity/conda/institute>
 
 iv. Start running your own analysis!
 
-
 ```bash
 nextflow run nf-core/kmermaid -profile <docker/singularity/conda/institute> --reads '*_R{1,2}.fastq.gz' --genome GRCh37
 ```

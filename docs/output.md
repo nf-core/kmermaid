@@ -22,7 +22,6 @@ For each sample and provided `molecules`, `ksizes` and `sketch_num_hashes_log2`,
 
 * `sample_molecule-${molecule}__ksize-${ksize}__${sketch_value}__track_abundance-${track_abundance}.sig`
 
-
 ## Sourmash Compare
 
 **Output directory: `results/compare_sketches`**
