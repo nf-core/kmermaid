@@ -20,6 +20,7 @@ Initial release of nf-core/kmermaid, created with the [nf-core](http://nf-co.re/
 barcode fastq
 * Add version printing for sencha, bam2fasta, and sourmash in Dockerfile, update versions in environment.yml
 * For processes translate, sourmash compute  add cpus=1 as they are only serial ([#107](https://github.com/nf-core/kmermaid/pull/107))
+* Add `sourmash_index` process to create sequence bloom tree databases of all provided signatures
 
 ### `Fixed`
 
