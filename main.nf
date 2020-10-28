@@ -444,7 +444,8 @@ Channel.from(params.ksizes?.toString().tokenize(','))
 
 molecules = params.molecules?.toString().tokenize(',')
 peptide_molecules = molecules.findAll { it != "dna" }
-peptide_molecule_flags = peptide_molecules.each { it -> "--${it}" }.join ( " " )
+peptide_molecules_comma_separated = peptide_molecules.join(",")
+peptide_molecule_flags = peptide_molecules.collect { it -> "--${it}" }.join ( " " )
 
 Channel.from( molecules )
   .set { ch_molecules }
@@ -1279,7 +1280,7 @@ if (!params.remove_ribo_rna) {
 
       output:
       file(csv) into ch_sourmash_sig_describe_nucleotides
-      set val(sketch_id), val("dna"), file(sig) into sourmash_sketches_all_nucleotide
+      file(sig) into sourmash_sketches_all_nucleotide
 
       script:
       // Don't calculate DNA signature if this is protein, to minimize disk,
@@ -1287,7 +1288,6 @@ if (!params.remove_ribo_rna) {
       sketch_id = make_sketch_id("dna", params.ksizes, sketch_value, track_abundance, sketch_style)
       sketch_value_flag = make_sketch_value_flag(sketch_style, sketch_value)
       track_abundance_flag = track_abundance ? '--track-abundance' : ''
-      processes = "--processes ${task.cpus}"
       sig_id = "${sample_id}__${sketch_id}"
       sig = "${sig_id}.sig"
       csv = "${sig_id}.csv"
@@ -1296,7 +1296,6 @@ if (!params.remove_ribo_rna) {
           ${sketch_value_flag} \\
           --ksizes ${params.ksizes} \\
           --dna \\
-          $processes \\
           $track_abundance_flag \\
           --output ${sig} \\
           --name '${sample_id}' \\
@@ -1304,7 +1303,7 @@ if (!params.remove_ribo_rna) {
         sourmash sig describe --csv ${csv} ${sig}
       """
     }
-    sourmash_sketches_nucleotide = sourmash_sketches_all_nucleotide.filter{ it[4].size() > 0 }
+    sourmash_sketches_nucleotide = sourmash_sketches_all_nucleotide.filter{ it.size() > 0 }
   }
 } else {
   sourmash_sketches_nucleotide = Channel.empty()
@@ -1347,13 +1346,12 @@ if (!params.skip_compute && (protein_input || params.reference_proteome_fasta)){
 
     output:
     file(csv) into ch_sourmash_sig_describe_peptides
-    set val(sketch_id), file(sig) into sourmash_sketches_all_peptide
+    file(sig) into sourmash_sketches_all_peptide
 
     script:
-    sketch_id = make_sketch_id(peptide_molecules, params.ksizes, sketch_value, track_abundance, sketch_style)
+    sketch_id = make_sketch_id(peptide_molecules_comma_separated, params.ksizes, sketch_value, track_abundance, sketch_style)
     sketch_value_flag = make_sketch_value_flag(sketch_style, sketch_value)
     track_abundance_flag = track_abundance ? '--track-abundance' : ''
-    processes = "--processes ${task.cpus}"
     sig_id = "${sample_id}__${sketch_id}"
     sig = "${sig_id}.sig"
     csv = "${sig_id}.csv"
@@ -1365,14 +1363,13 @@ if (!params.skip_compute && (protein_input || params.reference_proteome_fasta)){
         ${peptide_molecule_flags} \\
         --name '${sample_id}' \\
         --no-dna \\
-        $processes \\
         $track_abundance_flag \\
         --output ${sig} \\
         $reads
       sourmash sig describe --csv ${csv} ${sig}
     """
     }
-  sourmash_sketches_peptide = sourmash_sketches_all_peptide.filter{ it[4].size() > 0 }
+  sourmash_sketches_peptide = sourmash_sketches_all_peptide.filter{ it.size() > 0 }
 } else {
   sourmash_sketches_peptide = Channel.empty()
 }
@@ -1398,45 +1395,50 @@ if (params.split_kmer){
   }
 // If skip_compute is true, skip compare must be specified as true as well
 if (!params.split_kmer && !params.skip_compare && !params.skip_compute) {
+  // Combine peptide and nucleotide sketches
+  sourmash_sketches_nucleotide
+    .collect()
+    // Set as a list so that combine does cartesian product of all signatures
+    .map { it -> [it] }
+    .combine( ch_ksizes_for_compare_nucleotide )
+    .dump( tag: 'sourmash_sketches_nucleotide__ksizes' )
+    .map { x -> [x[0], x[1], 'dna'] }
+    .dump( tag: 'sourmash_sketches_nucleotide__ksizes__molecules' )
+    .set { sourmash_sketches_nucleotide_for_compare }
+
+  sourmash_sketches_peptide
+    .collect()
+    // Set as a list so that combine does cartesian product of all signatures
+    .map { it -> [it] }
+    .combine( ch_ksizes_for_compare_petide )
+    .dump( tag: 'sourmash_sketches_peptide__ksizes' )
+    .combine( ch_peptide_molecules )
+    .dump( tag: 'sourmash_sketches_peptide__ksizes__molecules' )
+    .set { sourmash_sketches_peptide_for_compare }
+
+  sourmash_sketches_peptide_for_compare
+    .mix ( sourmash_sketches_nucleotide_for_compare )
+    .set { ch_sourmash_sketches_to_compare }
+
   process sourmash_compare_sketches {
-    // Combine peptide and nucleotide sketches
-    sourmash_sketches_nucleotide
-      .groupTuple(by: [0, 3])
-      .combine( ch_ksizes_for_compare_nucleotide )
-      .dump( tag: 'sourmash_sketches_nucleotide__ksizes' )
-      .map { x -> [x[0], x[1], x[2], x[3], 'dna'] }
-      .dump( tag: 'sourmash_sketches_nucleotide__ksizes__molecules' )
-      .set { sourmash_sketches_nucleotide_for_compare }
-
-    sourmash_sketches_peptide
-      .groupTuple(by: [0, 3])
-      .combine( ch_ksizes_for_compare_petide )
-      .dump( tag: 'sourmash_sketches_peptide__ksizes' )
-      .combine( ch_peptide_molecules )
-      .dump( tag: 'sourmash_sketches_peptide__ksizes__molecules' )
-      .set { sourmash_sketches_peptide_for_compare }
-
-    sourmash_sketches_peptide_for_compare
-      .mix ( sourmash_sketches_nucleotide_for_compare )
-      .set { sourmash_sketches_to_compare }
-
-    tag "${sketch_id}"
+    tag "${compare_id}"
     publishDir "${params.outdir}/compare_sketches", mode: 'copy'
 
     input:
-    set val(sketch_id), val(molecule), file ("sourmash/sketches/*.sig"), val(ksize) \
-      from sourmash_sketches_to_compare
+    set file ("*.sig"), val(ksize), val(molecule) from ch_sourmash_sketches_to_compare
 
     output:
-    file "similarities_${sketch_id}.csv"
+    file(csv)
 
     script:
+    compare_id = "molecule-${molecule}__ksize-${ksize}"
     processes = "--processes ${task.cpus}"
+    csv = "similarities__${compare_id}.csv"
     """
     sourmash compare \\
-          --ksize ${ksize[0]} \\
-          --${molecule[0]} \\
-          --csv similarities_${sketch_id}.csv \\
+          --ksize ${ksize} \\
+          --${molecule} \\
+          --csv ${csv} \\
           $processes \\
           --traverse-directory .
     """
