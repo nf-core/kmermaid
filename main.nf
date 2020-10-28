@@ -1274,7 +1274,7 @@ if (!params.remove_ribo_rna) {
 
       output:
       file(csv) into ch_sourmash_sig_describe_nucleotides
-      set val(sketch_id), val("dna"), val(ksize), val(sketch_value), file(sig) into sourmash_sketches_all_nucleotide
+      set val(sample_id), val("dna"), val(ksize), file(sig) into sourmash_sketches_all_nucleotide
 
       script:
       // Don't calculate DNA signature if this is protein, to minimize disk,
@@ -1299,7 +1299,7 @@ if (!params.remove_ribo_rna) {
         sourmash sig describe --csv ${csv} ${sig}
       """
     }
-    sourmash_sketches_nucleotide = sourmash_sketches_all_nucleotide.filter{ it[4].size() > 0 }
+    sourmash_sketches_nucleotide = sourmash_sketches_all_nucleotide.filter{ it[3].size() > 0 }
   }
 } else {
   sourmash_sketches_nucleotide = Channel.empty()
@@ -1342,7 +1342,7 @@ if (!params.skip_compute && (protein_input || params.reference_proteome_fasta)){
 
     output:
     file(csv) into ch_sourmash_sig_describe_peptides
-    set val(sketch_id), val(molecule), val(ksize), val(sketch_value), file(sig) into sourmash_sketches_all_peptide
+    set val(sample_id), val(molecule), val(ksize), file(sig) into sourmash_sketches_all_peptide
 
     script:
     sketch_id = make_sketch_id(molecule, ksize, sketch_value, track_abundance, sketch_style)
@@ -1367,9 +1367,66 @@ if (!params.skip_compute && (protein_input || params.reference_proteome_fasta)){
       sourmash sig describe --csv ${csv} ${sig}
     """
     }
-  sourmash_sketches_peptide = sourmash_sketches_all_peptide.filter{ it[4].size() > 0 }
+  sourmash_sketches_peptide = sourmash_sketches_all_peptide.filter{ it[3].size() > 0 }
 } else {
   sourmash_sketches_peptide = Channel.empty()
+}
+
+if (params.bam || params.tenx_tgz) {
+  // Merge signatures from same sample id and sketch id
+
+  sourmash_sketches_nucleotide
+    .mix ( sourmash_sketches_peptide )
+    .set { ch_sourmash_sketches_mixed}
+
+  ch_fastq_id_to_cell_id_is_aligned
+    .combine ( ch_sourmash_sketches_mixed )
+    .dump( tag: 'fastq_id_to_cells__join__sketches' )
+    .groupTuple( by: 1 )
+    .dump( tag: 'fastq_id_to_cells__join__sketches__grouptuple' )
+    .set { ch_sourmash_sketches_to_merge }
+
+  process sourmash_sig_merge {
+    tag "${sig_id}"
+    label "low_memory"
+    publishDir "${params.outdir}/sketches_merged/${sketch_id}", mode: "${params.publish_dir_mode}",
+        saveAs: {filename ->
+            if (filename.indexOf(".csv") > 0) "description/$filename"
+            else if (filename.indexOf(".sig") > 0) "sigs/$filename"
+            else null
+        }
+
+    input:
+    set val(molecule), val(ksize), val(sketch_style), val(sketch_value), val(sample_id), file(reads) from ch_sourmash_sketches_to_merge
+
+    output:
+    file(csv) into ch_sourmash_sig_describe_merged
+    set val(sketch_id), val(molecule), val(ksize), val(sketch_value), file(sig) into sourmash_sketches
+
+    script:
+    // sketch_id = make_sketch_id(molecule, ksize, sketch_value, track_abundance, sketch_style)
+    sketch_value_flag = make_sketch_value_flag(sketch_style, sketch_value)
+    track_abundance_flag = track_abundance ? '--track-abundance' : ''
+    processes = "--processes ${task.cpus}"
+    sig_id = "${sample_id}__${sketch_id}"
+    sig = "${sig_id}.sig"
+    csv = "${sig_id}.csv"
+    """
+    sourmash compute \\
+        ${sketch_value_flag} \\
+        --ksizes $ksize \\
+        --input-is-protein \\
+        --$molecule \\
+        --name '${sample_id}' \\
+        --no-dna \\
+        $processes \\
+        $track_abundance_flag \\
+        --output ${sig} \\
+        $reads
+      sourmash sig describe --csv ${csv} ${sig}
+    """
+  }
+
 }
 
 if (params.split_kmer){
@@ -1395,7 +1452,6 @@ if (params.split_kmer){
 if (!params.split_kmer && !params.skip_compare && !params.skip_compute) {
   process sourmash_compare_sketches {
     // Combine peptide and nucleotide sketches
-    sourmash_sketches = sourmash_sketches_peptide.concat(sourmash_sketches_nucleotide)
     tag "${sketch_id}"
     publishDir "${params.outdir}/compare_sketches", mode: 'copy'
 
