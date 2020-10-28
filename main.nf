@@ -1274,7 +1274,7 @@ if (!params.remove_ribo_rna) {
 
       output:
       file(csv) into ch_sourmash_sig_describe_nucleotides
-      set val(sample_id), val("dna"), val(ksize), file(sig) into sourmash_sketches_all_nucleotide
+      set val(sample_id), val(sketch_id), val("dna"), val(ksize), file(sig) into sourmash_sketches_all_nucleotide
 
       script:
       // Don't calculate DNA signature if this is protein, to minimize disk,
@@ -1342,7 +1342,7 @@ if (!params.skip_compute && (protein_input || params.reference_proteome_fasta)){
 
     output:
     file(csv) into ch_sourmash_sig_describe_peptides
-    set val(sample_id), val(molecule), val(ksize), file(sig) into sourmash_sketches_all_peptide
+    set val(sample_id), val(sketch_id), val(molecule), val(ksize), file(sig) into sourmash_sketches_all_peptide
 
     script:
     sketch_id = make_sketch_id(molecule, ksize, sketch_value, track_abundance, sketch_style)
@@ -1380,10 +1380,18 @@ if (params.bam || params.tenx_tgz) {
     .set { ch_sourmash_sketches_mixed}
 
   ch_fastq_id_to_cell_id_is_aligned
-    .combine ( ch_sourmash_sketches_mixed )
-    .dump( tag: 'fastq_id_to_cells__join__sketches' )
-    .groupTuple( by: 1 )
-    .dump( tag: 'fastq_id_to_cells__join__sketches__grouptuple' )
+    .combine ( ch_sourmash_sketches_mixed, on: 0 )
+    .dump( tag: 'fastq_id_to_cells__combine__sketches' )
+    // [DUMP: fastq_id_to_cells__join__sketches] [
+      // mouse_lung__aligned__AAATGCCCAAACTGCT, mouse_lung__AAATGCCCAAACTGCT, 'aligned',
+      // mouse_brown_fat_ptprc_plus_unaligned__aligned__CTGAAGTCAATGGTCT, 
+      // molecule-dayhoff__ksize-3__num_hashes-4__track_abundance-false, 'dayhoff', '3', /Users/olgabot/code/nf-core/kmermaid--olgabot/sourmash-sig-merge/work/7c/7c4f8e3e3f2db074502e754a3fcc29/mouse_brown_fat_ptprc_plus_unaligned__aligned__CTGAAGTCAATGGTCT__molecule-dayhoff__ksize-3__num_hashes-4__track_abundance-false.sig]
+    // it[0]: fastq_id, e.g. "mouse_lung__aligned__AAATGCCCAAACTGCT" (contains aligned/unaligned)
+    // it[1]: cell_id, e.g. "mouse_lung__AAATGCCCAAACTGCT"
+    // it[2]: is_aligned, e.g. "aligned"
+    // it[3]: 
+    .groupTuple( by: [1, 4] )
+    .dump( tag: 'fastq_id_to_cells__combine__sketches__grouptuple' )
     .set { ch_sourmash_sketches_to_merge }
 
   process sourmash_sig_merge {
@@ -1405,9 +1413,6 @@ if (params.bam || params.tenx_tgz) {
 
     script:
     // sketch_id = make_sketch_id(molecule, ksize, sketch_value, track_abundance, sketch_style)
-    sketch_value_flag = make_sketch_value_flag(sketch_style, sketch_value)
-    track_abundance_flag = track_abundance ? '--track-abundance' : ''
-    processes = "--processes ${task.cpus}"
     sig_id = "${sample_id}__${sketch_id}"
     sig = "${sig_id}.sig"
     csv = "${sig_id}.csv"
