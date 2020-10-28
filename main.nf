@@ -1393,17 +1393,35 @@ if (params.split_kmer){
 
     }
   }
+
+
+sourmash_sketches_peptide
+  .mix(sourmash_sketches_nucleotide)
+  .dump( tag: 'sourmash_sketches_mixed' )
+  .groupTuple(by: [0, 3])
+  .dump( tag: 'sourmash_sketches_mixed_grouptuple' )
+  // Things that weren't grouptupled on were converted into lists,
+  // but since the sketch id matches then they are all the same
+  // it[0]: sketch_id
+  // it[1]: molecule type (dna, protein, dayhoff)
+  // it[2]: ksize
+  // it[3]: sketch value (scaled or num hashes value) 
+  //   --> skip because we don't reference it directly in sourmash compute/index and it's in the sketch id string
+  // it[4]: The sketch files!
+  .map{ it -> [it[0], it[1][0], it[2][0], it[4]] }
+  .dump( tag: 'sourmash_sketches_mixed_grouptuple_map' )
+  .into { ch_sourmash_sketches_to_compare; ch_sourmash_sketches_to_index }
+
 // If skip_compute is true, skip compare must be specified as true as well
 if (!params.split_kmer && !params.skip_compare && !params.skip_compute) {
   process sourmash_compare_sketches {
     // Combine peptide and nucleotide sketches
-    sourmash_sketches = sourmash_sketches_peptide.concat(sourmash_sketches_nucleotide)
     tag "${sketch_id}"
     publishDir "${params.outdir}/compare_sketches", mode: 'copy'
 
     input:
-    set val(sketch_id), val(molecule), val(ksize), val(sketch_value), file ("sourmash/sketches/*.sig") \
-      from sourmash_sketches.groupTuple(by: [0, 3])
+    set val(sketch_id), val(molecule), val(ksize), file ("sourmash/sketches/*.sig") \
+      from ch_sourmash_sketches_to_compare
 
     output:
     file "similarities_${sketch_id}.csv"
@@ -1412,8 +1430,8 @@ if (!params.split_kmer && !params.skip_compare && !params.skip_compute) {
     processes = "--processes ${task.cpus}"
     """
     sourmash compare \\
-          --ksize ${ksize[0]} \\
-          --${molecule[0]} \\
+          --ksize ${ksize} \\
+          --${molecule} \\
           --csv similarities_${sketch_id}.csv \\
           $processes \\
           --traverse-directory .
@@ -1421,6 +1439,35 @@ if (!params.split_kmer && !params.skip_compare && !params.skip_compute) {
 
   }
 }
+
+// If skip_compute is true, skip compare must be specified as true as well
+if (!params.split_kmer && !params.skip_index && !params.skip_compute) {
+  process sourmash_index {
+    // Combine peptide and nucleotide sketches
+    tag "${sketch_id}"
+    publishDir "${params.outdir}/index", mode: 'copy'
+
+    input:
+    set val(sketch_id), val(molecule), val(ksize), file ("sourmash/sketches/*.sig") \
+      from ch_sourmash_sketches_to_index
+
+    output:
+    file sbt_zip
+
+    script:
+    sbt_zip = "${sketch_id}.sbt.zip"
+    """
+    sourmash index \\
+          --ksize ${ksize} \\
+          --${molecule} \\
+          --traverse-directory \\
+          ${sbt_zip} \\
+          .
+    """
+
+  }
+}
+
 
 
 /*
