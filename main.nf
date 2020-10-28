@@ -440,16 +440,17 @@ Channel
 // --- Parse the Sourmash parameters ----
 ksizes = params.ksizes?.toString().tokenize(',')
 Channel.from(params.ksizes?.toString().tokenize(','))
-  .into { ch_ksizes_for_proteins; ch_ksizes_for_dna }
+  .into { ch_ksizes_for_compare_petide; ch_ksizes_for_compare_nucleotide }
 
 molecules = params.molecules?.toString().tokenize(',')
 peptide_molecules = molecules.findAll { it != "dna" }
+peptide_molecule_flags = peptide_molecules.each { it -> "--${it}" }.join ( " " )
 
 Channel.from( molecules )
   .set { ch_molecules }
 
 Channel.from( peptide_molecules )
-  .set { ch_peptide_molecules }
+  .into { ch_peptide_molecules; ch_peptide_molecules_for_compare }
 
 // Parse sketch value and style parameters
 sketch_num_hashes = params.sketch_num_hashes
@@ -465,14 +466,14 @@ if (!have_sketch_value && !params.split_kmer) {
 
 
 
-def make_sketch_id (molecule, ksize, sketch_value, track_abundance, sketch_style) {
+def make_sketch_id (molecule, ksizes, sketch_value, track_abundance, sketch_style) {
   if (sketch_style == 'size') {
     sketch_value = "num_hashes-${sketch_value}"
   } else {
     sketch_value = "scaled-${sketch_value}"
   }
 
-  sketch_id = "molecule-${molecule}__ksize-${ksize}__${sketch_value}__track_abundance-${track_abundance}"
+  sketch_id = "molecule-${molecule}__ksize-${ksizes}__${sketch_value}__track_abundance-${track_abundance}"
   return sketch_id
 }
 
@@ -712,15 +713,17 @@ if ( !params.split_kmer && have_sketch_value ) {
 
 // Combine sketch values with ksize and molecule types
 
-ch_peptide_molecules
-  .combine ( ch_ksizes_for_proteins )
-  .combine ( ch_sketch_style_for_proteins )
+// ch_peptide_molecules
+  // .combine ( ch_ksizes_for_proteins )
+ch_sketch_style_for_proteins
+  // .combine ( ch_sketch_style_for_proteins )
   .combine ( ch_sketch_values_for_proteins )
   .set { ch_sourmash_protein_sketch_params }
 
 
-ch_ksizes_for_dna
-  .combine ( ch_sketch_style_for_nucleotides )
+// ch_ksizes_for_dna
+  // .combine ( ch_sketch_style_for_nucleotides )
+ch_sketch_style_for_nucleotides
   .combine ( ch_sketch_values_for_dna )
   .set { ch_sourmash_dna_sketch_params }
 
@@ -1271,17 +1274,17 @@ if (!params.remove_ribo_rna) {
           }
 
       input:
-      set val(ksize), val(sketch_style), val(sketch_value), val(sample_id), file(reads) from ch_sourmash_sketch_params_with_reads
+      set val(sketch_style), val(sketch_value), val(sample_id), file(reads) from ch_sourmash_sketch_params_with_reads
       val track_abundance
 
       output:
       file(csv) into ch_sourmash_sig_describe_nucleotides
-      set val(sketch_id), val("dna"), val(ksize), val(sketch_value), file(sig) into sourmash_sketches_all_nucleotide
+      set val(sketch_id), val("dna"), file(sig) into sourmash_sketches_all_nucleotide
 
       script:
       // Don't calculate DNA signature if this is protein, to minimize disk,
       // memory and IO requirements in the future
-      sketch_id = make_sketch_id("dna", ksize, sketch_value, track_abundance, sketch_style)
+      sketch_id = make_sketch_id("dna", params.ksizes, sketch_value, track_abundance, sketch_style)
       sketch_value_flag = make_sketch_value_flag(sketch_style, sketch_value)
       track_abundance_flag = track_abundance ? '--track-abundance' : ''
       processes = "--processes ${task.cpus}"
@@ -1291,7 +1294,7 @@ if (!params.remove_ribo_rna) {
       """
         sourmash compute \\
           ${sketch_value_flag} \\
-          --ksizes $ksize \\
+          --ksizes ${params.ksizes} \\
           --dna \\
           $processes \\
           $track_abundance_flag \\
@@ -1340,14 +1343,14 @@ if (!params.skip_compute && (protein_input || params.reference_proteome_fasta)){
 
     input:
     val track_abundance
-    set val(molecule), val(ksize), val(sketch_style), val(sketch_value), val(sample_id), file(reads) from ch_sourmash_protein_sketch_params_with_reads
+    set val(sketch_style), val(sketch_value), val(sample_id), file(reads) from ch_sourmash_protein_sketch_params_with_reads
 
     output:
     file(csv) into ch_sourmash_sig_describe_peptides
-    set val(sketch_id), val(molecule), val(ksize), val(sketch_value), file(sig) into sourmash_sketches_all_peptide
+    set val(sketch_id), file(sig) into sourmash_sketches_all_peptide
 
     script:
-    sketch_id = make_sketch_id(molecule, ksize, sketch_value, track_abundance, sketch_style)
+    sketch_id = make_sketch_id(peptide_molecules, params.ksizes, sketch_value, track_abundance, sketch_style)
     sketch_value_flag = make_sketch_value_flag(sketch_style, sketch_value)
     track_abundance_flag = track_abundance ? '--track-abundance' : ''
     processes = "--processes ${task.cpus}"
@@ -1357,9 +1360,9 @@ if (!params.skip_compute && (protein_input || params.reference_proteome_fasta)){
     """
       sourmash compute \\
         ${sketch_value_flag} \\
-        --ksizes $ksize \\
+        --ksizes ${params.ksizes} \\
         --input-is-protein \\
-        --$molecule \\
+        ${peptide_molecule_flags} \\
         --name '${sample_id}' \\
         --no-dna \\
         $processes \\
@@ -1397,13 +1400,32 @@ if (params.split_kmer){
 if (!params.split_kmer && !params.skip_compare && !params.skip_compute) {
   process sourmash_compare_sketches {
     // Combine peptide and nucleotide sketches
-    sourmash_sketches = sourmash_sketches_peptide.concat(sourmash_sketches_nucleotide)
+    sourmash_sketches_nucleotide
+      .groupTuple(by: [0, 3])
+      .combine( ch_ksizes_for_compare_nucleotide )
+      .dump( tag: 'sourmash_sketches_nucleotide__ksizes' )
+      .map { x -> [x[0], x[1], x[2], x[3], 'dna'] }
+      .dump( tag: 'sourmash_sketches_nucleotide__ksizes__molecules' )
+      .set { sourmash_sketches_nucleotide_for_compare }
+
+    sourmash_sketches_peptide
+      .groupTuple(by: [0, 3])
+      .combine( ch_ksizes_for_compare_petide )
+      .dump( tag: 'sourmash_sketches_peptide__ksizes' )
+      .combine( ch_peptide_molecules )
+      .dump( tag: 'sourmash_sketches_peptide__ksizes__molecules' )
+      .set { sourmash_sketches_peptide_for_compare }
+
+    sourmash_sketches_peptide_for_compare
+      .mix ( sourmash_sketches_nucleotide_for_compare )
+      .set { sourmash_sketches_to_compare }
+
     tag "${sketch_id}"
     publishDir "${params.outdir}/compare_sketches", mode: 'copy'
 
     input:
-    set val(sketch_id), val(molecule), val(ksize), val(sketch_value), file ("sourmash/sketches/*.sig") \
-      from sourmash_sketches.groupTuple(by: [0, 3])
+    set val(sketch_id), val(molecule), file ("sourmash/sketches/*.sig"), val(ksize) \
+      from sourmash_sketches_to_compare
 
     output:
     file "similarities_${sketch_id}.csv"
