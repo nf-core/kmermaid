@@ -894,9 +894,9 @@ if (params.tenx_tgz || params.bam) {
     .set{ tenx_reads_with_good_barcodes_ch }
 
   process extract_per_cell_fastqs {
-    tag "${is_aligned_channel_id}__${cell_barcode}"
+    tag "${fastq_id}"
     label "low_memory"
-    errorStrategy 'ignore'
+    errorStrategy { task.exitStatus in [143,137,104,134,139] ? 'retry' : 'ignore' }
     publishDir "${params.outdir}/10x-fastqs/per-cell/${channel_id}/", mode: 'copy', pattern: '*.fastq.gz', saveAs: { filename -> "${filename.replace("|", "-")}"}
 
     input:
@@ -909,10 +909,8 @@ if (params.tenx_tgz || params.bam) {
     set val(fastq_id), val(cell_id), val(is_aligned) into ch_fastq_id_to_cell_id_is_aligned
 
     script:
-    is_aligned_channel_id = "${channel_id}__${is_aligned}"
-    processes = "--processes ${task.cpus}"
     this_cell_barcode = tenx_cell_barcode_pattern.replace('([ACGT]+)', cell_barcode)
-    fastq_id = "${is_aligned_channel_id}__${is_aligned}__${cell_barcode}"
+    fastq_id = "${channel_id}__${is_aligned}__${cell_barcode}"
     cell_id = "${channel_id}__${cell_barcode}"
     this_cell_fastq_gz = "${fastq_id}.fastq.gz"
     """
