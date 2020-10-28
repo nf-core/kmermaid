@@ -8,6 +8,7 @@
 
 [![install with bioconda](https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg)](http://bioconda.github.io/)
 [![Docker](https://img.shields.io/docker/automated/nfcore/kmermaid.svg)](https://hub.docker.com/r/nfcore/kmermaid)
+[![Cite with Zenodo](https://zenodo.org/badge/197811232.svg)](https://zenodo.org/badge/latestdoi/197811232)
 
 ## Introduction
 
@@ -103,8 +104,7 @@ For further information or help, don't hesitate to get in touch on [Slack](https
 
 ## Citation
 
-<!-- TODO nf-core: Add citation for pipeline after first release. Uncomment lines below and update Zenodo doi. -->
-<!-- If you use  nf-core/kmermaid for your analysis, please cite it using the following doi: [10.5281/zenodo.XXXXXX](https://doi.org/10.5281/zenodo.XXXXXX) -->
+If you use  nf-core/kmermaid for your analysis, please cite it using the following doi: [10.5281/zenodo.4143940](https://zenodo.org/record/4143940)
 
 You can cite the `nf-core` publication as follows:
 
