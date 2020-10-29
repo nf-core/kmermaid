@@ -16,7 +16,7 @@
                     "description": "Path to fastq.gz files in quotes",
                     "fa_icon": "far fa-file-code"
                 },
-                "read_paths": {
+                "input_paths": {
                     "type": "string",
                     "description": "Test paths for input reads",
                     "hidden": true
