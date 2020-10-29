@@ -86,6 +86,7 @@ def helpMessage() {
       --skip_trimming               If provided, skip fastp trimming of reads
       --skip_compare                If provided, skip comparison of hashes using sourmash compare
       --skip_compute                If provided, skip computing of signatures using sourmash compute
+      --skip_sig_merge              If provided, skip merging of aligned/unaligned signatures created from bam files or tenx tgz files
 
      Sketch size options:
       --sketch_num_hashes           Number of hashes to use for making the sketches.
