@@ -111,7 +111,6 @@ def helpMessage() {
                                     based on tenx_min_umi_per_cell
       --tenx_min_umi_per_cell         A barcode is only considered a valid barcode read
                                     and its signature is written if number of umis are greater than tenx_min_umi_per_cell
-      --shard_size                  Number of alignment to contain in each sharded bam file
       --barcodes_file               For bam files, Optional absolute path to a .tsv barcodes file if the input is unfiltered 10x bam file
       --rename_10x_barcodes         For bam files, Optional absolute path to a .tsv Tab-separated file mapping 10x barcode name
                                     to new name, e.g. with channel or cell annotation label
