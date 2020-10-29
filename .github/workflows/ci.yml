@@ -74,6 +74,7 @@ jobs:
           - "test_tenx_tgz"
           - "test_translate"
           - "test_translate_bam"
+          - "test_translate_bam --skip_sig_merge"
     steps:
       - name: Check out pipeline code
         uses: actions/checkout@v2
