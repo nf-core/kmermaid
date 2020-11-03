@@ -48,23 +48,22 @@ For each sample and provided `molecules`, `ksizes` and `sketch_num_hashes_log2`,
 
 * `sample_molecule-${molecule}__ksize-${ksize}__${sketch_value}__track_abundance-${track_abundance}.sig`
 
-
 For example:
 
 ```bash
-SRR4050379_molecule-dayhoff_ksize-3_sketch_num_hashes_log2-2.sig	
-SRR4050379_molecule-dayhoff_ksize-3_sketch_num_hashes_log2-4.sig	
-SRR4050379_molecule-dayhoff_ksize-9_sketch_num_hashes_log2-2.sig	
-SRR4050379_molecule-dayhoff_ksize-9_sketch_num_hashes_log2-4.sig	
-SRR4050379_molecule-dna_ksize-3_sketch_num_hashes_log2-2.sig	
-SRR4050379_molecule-dna_ksize-3_sketch_num_hashes_log2-4.sig	
-SRR4050379_molecule-dna_ksize-9_sketch_num_hashes_log2-2.sig	
-SRR4050379_molecule-dna_ksize-9_sketch_num_hashes_log2-4.sig	
-SRR4050379_molecule-protein_ksize-3_sketch_num_hashes_log2-2.sig	
-SRR4050379_molecule-protein_ksize-3_sketch_num_hashes_log2-4.sig	
-SRR4050379_molecule-protein_ksize-9_sketch_num_hashes_log2-2.sig	
-SRR4050379_molecule-protein_ksize-9_sketch_num_hashes_log2-4.sig	
-
+SRR4050379_molecule-dayhoff_ksize-3_sketch_num_hashes_log2-2.sig
+SRR4050379_molecule-dayhoff_ksize-3_sketch_num_hashes_log2-4.sig
+SRR4050379_molecule-dayhoff_ksize-9_sketch_num_hashes_log2-2.sig
+SRR4050379_molecule-dayhoff_ksize-9_sketch_num_hashes_log2-4.sig
+SRR4050379_molecule-dna_ksize-3_sketch_num_hashes_log2-2.sig
+SRR4050379_molecule-dna_ksize-3_sketch_num_hashes_log2-4.sig
+SRR4050379_molecule-dna_ksize-9_sketch_num_hashes_log2-2.sig
+SRR4050379_molecule-dna_ksize-9_sketch_num_hashes_log2-4.sig
+SRR4050379_molecule-protein_ksize-3_sketch_num_hashes_log2-2.sig
+SRR4050379_molecule-protein_ksize-3_sketch_num_hashes_log2-4.sig
+SRR4050379_molecule-protein_ksize-9_sketch_num_hashes_log2-2.sig
+SRR4050379_molecule-protein_ksize-9_sketch_num_hashes_log2-4.sig
+```
 ## Sourmash Compare
 
 **Output directory: `results/compare_sketches`**
@@ -75,11 +74,12 @@ For each provided `molecules`, `ksizes` and `sketch_num_hashes_log2`, a file is 
 For example,
 
 ```bash
-similarities_molecule-dna_ksize-9_sketch_num_hashes_log2-4.csv	
-similarities_molecule-protein_ksize-3_sketch_num_hashes_log2-2.csv	
-similarities_molecule-protein_ksize-3_sketch_num_hashes_log2-4.csv	
-similarities_molecule-protein_ksize-9_sketch_num_hashes_log2-2.csv	
-similarities_molecule-protein_ksize-9_sketch_num_hashes_log2-4.csv	
+similarities_molecule-dna_ksize-9_sketch_num_hashes_log2-4.csv
+similarities_molecule-protein_ksize-3_sketch_num_hashes_log2-2.csv
+similarities_molecule-protein_ksize-3_sketch_num_hashes_log2-4.csv
+similarities_molecule-protein_ksize-9_sketch_num_hashes_log2-2.csv
+similarities_molecule-protein_ksize-9_sketch_num_hashes_log2-4.csv
+```
 ## MultiQC
 
 [MultiQC](http://multiqc.info) is a visualization tool that generates a single HTML report summarizing all samples in your project. Most of the pipeline QC results are visualised in the report and further statistics are available in the report data directory.
