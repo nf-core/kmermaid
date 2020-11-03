@@ -18,14 +18,16 @@ and processes data using the following steps:
 * [FastQC](#fastqc) - read quality control
 * [MultiQC](#multiqc) - Aggregate report describing results from the whole pipeline
 * [Pipeline information](#pipeline-information) - Report metrics generated during the workflow execution
-* [Sourmash sketch](#sourmash-sketch) - Compute a k-mer sketch of each sample
-* [Sourmash compare](#sourmash-compare) - Compare all samples on k-mer sketches
+* [Sourmash Sketch](#sourmash-sketch) - Compute a k-mer sketch of each sample
+* [Sourmash Compare](#sourmash-compare) - Compare all samples on k-mer sketches
 
 ## FastQC
 
 [FastQC](http://www.bioinformatics.babraham.ac.uk/projects/fastqc/) gives general quality metrics about your sequenced reads. It provides information about the quality score distribution across your reads, per base sequence content (%A/T/G/C), adapter contamination and overrepresented sequences.
 
 For further reading and documentation see the [FastQC help pages](http://www.bioinformatics.babraham.ac.uk/projects/fastqc/Help/).
+
+> **NB:** The FastQC plots displayed in the MultiQC report shows _untrimmed_ reads. They may contain adapter sequence and potentially regions with low quality. To see how your reads look after trimming, look at the FastQC reports in the `fastp` directory.
 
 **Output files:**
 
