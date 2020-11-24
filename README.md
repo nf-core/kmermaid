@@ -4,7 +4,7 @@
 
 [![GitHub Actions CI Status](https://github.com/nf-core/kmermaid/workflows/nf-core%20CI/badge.svg)](https://github.com/nf-core/kmermaid/actions)
 [![GitHub Actions Linting Status](https://github.com/nf-core/kmermaid/workflows/nf-core%20linting/badge.svg)](https://github.com/nf-core/kmermaid/actions)
-[![Nextflow](https://img.shields.io/badge/nextflow-%E2%89%A520.04.0-brightgreen.svg)](https://www.nextflow.io/)
+[![Nextflow](https://img.shields.io/badge/nextflow%20DSL2-%E2%89%A520.07.1-23aa62.svg?labelColor=000000)](https://www.nextflow.io/)
 
 [![install with bioconda](https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg)](https://bioconda.github.io/)
 [![Docker](https://img.shields.io/docker/automated/nfcore/kmermaid.svg)](https://hub.docker.com/r/nfcore/kmermaid)
