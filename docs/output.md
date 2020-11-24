@@ -10,22 +10,24 @@ This document describes the output produced by the pipeline. Most of the plots a
 
 The directories listed below will be created in the results directory after the pipeline has finished. All paths are relative to the top-level results directory.
 
-<!-- TODO nf-core: Write this documentation describing your workflow's output -->
-
 ## Pipeline overview
 
 The pipeline is built using [Nextflow](https://www.nextflow.io/)
 and processes data using the following steps:
 
-* [FastQC](#fastqc) - Read quality control
+* [FastQC](#fastqc) - read quality control
 * [MultiQC](#multiqc) - Aggregate report describing results from the whole pipeline
 * [Pipeline information](#pipeline-information) - Report metrics generated during the workflow execution
+* [Sourmash Sketch](#sourmash-sketch) - Compute a k-mer sketch of each sample
+* [Sourmash Compare](#sourmash-compare) - Compare all samples on k-mer sketches
 
 ## FastQC
 
 [FastQC](http://www.bioinformatics.babraham.ac.uk/projects/fastqc/) gives general quality metrics about your sequenced reads. It provides information about the quality score distribution across your reads, per base sequence content (%A/T/G/C), adapter contamination and overrepresented sequences.
 
 For further reading and documentation see the [FastQC help pages](http://www.bioinformatics.babraham.ac.uk/projects/fastqc/Help/).
+
+> **NB:** The FastQC plots displayed in the MultiQC report shows _untrimmed_ reads. They may contain adapter sequence and potentially regions with low quality. To see how your reads look after trimming, look at the FastQC reports in the `fastp` directory.
 
 **Output files:**
 
@@ -35,6 +37,50 @@ For further reading and documentation see the [FastQC help pages](http://www.bio
   * `*_fastqc.zip`: Zip archive containing the FastQC report, tab-delimited data file and plot images.
 
 > **NB:** The FastQC plots displayed in the MultiQC report shows _untrimmed_ reads. They may contain adapter sequence and potentially regions with low quality.
+
+## Sourmash Sketch
+
+[Sourmash](https://sourmash.readthedocs.io/en/latest/) is a tool to compute MinHash sketches on nucleotide (DNA/RNA) and protein sequences. It allows for fast comparisons of sequences based on their nucleotide content.
+
+**Output directory: `results/sourmash/sketches`**
+
+For each sample and provided `molecules`, `ksizes` and `sketch_num_hashes_log2`, a file is created:
+
+* `sample_molecule-${molecule}__ksize-${ksize}__${sketch_value}__track_abundance-${track_abundance}.sig`
+
+For example:
+
+```bash
+SRR4050379_molecule-dayhoff_ksize-3_sketch_num_hashes_log2-2.sig
+SRR4050379_molecule-dayhoff_ksize-3_sketch_num_hashes_log2-4.sig
+SRR4050379_molecule-dayhoff_ksize-9_sketch_num_hashes_log2-2.sig
+SRR4050379_molecule-dayhoff_ksize-9_sketch_num_hashes_log2-4.sig
+SRR4050379_molecule-dna_ksize-3_sketch_num_hashes_log2-2.sig
+SRR4050379_molecule-dna_ksize-3_sketch_num_hashes_log2-4.sig
+SRR4050379_molecule-dna_ksize-9_sketch_num_hashes_log2-2.sig
+SRR4050379_molecule-dna_ksize-9_sketch_num_hashes_log2-4.sig
+SRR4050379_molecule-protein_ksize-3_sketch_num_hashes_log2-2.sig
+SRR4050379_molecule-protein_ksize-3_sketch_num_hashes_log2-4.sig
+SRR4050379_molecule-protein_ksize-9_sketch_num_hashes_log2-2.sig
+SRR4050379_molecule-protein_ksize-9_sketch_num_hashes_log2-4.sig
+```
+
+## Sourmash Compare
+
+**Output directory: `results/compare_sketches`**
+
+For each provided `molecules`, `ksizes` and `sketch_num_hashes_log2`, a file is created containing a symmetric matrix of the similarity between all samples, written as a comma-separated variable file:
+
+* `similarities_molecule-${molecule}__ksize-${ksize}__${sketch_value}__track_abundance-${track_abundance}.csv`
+For example,
+
+```bash
+similarities_molecule-dna_ksize-9_sketch_num_hashes_log2-4.csv
+similarities_molecule-protein_ksize-3_sketch_num_hashes_log2-2.csv
+similarities_molecule-protein_ksize-3_sketch_num_hashes_log2-4.csv
+similarities_molecule-protein_ksize-9_sketch_num_hashes_log2-2.csv
+similarities_molecule-protein_ksize-9_sketch_num_hashes_log2-4.csv
+```
 
 ## MultiQC
 
