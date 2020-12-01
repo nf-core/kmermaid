@@ -8,7 +8,6 @@ on:
     types: [published]
 
 jobs:
-
   Markdown:
     runs-on: ubuntu-latest
     steps:
@@ -20,7 +19,6 @@ jobs:
         run: npm install -g markdownlint-cli
       - name: Run Markdownlint
         run: markdownlint ${GITHUB_WORKSPACE} -c ${GITHUB_WORKSPACE}/.github/markdownlint.yml
-
   YAML:
     runs-on: ubuntu-latest
     steps:
@@ -32,7 +30,6 @@ jobs:
         run: npm install -g yaml-lint
       - name: Run yaml-lint
         run: yamllint $(find ${GITHUB_WORKSPACE} -type f -name "*.yml")
-
   nf-core:
     runs-on: ubuntu-latest
     steps:
@@ -77,4 +74,3 @@ jobs:
             lint_log.txt
             lint_results.md
             PR_number.txt
-
