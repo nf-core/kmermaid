@@ -36,6 +36,7 @@ barcode fastq
 * Fix the use of `skip_multiqc` flag condition with if and not when
 * Updated sencha=1.0.3 to fix the bug in memory errors possibly with the numpy array on unique filenames ([PR #96 on sencha](https://github.com/czbiohub/leaftea/pull/96))
 * Do `sourmash compute` on all input ksizes, and all peptide molecule types, at once to save disk reading/writing efforts
+* Don't save translate csvs and jsons by default, add separate `--save_translate_json` and `--save_translate_csv`
 
 ### `Dependencies`
 
