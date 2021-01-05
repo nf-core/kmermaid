@@ -921,11 +921,11 @@ if (params.tenx_tgz || params.bam) {
       '${this_cell_barcode}' \\
       ${reads} \\
       | gzip -c - \\
-      > ${this_cell_fastq_gz}
+      > ${this_cell_fastq_gz} || touch ${this_cell_fastq_gz}
     """
   }
   per_cell_fastqs_ch_possibly_empty
-    // gzipped files are 20 bytes
+    // Empty gzipped files are 20 bytes
     .filter { it -> it[1].size() > 20 }
     .set { per_cell_fastqs_ch }
   // // Make per-cell fastqs into a flat channel that matches the read channels of yore
@@ -1372,25 +1372,34 @@ if (!params.skip_compute && (protein_input || params.reference_proteome_fasta)){
   sourmash_sketches_peptide = Channel.empty()
 }
 
-if (params.bam || params.tenx_tgz) {
+if ((params.bam || params.tenx_tgz) && !params.skip_sig_merge) {
   // Merge signatures from same sample id and sketch id
 
   sourmash_sketches_nucleotide
     .mix ( sourmash_sketches_peptide )
-    .set { ch_sourmash_sketches_mixed}
+    .set { ch_sourmash_sketches_mixed }
 
   ch_fastq_id_to_cell_id_is_aligned
-    .combine ( ch_sourmash_sketches_mixed, on: 0 )
+    .combine ( ch_sourmash_sketches_mixed, by: 0 )
     .dump( tag: 'fastq_id_to_cells__combine__sketches' )
-    // [DUMP: fastq_id_to_cells__join__sketches] [
-      // mouse_lung__aligned__AAATGCCCAAACTGCT, mouse_lung__AAATGCCCAAACTGCT, 'aligned',
-      // mouse_brown_fat_ptprc_plus_unaligned__aligned__CTGAAGTCAATGGTCT, 
-      // molecule-dayhoff__ksize-3__num_hashes-4__track_abundance-false, 'dayhoff', '3', /Users/olgabot/code/nf-core/kmermaid--olgabot/sourmash-sig-merge/work/7c/7c4f8e3e3f2db074502e754a3fcc29/mouse_brown_fat_ptprc_plus_unaligned__aligned__CTGAAGTCAATGGTCT__molecule-dayhoff__ksize-3__num_hashes-4__track_abundance-false.sig]
-    // it[0]: fastq_id, e.g. "mouse_lung__aligned__AAATGCCCAAACTGCT" (contains aligned/unaligned)
-    // it[1]: cell_id, e.g. "mouse_lung__AAATGCCCAAACTGCT"
+    // [DUMP: fastq_id_to_cells__combine__sketches] 
+    // ['mouse_brown_fat_ptprc_plus_unaligned__aligned__CTGAAGTCAATGGTCT', 
+    //   mouse_brown_fat_ptprc_plus_unaligned__CTGAAGTCAATGGTCT, 
+    //   'aligned', 
+    //   molecule-dna__ksize-3__num_hashes-4__track_abundance-false, 
+    //   'dna', 
+    //   '3', 
+    //   mouse_brown_fat_ptprc_plus_unaligned__aligned__CTGAAGTCAATGGTCT__molecule-dna__ksize-3__num_hashes-4__track_abundance-false.sig]
+    // it[0]: fastq_id, e.g. "mouse_brown_fat_ptprc_plus_unaligned__aligned__CTGAAGTCAATGGTCT" (contains aligned/unaligned)
+    // it[1]: cell_id, e.g. "mouse_brown_fat_ptprc_plus_unaligned__CTGAAGTCAATGGTCT"
     // it[2]: is_aligned, e.g. "aligned"
-    // it[3]: 
-    .groupTuple( by: [1, 4] )
+    // it[3]: sketch_id, e.g. molecule-dna__ksize-3__num_hashes-4__track_abundance-false
+    // it[4]: molecule, e.g. 'dna'
+    // it[5]: ksize, e.g. '3'
+    // it[6]: signature file, e.g. mouse_brown_fat_ptprc_plus_unaligned__aligned__CTGAAGTCAATGGTCT__molecule-dna__ksize-3__num_hashes-4__track_abundance-false.sig
+    .groupTuple( by: [1, 3, 4, 5] )
+    // [DUMP: fastq_id_to_cells__combine__sketches__grouptuple] 
+    // [['mouse_lung__aligned__AAAGATGCAGATCTGT', 'mouse_lung__aligned__AAAGATGCAGATCTGT'], mouse_lung__AAAGATGCAGATCTGT, ['aligned', 'aligned'], molecule-dna__ksize-15__scaled-5__track_abundance-false, 'dna', '15', [/Users/olgabot/code/nf-core/kmermaid--olgabot/sourmash-sig-merge/work/36/b23ceef8424a2aeb8e7187f3b30d8b/mouse_lung__aligned__AAAGATGCAGATCTGT__molecule-dna__ksize-15__scaled-5__track_abundance-false.sig, /Users/olgabot/code/nf-core/kmermaid--olgabot/sourmash-sig-merge/work/8b/1a1aae2c00520dab66dadb63edbd77/mouse_lung__aligned__AAAGATGCAGATCTGT__molecule-dna__ksize-15__scaled-5__track_abundance-false.sig]]
     .dump( tag: 'fastq_id_to_cells__combine__sketches__grouptuple' )
     .set { ch_sourmash_sketches_to_merge }
 
@@ -1413,25 +1422,20 @@ if (params.bam || params.tenx_tgz) {
 
     script:
     // sketch_id = make_sketch_id(molecule, ksize, sketch_value, track_abundance, sketch_style)
-    sig_id = "${sample_id}__${sketch_id}"
-    sig = "${sig_id}.sig"
+    sig_id = "${cell_id}__${sketch_id}"
     csv = "${sig_id}.csv"
+    output_sig = "${sig_id}.sig"
     """
-    sourmash compute \\
-        ${sketch_value_flag} \\
-        --ksizes $ksize \\
-        --input-is-protein \\
-        --$molecule \\
-        --name '${sample_id}' \\
-        --no-dna \\
-        $processes \\
-        $track_abundance_flag \\
-        --output ${sig} \\
-        $reads
-      sourmash sig describe --csv ${csv} ${sig}
+    sourmash sig merge -o merged.sig ${sigs}
+    sourmash sig rename -o ${output_sig} '${cell_id}'
+    sourmash sig describe --csv ${csv} ${output_sig}
     """
   }
 
+} else {
+  sourmash_sketches_nucleotide
+    .mix ( sourmash_sketches_peptide )
+    .set { sourmash_sketches }
 }
 
 if (params.split_kmer){
