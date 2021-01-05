@@ -440,6 +440,10 @@ Channel
     .map { row -> file(row) }
     .set { sortmerna_fasta }
 
+// --- Parse Translate parameters ---
+save_translate_csv = params.save_translate_csv
+save_translate_json = params.save_translate_json
+
 
 // --- Parse the Sourmash parameters ----
 ksizes = params.ksizes?.toString().tokenize(',')
@@ -1180,7 +1184,14 @@ if (!params.remove_ribo_rna) {
     process translate {
       tag "${sample_id}"
       label "low_memory_long"
-      publishDir "${params.outdir}/translate/", mode: params.publish_dir_mode
+      publishDir "${params.outdir}/translate/", mode: params.publish_dir_mode,
+        saveAs: {
+          filename ->
+              if (save_translate_csv && filename.indexOf(".csv") > 0) "description/$filename"
+              if (save_translate_json && filename.indexOf(".json") > 0) "description/$filename"
+              else if (filename.indexOf(".sig") > 0) "sigs/$filename"
+              else null
+          }
 
       input:
       set bloom_id, molecule, file(bloom_filter) from ch_sencha_bloom_filter.collect()
@@ -1191,23 +1202,30 @@ if (!params.remove_ribo_rna) {
       set val(sample_id), file("${sample_id}__noncoding_reads_nucleotides.fasta") into ch_noncoding_nucleotides_potentially_empty
       set val(sample_id), file("${sample_id}__coding_reads_peptides.fasta") into ch_translated_protein_seqs
       set val(sample_id), file("${sample_id}__coding_reads_nucleotides.fasta") into ch_translatable_nucleotide_seqs
-      set val(sample_id), file("${sample_id}__coding_scores.csv") into ch_coding_scores_csv
-      set val(sample_id), file("${sample_id}__coding_summary.json") into ch_coding_scores_json
+      set val(sample_id), file(translate_csv) into ch_coding_scores_csv
+      set val(sample_id), file(translate_json) into ch_coding_scores_json
 
-    script:
-    """
-    sencha translate \\
-      --molecule ${molecule} \\
-      --coding-nucleotide-fasta ${sample_id}__coding_reads_nucleotides.fasta \\
-      --noncoding-nucleotide-fasta ${sample_id}__noncoding_reads_nucleotides.fasta \\
-      --csv ${sample_id}__coding_scores.csv \\
-      --json-summary ${sample_id}__coding_summary.json \\
-      --jaccard-threshold ${jaccard_threshold} \\
-      --peptide-ksize ${peptide_ksize} \\
-      --peptides-are-bloom-filter \\
-      ${bloom_filter} \\
-      ${reads} > ${sample_id}__coding_reads_peptides.fasta
-    """
+      script:
+      translate_json = "${sample_id}__coding_summary.json"
+      translate_csv = "${sample_id}__coding_scores.csv"
+      csv_flag = save_translate_csv ? "--csv ${translate_csv}" : ''
+      json_flag = save_translate_json ? "--json-summary ${translate_json}" : ''
+
+      """
+      sencha translate \\
+        --molecule ${molecule} \\
+        --coding-nucleotide-fasta ${sample_id}__coding_reads_nucleotides.fasta \\
+        --noncoding-nucleotide-fasta ${sample_id}__noncoding_reads_nucleotides.fasta \\
+        ${csv_flag} \\
+        ${json_flag} \\
+        --jaccard-threshold ${jaccard_threshold} \\
+        --peptide-ksize ${peptide_ksize} \\
+        --peptides-are-bloom-filter \\
+        ${bloom_filter} \\
+        ${reads} > ${sample_id}__coding_reads_peptides.fasta
+      touch ${translate_csv}
+      touch ${translate_json}
+      """
     }
 
     // Remove empty files
