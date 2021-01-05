@@ -485,5 +485,17 @@
         {
             "$ref": "#/definitions/generic_options"
         }
-    ]
+    ],
+    "properties": {
+        "save_translate_csv": {
+            "type": "string",
+            "description": "Path to save the coding scores as a csv",
+            "default": "False"
+        },
+        "save_translate_json": {
+            "type": "string",
+            "description": "Path to save summarization of coding/\"     \"noncoding/other categorizations, the \"     \"min/max/mean/median/stddev of Jaccard scores, and other as a json",
+            "default": "False"
+        }
+    }
 }
