@@ -1,6 +1,6 @@
 # You can use this file to create a conda environment for this pipeline:
 #   conda env create -f environment.yml
-name: nf-core-kmermaid-1.0.0dev
+name: nf-core-kmermaid-0.1.0dev
 channels:
   - bioconda
   - conda-forge
@@ -14,7 +14,6 @@ dependencies:
   - conda-forge::tqdm=4.43.0
   - conda-forge::gxx_linux-64=7.3.0
   - conda-forge::s3fs=0.4.2
-  # TODO nf-core: Add required software dependencies here
   - bioconda::sourmash=3.5.0
   - bioconda::samtools=1.10
   - bioconda::screed=1.0.4

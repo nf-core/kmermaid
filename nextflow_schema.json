@@ -2,7 +2,7 @@
     "$schema": "https://json-schema.org/draft-07/schema",
     "$id": "https://raw.githubusercontent.com/nf-core/kmermaid/master/nextflow_schema.json",
     "title": "nf-core/kmermaid pipeline parameters",
-    "description": "Nextflow k-mer similarity analysis pipeline, part of the nf-core community.",
+    "description": "Compare DNA/RNA/protein sequences on k-mer content",
     "type": "object",
     "definitions": {
         "input_output_options": {
@@ -13,8 +13,23 @@
             "properties": {
                 "input": {
                     "type": "string",
-                    "description": "Only a parameter added to avoid warning as per nf-core",
+                    "description": "Path to fastq.gz files in quotes",
                     "fa_icon": "far fa-file-code"
+                },
+                "input_paths": {
+                    "type": "string",
+                    "description": "Test paths for input reads",
+                    "hidden": true
+                },
+                "fasta_paths": {
+                    "type": "string",
+                    "description": "Test paths for fastas",
+                    "hidden": true
+                },
+                "protein_fasta_paths": {
+                    "type": "string",
+                    "description": "Test paths for protein fastas",
+                    "hidden": true
                 },
                 "read_pairs": {
                     "type": "string",
@@ -434,32 +449,6 @@
                     "description": "Directory to keep pipeline Nextflow logs and reports.",
                     "default": "${params.outdir}/pipeline_info",
                     "fa_icon": "fas fa-cogs",
-                    "hidden": true
-                },
-                "clusterOptions": {
-                    "type": "string",
-                    "description": "Arguments passed to Nextflow clusterOptions.",
-                    "fa_icon": "fas fa-network-wired",
-                    "hidden": true
-                },
-                "conda": {
-                    "type": "boolean",
-                    "description": "Run this workflow with Conda.",
-                    "hidden": true
-                },
-                "read_paths": {
-                    "type": "string",
-                    "description": "Test paths for input reads",
-                    "hidden": true
-                },
-                "fasta_paths": {
-                    "type": "string",
-                    "description": "Test paths for fastas",
-                    "hidden": true
-                },
-                "protein_fasta_paths": {
-                    "type": "string",
-                    "description": "Test paths for protein fastas",
                     "hidden": true
                 }
             }
