@@ -20,7 +20,7 @@ jobs:
     strategy:
       matrix:
         # Nextflow versions: check pipeline minimum and current latest
-        nxf_ver: ['20.04.0', '']
+        nxf_ver: ['20.07.1', '']
     steps:
       - name: Check out pipeline code
         uses: actions/checkout@v2
@@ -50,8 +50,21 @@ jobs:
           sudo mv nextflow /usr/local/bin/
 
       - name: Run pipeline with test data
-        # TODO nf-core: You can customise CI pipeline run tests as required
-        # For example: adding multiple test runs with different parameters
-        # Remember that you can parallelise this by using strategy.matrix
+        strategy:
+          matrix:
+            profile_flags:
+              - "test --sketch_num_hashes 2,4 --sketch_num_hashes_log2 false"
+              - "test --sketch_scaled 2,4 --sketch_num_hashes_log2 false"
+              - "test_bam --barcodes_file false --rename_10x_barcodes false --save_fastas false --write_barcodes_meta_csv false"
+              - "test_bam --rename_10x_barcodes false --write_barcodes_meta_csv false"
+              - "test_bam --write_barcodes_meta_csv false"
+              - "test_bam --barcodes_file false --rename_10x_barcodes false"
+              - "test_bam --rename_10x_barcodes false"
+              - "test_fastas"
+              - "test_protein_fastas"
+              - "test_remove_ribo"
+              - "test_tenx_tgz"
+              - "test_translate"
+              - "test_translate_bam"
         run: |
-          nextflow run ${GITHUB_WORKSPACE} -profile test,docker
+          nextflow run ${GITHUB_WORKSPACE} -profile docker,${{ matrix.profile_flags }}
