@@ -440,6 +440,10 @@ Channel
     .map { row -> file(row) }
     .set { sortmerna_fasta }
 
+// --- Parse Translate parameters ---
+save_translate_csv = params.save_translate_csv
+save_translate_json = params.save_translate_json
+
 
 // --- Parse the Sourmash parameters ----
 ksizes = params.ksizes?.toString().tokenize(',')
@@ -1195,13 +1199,16 @@ if (!params.remove_ribo_rna) {
       set val(sample_id), file("${sample_id}__coding_summary.json") into ch_coding_scores_json
 
     script:
+    csv_flag = save_translate_csv ? "--csv ${sample_id}__coding_scores.csv" : ''
+    json_flag = save_translate_json ? "--json-summary ${sample_id}__coding_summary.json" : ''
+
     """
     sencha translate \\
       --molecule ${molecule} \\
       --coding-nucleotide-fasta ${sample_id}__coding_reads_nucleotides.fasta \\
       --noncoding-nucleotide-fasta ${sample_id}__noncoding_reads_nucleotides.fasta \\
-      --csv ${sample_id}__coding_scores.csv \\
-      --json-summary ${sample_id}__coding_summary.json \\
+      ${csv_flag} \\
+      ${json_flag} \\
       --jaccard-threshold ${jaccard_threshold} \\
       --peptide-ksize ${peptide_ksize} \\
       --peptides-are-bloom-filter \\
