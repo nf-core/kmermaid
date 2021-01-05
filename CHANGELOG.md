@@ -3,7 +3,7 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## v1.0.0dev - [date]
+## v0.1.0dev - [date]
 
 Initial release of nf-core/kmermaid, created with the [nf-core](https://nf-co.re/) template.
 
@@ -36,6 +36,7 @@ barcode fastq
 * Fix the use of `skip_multiqc` flag condition with if and not when
 * Updated sencha=1.0.3 to fix the bug in memory errors possibly with the numpy array on unique filenames ([PR #96 on sencha](https://github.com/czbiohub/leaftea/pull/96))
 * Do `sourmash compute` on all input ksizes, and all peptide molecule types, at once to save disk reading/writing efforts
+* Updated `sencha translate` default parameters to be `--ksize 8 --jaccard-threshold 0.05` because those were the most successful
 
 ### `Dependencies`
 
