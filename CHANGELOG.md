@@ -20,7 +20,7 @@ Initial release of nf-core/kmermaid, created with the [nf-core](http://nf-co.re/
 barcode fastq
 * Add version printing for sencha, bam2fasta, and sourmash in Dockerfile, update versions in environment.yml
 * For processes translate, sourmash compute  add cpus=1 as they are only serial ([#107](https://github.com/nf-core/kmermaid/pull/107))
-* Add `sourmash sig merge` for aligned/unaligned signatures
+* Add `sourmash sig merge` for aligned/unaligned signatures from bam files, and add `--skip_sig_merge` option to turn it off
 
 ### `Fixed`
 
