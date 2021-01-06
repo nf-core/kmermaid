@@ -1385,6 +1385,7 @@ if ((params.bam || params.tenx_tgz) && !params.skip_sig_merge) {
 
   sourmash_sketches_nucleotide
     .mix ( sourmash_sketches_peptide )
+    .dump ( tag: 'ch_sourmash_sketches_mixed' )
     .set { ch_sourmash_sketches_mixed }
 
   ch_fastq_id_to_cell_id_is_aligned
@@ -1407,7 +1408,16 @@ if ((params.bam || params.tenx_tgz) && !params.skip_sig_merge) {
     // it[6]: signature file, e.g. mouse_brown_fat_ptprc_plus_unaligned__aligned__CTGAAGTCAATGGTCT__molecule-dna__ksize-3__num_hashes-4__track_abundance-false.sig
     .groupTuple( by: [1, 3, 4, 5] )
     // [DUMP: fastq_id_to_cells__combine__sketches__grouptuple] 
-    // [['mouse_lung__aligned__AAAGATGCAGATCTGT', 'mouse_lung__aligned__AAAGATGCAGATCTGT'], mouse_lung__AAAGATGCAGATCTGT, ['aligned', 'aligned'], molecule-dna__ksize-15__scaled-5__track_abundance-false, 'dna', '15', [/Users/olgabot/code/nf-core/kmermaid--olgabot/sourmash-sig-merge/work/36/b23ceef8424a2aeb8e7187f3b30d8b/mouse_lung__aligned__AAAGATGCAGATCTGT__molecule-dna__ksize-15__scaled-5__track_abundance-false.sig, /Users/olgabot/code/nf-core/kmermaid--olgabot/sourmash-sig-merge/work/8b/1a1aae2c00520dab66dadb63edbd77/mouse_lung__aligned__AAAGATGCAGATCTGT__molecule-dna__ksize-15__scaled-5__track_abundance-false.sig]]
+    // [ 
+    //   ['mouse_lung__aligned__AAAGATGCAGATCTGT', 
+    //    'mouse_lung__aligned__AAAGATGCAGATCTGT'], 
+    //   mouse_lung__AAAGATGCAGATCTGT, 
+    //   ['aligned', 'aligned'], 
+    //   molecule-dna__ksize-15__scaled-5__track_abundance-false, 
+    //   'dna', '15', 
+    //   [mouse_lung__aligned__AAAGATGCAGATCTGT__molecule-dna__ksize-15__scaled-5__track_abundance-false.sig, 
+    //    mouse_lung__aligned__AAAGATGCAGATCTGT__molecule-dna__ksize-15__scaled-5__track_abundance-false.sig]
+    // ]
     .dump( tag: 'fastq_id_to_cells__combine__sketches__grouptuple' )
     .set { ch_sourmash_sketches_to_merge }
 
@@ -1422,7 +1432,7 @@ if ((params.bam || params.tenx_tgz) && !params.skip_sig_merge) {
         }
 
     input:
-    set val(molecule), val(ksize), val(sketch_style), val(sketch_value), val(sample_id), file(reads) from ch_sourmash_sketches_to_merge
+    set val(molecule), val(ksize), val(sketch_style), val(sketch_value), val(cell_id), file(reads) from ch_sourmash_sketches_to_merge
 
     output:
     file(csv) into ch_sourmash_sig_describe_merged
