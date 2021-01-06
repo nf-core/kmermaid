@@ -21,23 +21,42 @@ barcode fastq
 * Add version printing for sencha, bam2fasta, and sourmash in Dockerfile, update versions in environment.yml
 * For processes translate, sourmash compute  add cpus=1 as they are only serial ([#107](https://github.com/nf-core/kmermaid/pull/107))
 * Add `sourmash_index` process to create sequence bloom tree databases of all provided signatures
+* Add `--protein_fastas` option for creating sketches of already-translated protein sequences
+* Add `--skip_compare option` to skip `sourmash_compare_sketches` process
 
 ### `Fixed`
 
-* Remove `one_signature_per_record` flag and add bam2fasta count_umis_percell and make_fastqs_percell instead of bam2fasta sharding method
-* Update renaming of `khtools` commands to `sencha`
-* Make sure `samtools_fastq_aligned` outputs ALL aligned reads, regardless of mapping quality or primary alignment status
-* Add `--protein_fastas` option for translated protein input
-* Rename splitkmer to `split_kmer` and add `--skip_compare option` to skip `sourmash_compare_sketches` process
+#### Resources
+
 * Increase CPUs in `high_memory_long` profile from 1 to 10
-* add `--skip_compute option` to skip `sourmash_compute_sketch_*`
-* add option to write non-coding nucleotide sequences fasta files while doing sencha translate
-* Used `.combine()` instead of `each` to do cartesian product of all possible molecules, ksizes, and sketch values
+
+#### Naming
+
+* Rename splitkmer to `split_kmer`
+
+#### Per-cell fastqs and bams
+
+* Remove `one_signature_per_record` flag and add bam2fasta count_umis_percell and make_fastqs_percell instead of bam2fasta sharding method
 * Use ripgrep instead of bam2fasta to make per-cell fastq, which will hopefully make resuming long-running pipelines on bams much faster
-* Fix the use of `skip_multiqc` flag condition with if and not when
-* Updated sencha=1.0.3 to fix the bug in memory errors possibly with the numpy array on unique filenames ([PR #96 on sencha](https://github.com/czbiohub/leaftea/pull/96))
+* Make sure `samtools_fastq_aligned` outputs ALL aligned reads, regardless of mapping quality or primary alignment status
+
+#### Sourmash
+
+* add `--skip_compute option` to skip `sourmash_compute_sketch_*`
+* Used `.combine()` instead of `each` to do cartesian product of all possible molecules, ksizes, and sketch values
 * Do `sourmash compute` on all input ksizes, and all peptide molecule types, at once to save disk reading/writing efforts
+
+#### Translate
+
+* Updated sencha=1.0.3 to fix the bug in memory errors possibly with the numpy array on unique filenames ([PR #96 on sencha](https://github.com/czbiohub/leaftea/pull/96))
+* Add option to write non-coding nucleotide sequences fasta files while doing sencha translate
+* Don't save translate csvs and jsons by default, add separate `--save_translate_json` and `--save_translate_csv`
 * Updated `sencha translate` default parameters to be `--ksize 8 --jaccard-threshold 0.05` because those were the most successful
+* Update renaming of `khtools` commands to `sencha`
+
+#### MultiQC
+
+* Fix the use of `skip_multiqc` flag condition with if and not when
 
 ### `Dependencies`
 
