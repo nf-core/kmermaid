@@ -1303,7 +1303,7 @@ if (!params.remove_ribo_rna) {
 
       output:
       file(csv) into ch_sourmash_sig_describe_nucleotides
-      set val(sample_id), val(sketch_id), val("dna"), val(ksize), file(sig) into sourmash_sketches_all_nucleotide
+      set val(sample_id), val(sketch_id), val("dna"), val(params.ksizes), file(sig) into sourmash_sketches_all_nucleotide
 
       script:
       // Don't calculate DNA signature if this is protein, to minimize disk,
@@ -1369,7 +1369,7 @@ if (!params.skip_compute && (protein_input || params.reference_proteome_fasta)){
 
     output:
     file(csv) into ch_sourmash_sig_describe_peptides
-    set val(sample_id), val(sketch_id), val(molecule), val(ksize), file(sig) into sourmash_sketches_all_peptide
+    set val(sample_id), val(sketch_id), val(molecule), val(params.ksizes), file(sig) into sourmash_sketches_all_peptide
 
 
     script:
