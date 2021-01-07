@@ -1470,7 +1470,7 @@ if ((params.bam || params.tenx_tgz) && !params.skip_compute && !params.skip_sig_
     """
   }
 
-} else {
+} else if (!param.skip_compute) {
   sourmash_sketches_nucleotide
     .mix ( sourmash_sketches_peptide )
     .set { sourmash_sketches }
