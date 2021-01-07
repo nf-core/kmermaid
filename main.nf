@@ -1369,7 +1369,7 @@ if (!params.skip_compute && (protein_input || params.reference_proteome_fasta)){
 
     output:
     file(csv) into ch_sourmash_sig_describe_peptides
-    set val(sample_id), val(sketch_id), val(molecule), val(params.ksizes), file(sig) into sourmash_sketches_all_peptide
+    set val(sample_id), val(sketch_id), val(peptide_molecules), val(params.ksizes), file(sig) into sourmash_sketches_all_peptide
 
 
     script:
