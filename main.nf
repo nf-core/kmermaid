@@ -1398,8 +1398,10 @@ if (!params.skip_compute && (protein_input || params.reference_proteome_fasta)){
   sourmash_sketches_peptide = Channel.empty()
 }
 
+// -------------
+// Merge signatures from same sample id and sketch id
+// -------------
 if ((params.bam || params.tenx_tgz) && !params.skip_compute && !params.skip_sig_merge) {
-  // Merge signatures from same sample id and sketch id
 
   sourmash_sketches_nucleotide
     .mix ( sourmash_sketches_peptide )
