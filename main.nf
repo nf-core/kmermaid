@@ -1456,11 +1456,11 @@ if ((params.bam || params.tenx_tgz) && !params.skip_compute && !params.skip_sig_
         }
 
     input:
-    set val(molecule), val(ksizes), val(sketch_style), val(sketch_value), val(cell_id), file(reads) from ch_sourmash_sketches_to_merge
+    set val(fasta_ids), val(cell_id), val(is_aligned), val(sketch_id), val(molecule), val(ksizes), file(sigs) from ch_sourmash_sketches_to_merge
 
     output:
     file(csv) into ch_sourmash_sig_describe_merged
-    set val(sketch_id), val(molecule), val(ksizes), val(sketch_value), file(sig) into sourmash_sketches
+    set val(cell_id), val(sketch_id), val(molecule), val(ksizes), file(output_sig) into sourmash_sketches
 
     script:
     // sketch_id = make_sketch_id(molecule, ksize, sketch_value, track_abundance, sketch_style)
@@ -1471,7 +1471,7 @@ if ((params.bam || params.tenx_tgz) && !params.skip_compute && !params.skip_sig_
     """
     for KSIZE in ${KSIZES}; do
       # Can only merge one kize at a time
-      sourmash sig merge -k ${KSIZE} -o merged_\$KSIZE.sig ${sigs}
+      sourmash sig merge -k \$KSIZE -o merged_\$KSIZE.sig ${sigs}
     done
     sourmash sig cat merged*.sig > ${output_sig}
     sourmash sig rename -o ${output_sig} '${cell_id}'
@@ -1483,6 +1483,9 @@ if ((params.bam || params.tenx_tgz) && !params.skip_compute && !params.skip_sig_
   sourmash_sketches_nucleotide
     .mix ( sourmash_sketches_peptide )
     .set { sourmash_sketches }
+  ch_sourmash_sig_describe_merged = Channel.empty()
+} else {
+  ch_sourmash_sig_describe_merged = Channel.empty()
 }
 
 if (params.split_kmer){
