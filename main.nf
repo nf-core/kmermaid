@@ -1326,7 +1326,10 @@ if (!params.remove_ribo_rna) {
         sourmash sig describe --csv ${csv} ${sig}
       """
     }
-    sourmash_sketches_nucleotide = sourmash_sketches_all_nucleotide.filter{ it[3].size() > 0 }
+    sourmash_sketches_all_nucleotide
+      .filter{ it[3].size() > 0 }
+      .dump ( tag: "sourmash_sketches_all_nucleotide" )
+      .set { sourmash_sketches_nucleotide }
   }
 } else {
   sourmash_sketches_nucleotide = Channel.empty()
