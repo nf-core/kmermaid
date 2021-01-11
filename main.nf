@@ -1335,6 +1335,7 @@ if (!params.remove_ribo_rna) {
   sourmash_sketches_nucleotide = Channel.empty()
   ch_protein_fastas
     .set { ch_protein_seq_to_sketch }
+  ch_sourmash_sig_describe_nucleotides = Channel.empty()
 }
 
 
