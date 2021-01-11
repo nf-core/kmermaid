@@ -1397,6 +1397,7 @@ if (!params.skip_compute && (protein_input || params.reference_proteome_fasta)){
   sourmash_sketches_peptide = sourmash_sketches_all_peptide.filter{ it[3].size() > 0 }
 } else {
   sourmash_sketches_peptide = Channel.empty()
+  ch_sourmash_sig_describe_peptides = Channel.empty()
 }
 
 // -------------
@@ -1503,30 +1504,30 @@ if (params.split_kmer){
   }
 // If skip_compute is true, skip compare must be specified as true as well
 if (!params.split_kmer && !params.skip_compare && !params.skip_compute) {
-  // Combine peptide and nucleotide sketches
-  sourmash_sketches_nucleotide
-    .collect()
-    // Set as a list so that combine does cartesian product of all signatures
-    .map { it -> [it] }
-    .combine( ch_ksizes_for_compare_nucleotide )
-    .dump( tag: 'sourmash_sketches_nucleotide__ksizes' )
-    .map { x -> [x[0], x[1], 'dna'] }
-    .dump( tag: 'sourmash_sketches_nucleotide__ksizes__molecules' )
-    .set { sourmash_sketches_nucleotide_for_compare }
+  // // Combine peptide and nucleotide sketches
+  // sourmash_sketches_nucleotide
+  //   .collect()
+  //   // Set as a list so that combine does cartesian product of all signatures
+  //   .map { it -> [it] }
+  //   .combine( ch_ksizes_for_compare_nucleotide )
+  //   .dump( tag: 'sourmash_sketches_nucleotide__ksizes' )
+  //   .map { x -> [x[0], x[1], 'dna'] }
+  //   .dump( tag: 'sourmash_sketches_nucleotide__ksizes__molecules' )
+  //   .set { sourmash_sketches_nucleotide_for_compare }
 
-  sourmash_sketches_peptide
-    .collect()
-    // Set as a list so that combine does cartesian product of all signatures
-    .map { it -> [it] }
-    .combine( ch_ksizes_for_compare_petide )
-    .dump( tag: 'sourmash_sketches_peptide__ksizes' )
-    .combine( ch_peptide_molecules )
-    .dump( tag: 'sourmash_sketches_peptide__ksizes__molecules' )
-    .set { sourmash_sketches_peptide_for_compare }
+  // sourmash_sketches_peptide
+  //   .collect()
+  //   // Set as a list so that combine does cartesian product of all signatures
+  //   .map { it -> [it] }
+  //   .combine( ch_ksizes_for_compare_petide )
+  //   .dump( tag: 'sourmash_sketches_peptide__ksizes' )
+  //   .combine( ch_peptide_molecules )
+  //   .dump( tag: 'sourmash_sketches_peptide__ksizes__molecules' )
+  //   .set { sourmash_sketches_peptide_for_compare }
 
-  sourmash_sketches_peptide_for_compare
-    .mix ( sourmash_sketches_nucleotide_for_compare )
-    .set { ch_sourmash_sketches_to_compare }
+  // sourmash_sketches_peptide_for_compare
+  //   .mix ( sourmash_sketches_nucleotide_for_compare )
+  //   .set { ch_sourmash_sketches_to_compare }
 
   process sourmash_compare_sketches {
     // Combine peptide and nucleotide sketches
@@ -1534,7 +1535,7 @@ if (!params.split_kmer && !params.skip_compare && !params.skip_compute) {
     publishDir "${params.outdir}/compare_sketches", mode: 'copy'
 
     input:
-    set file ("*.sig"), val(ksize), val(molecule) from ch_sourmash_sketches_to_compare
+    set file ("*.sig"), val(ksize), val(molecule) from sourmash_sketches
 
     output:
     file(csv)
@@ -1564,8 +1565,9 @@ if (!params.skip_multiqc){
       publishDir "${params.outdir}/MultiQC", mode: "${params.publish_dir_mode}"
       input:
       file multiqc_config from ch_multiqc_config
-      file ("sourmash_sig_merge/") from ch_sourmash_sig_describe_merged.collect().ifEmpty([])
-      file ("sourmash_sig_merge/") from ch_sourmash_sig_describe_merged.collect().ifEmpty([])
+      file ("sourmash_describe_sig_merge/") from ch_sourmash_sig_describe_merged.collect().ifEmpty([])
+      file ("sourmash_describe_peptides/") from ch_sourmash_sig_describe_peptides.collect().ifEmpty([])
+      file ("sourmash_describe_nucleotides/") from ch_sourmash_sig_describe_nucleotides.collect().ifEmpty([])
       file ('fastp/*') from ch_fastp_results.collect().ifEmpty([])
       file ('sortmerna/*') from sortmerna_logs.collect().ifEmpty([])
       file ('software_versions/*') from ch_software_versions_yaml.collect()
