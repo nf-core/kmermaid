@@ -1453,19 +1453,24 @@ if ((params.bam || params.tenx_tgz) && !params.skip_compute && !params.skip_sig_
         }
 
     input:
-    set val(molecule), val(ksize), val(sketch_style), val(sketch_value), val(cell_id), file(reads) from ch_sourmash_sketches_to_merge
+    set val(molecule), val(ksizes), val(sketch_style), val(sketch_value), val(cell_id), file(reads) from ch_sourmash_sketches_to_merge
 
     output:
     file(csv) into ch_sourmash_sig_describe_merged
-    set val(sketch_id), val(molecule), val(ksize), val(sketch_value), file(sig) into sourmash_sketches
+    set val(sketch_id), val(molecule), val(ksizes), val(sketch_value), file(sig) into sourmash_sketches
 
     script:
     // sketch_id = make_sketch_id(molecule, ksize, sketch_value, track_abundance, sketch_style)
     sig_id = "${cell_id}__${sketch_id}"
     csv = "${sig_id}.csv"
     output_sig = "${sig_id}.sig"
+    KSIZES = ksizes.split(',')
     """
-    sourmash sig merge -o merged.sig ${sigs}
+    for KSIZE in ${KSIZES}; do
+      # Can only merge one kize at a time
+      sourmash sig merge -k ${KSIZE} -o merged_\$KSIZE.sig ${sigs}
+    done
+    sourmash sig cat merged*.sig > ${output_sig}
     sourmash sig rename -o ${output_sig} '${cell_id}'
     sourmash sig describe --csv ${csv} ${output_sig}
     """
@@ -1559,6 +1564,8 @@ if (!params.skip_multiqc){
       publishDir "${params.outdir}/MultiQC", mode: "${params.publish_dir_mode}"
       input:
       file multiqc_config from ch_multiqc_config
+      file ("sourmash_sig_merge/") from ch_sourmash_sig_describe_merged.collect().ifEmpty([])
+      file ("sourmash_sig_merge/") from ch_sourmash_sig_describe_merged.collect().ifEmpty([])
       file ('fastp/*') from ch_fastp_results.collect().ifEmpty([])
       file ('sortmerna/*') from sortmerna_logs.collect().ifEmpty([])
       file ('software_versions/*') from ch_software_versions_yaml.collect()
