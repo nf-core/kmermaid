@@ -475,33 +475,37 @@ if (!have_sketch_value && !params.split_kmer) {
 
 
 
-def make_sketch_id (molecule, ksizes, sketch_value, track_abundance, sketch_style) {
-  if (sketch_style == 'size') {
-    sketch_value = "num_hashes-${sketch_value}"
+// added "_for_id" to all variables to avoid variable scoping errors
+def make_sketch_id (
+  molecule_for_id, ksizes_for_id, sketch_value_for_id, track_abundance_for_id, sketch_style_for_id
+  ) {
+  if (sketch_style_for_id == 'size') {
+    style_value = "num_hashes-${sketch_value_for_id}"
   } else {
-    sketch_value = "scaled-${sketch_value}"
+    style_value = "scaled-${sketch_value_for_id}"
   }
 
-  sketch_id = "molecule-${molecule}__ksize-${ksizes}__${sketch_value}__track_abundance-${track_abundance}"
-  return sketch_id
+  this_sketch_id = "molecule-${molecule_for_id}__ksize-${ksizes_for_id}__${style_value}__track_abundance-${track_abundance_for_id}"
+  return this_sketch_id
 }
 
 // Create the --num-hashes or --scaled flag for sourmash
-def make_sketch_value_flag(sketch_style, sketch_value) {
-  if (sketch_style == "size") {
-    number_flag = "--num-hashes ${sketch_value}"
-  } else if (sketch_style == "scaled" ) {
-    number_flag = "--scaled ${sketch_value}"
+// added "_for_flag" to all variables to avoid variable scoping errors
+def make_sketch_value_flag(sketch_style_for_flag, sketch_value_for_flag) {
+  if (sketch_style_for_flag == "size") {
+    number_flag = "--num-hashes ${sketch_value_for_flag}"
+  } else if (sketch_style_for_flag == "scaled" ) {
+    number_flag = "--scaled ${sketch_value_for_flag}"
   } else {
-    exit 1, "${sketch_style} is not a valid sketch counting style! Only 'scaled' and 'size' are valid"
+    exit 1, "${sketch_style_for_flag} is not a valid sketch counting style! Only 'scaled' and 'size' are valid"
   }
   return number_flag
 }
 
 int bloomfilter_tablesize = Math.round(Float.valueOf(params.bloomfilter_tablesize))
 
-peptide_ksize = params.translate_peptide_ksize
-peptide_molecule = params.translate_peptide_molecule
+translate_peptide_ksize = params.translate_peptide_ksize
+translate_peptide_molecule = params.translate_peptide_molecule
 jaccard_threshold = params.translate_jaccard_threshold
 track_abundance = params.track_abundance
 
@@ -673,7 +677,7 @@ if ( !params.split_kmer && have_sketch_value ) {
   /*
    * Validate sketch sizes
    */
-  process validate_sketch_values {
+  process validate_sketch_value {
       publishDir "${params.outdir}/pipeline_info", mode: params.publish_dir_mode,
       saveAs: {filename ->
           if (filename.indexOf(".txt") > 0) filename
@@ -686,59 +690,52 @@ if ( !params.split_kmer && have_sketch_value ) {
       val sketch_scaled_log2
 
       output:
-      file sketch_values into ch_sketch_values_unparsed
+      file sketch_value into ch_sketch_value_unparsed
       file sketch_style into ch_sketch_style_unparsed
 
       script:
       sketch_style = "sketch_style.txt"
-      sketch_values = 'sketch_values.txt'
+      sketch_value = 'sketch_value.txt'
       """
-      validate_sketch_values.py \\
+      validate_sketch_value.py \\
         --sketch_num_hashes ${sketch_num_hashes} \\
         --sketch_num_hashes_log2 ${sketch_num_hashes_log2} \\
         --sketch_scaled ${sketch_scaled} \\
         --sketch_scaled_log2 ${sketch_scaled_log2} \\
-        --output ${sketch_values} \\
+        --output ${sketch_value} \\
         --sketch_style ${sketch_style}
       """
   }
 
   // Parse sketch style into value
-  ch_sketch_style_unparsed
+  sketch_style_parsed = ch_sketch_style_unparsed
     .splitText()
     .dump ( tag: 'ch_sketch_style' )
     .map { it -> it.replaceAll('\\n', '' ) }
-    // .first()
+    .first()
     .dump ( tag: 'sketch_style_parsed' )
-    .into { ch_sketch_style_for_nucleotides; ch_sketch_style_for_proteins }
+    .collect ()
+  // get first item of returned array from .collect()
+  // sketch_style_parsed = sketch_style_parsed[0]
+    // .into { ch_sketch_style_for_nucleotides; ch_sketch_style_for_proteins }
   // sketch_style = sketch_styles[0]
   // println "sketch_style_parsed: ${sketch_style_parsed}"
   // println "sketch_style: ${sketch_style}"
 
   // Parse file into values
-  ch_sketch_values_unparsed
+  sketch_value_parsed = ch_sketch_value_unparsed
     .splitText()
     .map { it -> it.replaceAll('\\n', '')}
-    .dump ( tag : 'sketch_values_parsed' )
-    .into { ch_sketch_values_for_proteins; ch_sketch_values_for_dna }
+    .first()
+    .dump ( tag : 'sketch_value_parsed' )
+    .collect()
+  // get first item of returned array from .collect()
+  // sketch_value_parsed = sketch_value_parsed[0]
+    // .into { ch_sketch_value_for_proteins; ch_sketch_value_for_dna }
 
 }
 
 // Combine sketch values with ksize and molecule types
-
-// ch_peptide_molecules
-  // .combine ( ch_ksizes_for_proteins )
-ch_sketch_style_for_proteins
-  // .combine ( ch_sketch_style_for_proteins )
-  .combine ( ch_sketch_values_for_proteins )
-  .set { ch_sourmash_protein_sketch_params }
-
-
-// ch_ksizes_for_dna
-  // .combine ( ch_sketch_style_for_nucleotides )
-ch_sketch_style_for_nucleotides
-  .combine ( ch_sketch_values_for_dna )
-  .set { ch_sourmash_dna_sketch_params }
 
 
 
@@ -751,19 +748,19 @@ if (params.reference_proteome_fasta){
 
     input:
     file(peptides) from ch_reference_proteome_fasta
-    peptide_ksize
-    peptide_molecule
+    translate_peptide_ksize
+    translate_peptide_molecule
 
     output:
     set val(bloom_id), val(peptide_molecule), file("${peptides.simpleName}__${bloom_id}.bloomfilter") into ch_sencha_bloom_filter
 
     script:
-    bloom_id = "molecule-${peptide_molecule}_ksize-${peptide_ksize}"
+    bloom_id = "molecule-${peptide_molecule}_ksize-${translate_peptide_ksize}"
     """
     sencha index \\
       --tablesize ${bloomfilter_tablesize} \\
-      --molecule ${peptide_molecule} \\
-      --peptide-ksize ${peptide_ksize} \\
+      --molecule ${translate_peptide_molecule} \\
+      --peptide-ksize ${translate_peptide_ksize} \\
       --save-as ${peptides.simpleName}__${bloom_id}.bloomfilter \\
       ${peptides}
     """
@@ -1282,10 +1279,6 @@ if (!params.remove_ribo_rna) {
 
       }
   } else if (!params.skip_compute) {
-    ch_sourmash_dna_sketch_params
-      .combine ( ch_reads_to_sketch )
-      .dump ( tag: 'ch_sourmash_dna_params_with_reads' )
-      .set { ch_sourmash_sketch_params_with_reads }
 
     process sourmash_compute_sketch_fastx_nucleotide {
       tag "${sig_id}"
@@ -1298,8 +1291,10 @@ if (!params.remove_ribo_rna) {
           }
 
       input:
-      set val(sketch_style), val(sketch_value), val(sample_id), file(reads) from ch_sourmash_sketch_params_with_reads
       val track_abundance
+      val sketch_value_parsed
+      val sketch_style_parsed
+      set val(sample_id), file(reads) from ch_reads_to_sketch
 
       output:
       file(csv) into ch_sourmash_sig_describe_nucleotides
@@ -1308,8 +1303,14 @@ if (!params.remove_ribo_rna) {
       script:
       // Don't calculate DNA signature if this is protein, to minimize disk,
       // memory and IO requirements in the future
-      sketch_id = make_sketch_id("dna", params.ksizes, sketch_value, track_abundance, sketch_style)
-      sketch_value_flag = make_sketch_value_flag(sketch_style, sketch_value)
+      sketch_id = make_sketch_id(
+        "dna", 
+        params.ksizes, 
+        sketch_value_parsed[0], 
+        track_abundance, 
+        sketch_style_parsed[0]
+      )
+      sketch_value_flag = make_sketch_value_flag(sketch_style_parsed[0], sketch_value_parsed[0])
       track_abundance_flag = track_abundance ? '--track-abundance' : ''
       sig_id = "${sample_id}__${sketch_id}"
       sig = "${sig_id}.sig"
@@ -1357,10 +1358,6 @@ if (!have_nucleotide_input) {
 
 
 if (!params.skip_compute && (protein_input || params.reference_proteome_fasta)){
-  ch_sourmash_protein_sketch_params
-    .combine ( ch_protein_seq_to_sketch )
-    .dump ( tag: 'ch_sourmash_protein_params_with_reads' )
-    .set { ch_sourmash_protein_sketch_params_with_reads }
 
   process sourmash_compute_sketch_fastx_peptide {
     tag "${sig_id}"
@@ -1374,16 +1371,24 @@ if (!params.skip_compute && (protein_input || params.reference_proteome_fasta)){
 
     input:
     val track_abundance
-    set val(sketch_style), val(sketch_value), val(sample_id), file(reads) from ch_sourmash_protein_sketch_params_with_reads
+    val sketch_value_parsed
+    val sketch_style_parsed
+    set val(sample_id), file(reads) from ch_sourmash_protein_sketch_params_with_reads
 
     output:
     file(csv) into ch_sourmash_sig_describe_peptides
     set val(sample_id), val(sketch_id), val(peptide_molecules), val(params.ksizes), file(sig) into sourmash_sketches_all_peptide
 
-
     script:
-    sketch_id = make_sketch_id(peptide_molecules_comma_separated, params.ksizes, sketch_value, track_abundance, sketch_style)
-    sketch_value_flag = make_sketch_value_flag(sketch_style, sketch_value)
+    sketch_id = make_sketch_id(
+      peptide_molecules_comma_separated, 
+      params.ksizes, 
+      sketch_value_parsed[0], 
+      track_abundance, 
+      sketch_style_parsed[0]
+    )
+
+    sketch_value_flag = make_sketch_value_flag(sketch_style[0], sketch_value[0])
     track_abundance_flag = track_abundance ? '--track-abundance' : ''
     sig_id = "${sample_id}__${sketch_id}"
     sig = "${sig_id}.sig"
@@ -1419,7 +1424,9 @@ if ((params.bam || params.tenx_tgz) && !params.skip_compute && !params.skip_sig_
     .set { ch_sourmash_sketches_mixed }
 
   ch_fastq_id_to_cell_id_is_aligned
+    .dump( tag: 'ch_fastq_id_to_cell_id_is_aligned' )
     .combine ( ch_sourmash_sketches_mixed, by: 0 )
+    .unique()
     .dump( tag: 'fastq_id_to_cells__combine__sketches' )
     // [DUMP: fastq_id_to_cells__combine__sketches] 
     // ['mouse_brown_fat_ptprc_plus_unaligned__aligned__CTGAAGTCAATGGTCT', 
@@ -1439,16 +1446,19 @@ if ((params.bam || params.tenx_tgz) && !params.skip_compute && !params.skip_sig_
     .groupTuple( by: [1, 3, 4, 5] )
     // [DUMP: fastq_id_to_cells__combine__sketches__grouptuple] 
     // [ 
-    //   ['mouse_lung__aligned__AAAGATGCAGATCTGT', 
-    //    'mouse_lung__aligned__AAAGATGCAGATCTGT'], 
-    //   mouse_lung__AAAGATGCAGATCTGT, 
-    //   ['aligned', 'aligned'], 
-    //   molecule-dna__ksize-15__scaled-5__track_abundance-false, 
-    //   'dna', '15', 
-    //   [mouse_lung__aligned__AAAGATGCAGATCTGT__molecule-dna__ksize-15__scaled-5__track_abundance-false.sig, 
+    //  it[0]: ['mouse_lung__aligned__AAAGATGCAGATCTGT', 
+    //          'mouse_lung__aligned__AAAGATGCAGATCTGT'], 
+    //  it[1]: mouse_lung__AAAGATGCAGATCTGT, 
+    //  it[2]: ['aligned', 'aligned'], 
+    //  it[3]: molecule-dna__ksize-15__scaled-5__track_abundance-false, 
+    //  it[4]: 'dna', 
+    //  it[5]: '15', 
+    //  it[6]: [mouse_lung__aligned__AAAGATGCAGATCTGT__molecule-dna__ksize-15__scaled-5__track_abundance-false.sig, 
     //    mouse_lung__aligned__AAAGATGCAGATCTGT__molecule-dna__ksize-15__scaled-5__track_abundance-false.sig]
     // ]
     .dump( tag: 'fastq_id_to_cells__combine__sketches__grouptuple' )
+    .map { it -> [it[0].unique(), it[1], it[2].unique(), it[3], it[4], it[5], it[6].unique() ] }
+    .dump( tag: 'fastq_id_to_cells__combine__sketches__grouptuple__unique' )
     .set { ch_sourmash_sketches_to_merge }
 
   process sourmash_sig_merge {
@@ -1472,15 +1482,34 @@ if ((params.bam || params.tenx_tgz) && !params.skip_compute && !params.skip_sig_
     // sketch_id = make_sketch_id(molecule, ksize, sketch_value, track_abundance, sketch_style)
     sig_id = "${cell_id}__${sketch_id}"
     csv = "${sig_id}.csv"
+    concatenated_sig = 'concatenated.sig'
     output_sig = "${sig_id}.sig"
-    KSIZES = ksizes.split(',')
     """
-    for KSIZE in ${KSIZES}; do
+    # Parse ksizes in bash
+    KSIZES=\$(echo ${ksizes} | tr ',' ' ')
+
+    # Iterate over ksizes
+    for KSIZE in \$KSIZES; do
       # Can only merge one kize at a time
-      sourmash sig merge -k \$KSIZE -o merged_\$KSIZE.sig ${sigs}
+      sourmash sig merge \
+          --${molecule} \
+          -k \$KSIZE \
+          -o merged_\$KSIZE.sig \
+          ${sigs}
+
+      # "sig merge" gives default automatic name of md5sum which isn't helpful
+      # --> rename to cell id
+      sourmash sig rename \
+          --${molecule} \
+          -k \$KSIZE \
+          -o merged_renamed_\$KSIZE.sig \
+          merged_\$KSIZE.sig '${cell_id}'
     done
-    sourmash sig cat merged*.sig > ${output_sig}
-    sourmash sig rename -o ${output_sig} '${cell_id}'
+
+    # Concatenate all ksizes together
+    sourmash sig cat merged_renamed*.sig > ${output_sig}
+
+    # Add csv showing number of hashes at each ksize
     sourmash sig describe --csv ${csv} ${output_sig}
     """
   }
