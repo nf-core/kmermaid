@@ -23,6 +23,7 @@ barcode fastq
 * Add `sourmash sig merge` for aligned/unaligned signatures from bam files, and add `--skip_sig_merge` option to turn it off
 * Add `--protein_fastas` option for creating sketches of already-translated protein sequences
 * Add `--skip_compare option` to skip `sourmash_compare_sketches` process
+* Add merging of aligned/unaligned parts of single-cell data ([#117](https://github.com/nf-core/kmermaid/pull/117))
 
 ### `Fixed`
 
@@ -61,3 +62,5 @@ barcode fastq
 ### `Dependencies`
 
 ### `Deprecated`
+
+* Removed ability to specify multiple `--scaled` or `--num-hashes` values to enable merging of signatures
