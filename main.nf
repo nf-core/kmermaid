@@ -752,10 +752,10 @@ if (params.reference_proteome_fasta){
     translate_peptide_molecule
 
     output:
-    set val(bloom_id), val(peptide_molecule), file("${peptides.simpleName}__${bloom_id}.bloomfilter") into ch_sencha_bloom_filter
+    set val(bloom_id), val(translate_peptide_molecule), file("${peptides.simpleName}__${bloom_id}.bloomfilter") into ch_sencha_bloom_filter
 
     script:
-    bloom_id = "molecule-${peptide_molecule}_ksize-${translate_peptide_ksize}"
+    bloom_id = "molecule-${translate_peptide_molecule}_ksize-${translate_peptide_ksize}"
     """
     sencha index \\
       --tablesize ${bloomfilter_tablesize} \\
