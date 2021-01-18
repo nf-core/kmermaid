@@ -506,7 +506,7 @@ int bloomfilter_tablesize = Math.round(Float.valueOf(params.bloomfilter_tablesiz
 
 translate_peptide_ksize = params.translate_peptide_ksize
 translate_peptide_molecule = params.translate_peptide_molecule
-jaccard_threshold = params.translate_jaccard_threshold
+translate_jaccard_threshold = params.translate_jaccard_threshold
 track_abundance = params.track_abundance
 
 // Tenx parameters
@@ -1213,8 +1213,8 @@ if (!params.remove_ribo_rna) {
         --noncoding-nucleotide-fasta ${sample_id}__noncoding_reads_nucleotides.fasta \\
         ${csv_flag} \\
         ${json_flag} \\
-        --jaccard-threshold ${jaccard_threshold} \\
-        --peptide-ksize ${peptide_ksize} \\
+        --jaccard-threshold ${translate_jaccard_threshold} \\
+        --peptide-ksize ${translate_peptide_ksize} \\
         --peptides-are-bloom-filter \\
         ${bloom_filter} \\
         ${reads} > ${sample_id}__coding_reads_peptides.fasta
