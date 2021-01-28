@@ -48,11 +48,11 @@ barcode fastq
 
 #### Translate
 
-* Updated orpheum=1.0.3 to fix the bug in memory errors possibly with the numpy array on unique filenames ([PR #96 on orpheum](https://github.com/czbiohub/leaftea/pull/96))
-* Add option to write non-coding nucleotide sequences fasta files while doing orpheum translate
+* Updated sencha=1.0.3 to fix the bug in memory errors possibly with the numpy array on unique filenames ([PR #96 on orpheum](https://github.com/czbiohub/orpheum/pull/96))
+* Add option to write non-coding nucleotide sequences fasta files while doing sencha translate
 * Don't save translate csvs and jsons by default, add separate `--save_translate_json` and `--save_translate_csv`
-* Updated `orpheum translate` default parameters to be `--ksize 8 --jaccard-threshold 0.05` because those were the most successful
-* Update renaming of `khtools` commands to `orpheum`
+* Updated `sencha translate` default parameters to be `--ksize 8 --jaccard-threshold 0.05` because those were the most successful
+* Update renaming of `khtools` commands to `sencha`
 
 #### MultiQC
 
