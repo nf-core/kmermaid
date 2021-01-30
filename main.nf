@@ -1187,10 +1187,9 @@ if (!params.remove_ribo_rna) {
       publishDir "${params.outdir}/translate/", mode: params.publish_dir_mode,
         saveAs: {
           filename ->
-              if (save_translate_csv && filename.indexOf(".csv") > 0) "description/$filename"
-              if (save_translate_json && filename.indexOf(".json") > 0) "description/$filename"
-              else if (filename.indexOf(".sig") > 0) "sigs/$filename"
-              else null
+              if (save_translate_csv && filename.indexOf(".csv") > 0) "$filename"
+              else if (save_translate_json && filename.indexOf(".json") > 0) "$filename"
+              else "$filename"
           }
 
       input:
