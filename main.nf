@@ -663,7 +663,7 @@ process get_software_versions {
     ska version &> v_ska.txt
     sortmerna --version &> v_sortmerna.txt
     sourmash -v &> v_sourmash.txt
-    pip show sencha &> v_sencha.txt
+    pip show orpheum &> v_orpheum.txt
     scrape_software_versions.py &> software_versions_mqc.yaml
     """
 }
@@ -754,12 +754,12 @@ if (params.reference_proteome_fasta){
     peptide_molecule
 
     output:
-    set val(bloom_id), val(peptide_molecule), file("${peptides.simpleName}__${bloom_id}.bloomfilter") into ch_sencha_bloom_filter
+    set val(bloom_id), val(peptide_molecule), file("${peptides.simpleName}__${bloom_id}.bloomfilter") into ch_orpheum_bloom_filter
 
     script:
     bloom_id = "molecule-${peptide_molecule}_ksize-${peptide_ksize}"
     """
-    sencha index \\
+    orpheum index \\
       --tablesize ${bloomfilter_tablesize} \\
       --molecule ${peptide_molecule} \\
       --peptide-ksize ${peptide_ksize} \\
@@ -1194,7 +1194,7 @@ if (!params.remove_ribo_rna) {
           }
 
       input:
-      set bloom_id, molecule, file(bloom_filter) from ch_sencha_bloom_filter.collect()
+      set bloom_id, molecule, file(bloom_filter) from ch_orpheum_bloom_filter.collect()
       set sample_id, file(reads) from ch_reads_to_translate
 
       output:
@@ -1212,7 +1212,7 @@ if (!params.remove_ribo_rna) {
       json_flag = save_translate_json ? "--json-summary ${translate_json}" : ''
 
       """
-      sencha translate \\
+      orpheum translate \\
         --molecule ${molecule} \\
         --coding-nucleotide-fasta ${sample_id}__coding_reads_nucleotides.fasta \\
         --noncoding-nucleotide-fasta ${sample_id}__noncoding_reads_nucleotides.fasta \\
