@@ -1189,6 +1189,9 @@ if (!params.remove_ribo_rna) {
           filename ->
               if (save_translate_csv && filename.indexOf(".csv") > 0) "$filename"
               else if (save_translate_json && filename.indexOf(".json") > 0) "$filename"
+              else if (filename.indexOf("_noncoding_reads_nucleotides") > 0) "noncoding_nucleotides/${filename}"
+              else if (filename.indexOf("_coding_reads_nucleotides") > 0) "coding_nucleotides/${filename}"
+              else if (filename.indexOf("_coding_reads_peptides") > 0) "coding_peptides/${filename}"
               else "$filename"
           }
 
