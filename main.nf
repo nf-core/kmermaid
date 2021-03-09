@@ -114,7 +114,6 @@ def helpMessage() {
                                     based on tenx_min_umi_per_cell
       --tenx_min_umi_per_cell         A barcode is only considered a valid barcode read
                                     and its signature is written if number of umis are greater than tenx_min_umi_per_cell
-      --shard_size                  Number of alignment to contain in each sharded bam file
       --barcodes_file               For bam files, Optional absolute path to a .tsv barcodes file if the input is unfiltered 10x bam file
       --rename_10x_barcodes         For bam files, Optional absolute path to a .tsv Tab-separated file mapping 10x barcode name
                                     to new name, e.g. with channel or cell annotation label
@@ -193,7 +192,9 @@ tenx_tgz_ch = Channel.empty()
 
 // Boolean for if an nucleotide input exists anywhere
 have_nucleotide_fasta_input = params.fastas || params.fasta_paths
-have_nucleotide_input = params.input_paths || params.sra || params.csv_pairs || params.csv_singles || params.read_pairs || params.read_singles || have_nucleotide_fasta_input || params.bam || params.tenx_tgz
+have_nucleotide_fastq_input = params.input_paths || params.sra || params.csv_pairs || params.csv_singles || params.read_pairs || params.read_singles || params.bam || params.tenx_tgz
+have_nucleotide_input = have_nucleotide_fasta_input || have_nucleotide_fastq_input
+
 
 if (!params.split_kmer){
   have_sketch_num_hashes = params.sketch_num_hashes || params.sketch_num_hashes_log2 || params.sketch_scaled || params.sketch_scaled_log2
@@ -646,6 +647,7 @@ process get_software_versions {
     publishDir "${params.outdir}/pipeline_info", mode: params.publish_dir_mode,
         saveAs: { filename ->
                       if (filename.indexOf(".csv") > 0) filename
+                      if (filename.indexOf(".yaml") > 0) filename
                       else null
                 }
 
@@ -971,7 +973,7 @@ if (params.tenx_tgz || params.bam) {
 
 
 if ( have_nucleotide_input ) {
-  if (!params.skip_trimming){
+  if (!params.skip_trimming && have_nucleotide_fastq_input){
     process fastp {
         label 'process_low'
         tag "$name"
@@ -1056,9 +1058,10 @@ if ( have_nucleotide_input ) {
       .set { subsample_ch_reads_for_ribosomal_removal }
   } else {
     // Concatenate trimmed reads with fastas for signature generation
-    ch_reads_for_ribosomal_removal = ch_reads_trimmed.concat(fastas_ch)
+    ch_reads_for_ribosomal_removal = ch_reads_trimmed.mix(fastas_ch)
   }
 } else {
+  ch_reads_for_ribosomal_removal = fastas_ch
   ch_fastp_results = Channel.from(false)
 }
 
@@ -1334,6 +1337,9 @@ if (!params.remove_ribo_rna) {
   }
 } else {
   sourmash_sketches_nucleotide = Channel.empty()
+  ch_fastp_results = Channel.from(false)
+  sortmerna_logs = Channel.from(false)
+
   ch_protein_fastas
     .set { ch_protein_seq_to_sketch }
 }
@@ -1343,11 +1349,14 @@ if (!params.remove_ribo_rna) {
 if ((!have_nucleotide_input) || params.skip_trimming || have_nucleotide_fasta_input) {
   // Only protein input or skip trimming, or fastas which can't be trimmed.
   ch_fastp_results = Channel.from(false)
+  sortmerna_logs = Channel.from(false)
+
 }
 
 if (!have_nucleotide_input) {
   // Only protein input, can't do sortMeRNA
   sortmerna_logs = Channel.empty()
+  ch_fastp_results = Channel.from(false)
 }
 
 
@@ -1477,6 +1486,7 @@ if (!params.split_kmer && !params.skip_compare && !params.skip_compute) {
 /*
  * STEP 16 - MultiQC
  */
+ // Only trimmming (fastp) and removing ribo rna
 if (!params.skip_multiqc){
     process multiqc {
       publishDir "${params.outdir}/MultiQC", mode: "${params.publish_dir_mode}"
