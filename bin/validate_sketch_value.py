@@ -17,8 +17,18 @@ logger.setLevel(logging.INFO)
 def get_sketch_value(value, value_log2):
     try:
         if value:
+            if "," in value:
+                logger.exception(
+                    f"Can only provide a single number to --sketch_num_hashes or"
+                    f" --sketch_scaled. Provided '{value}"
+                )
             sketch_value = int(value)
         else:
+            if "," in value_log2:
+                logger.exception(
+                    f"Can only provide a single number to --sketch_num_hashes_log2 or"
+                    f" --sketch_scaled_log2. Provided '{value_log2}"
+                )
             sketch_value = 2 ** int(value_log2)
     except ValueError:
         logger.exception(
