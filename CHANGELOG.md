@@ -20,8 +20,10 @@ Initial release of nf-core/kmermaid, created with the [nf-core](https://nf-co.re
 barcode fastq
 * Add version printing for sencha, bam2fasta, and sourmash in Dockerfile, update versions in environment.yml
 * For processes translate, sourmash compute  add cpus=1 as they are only serial ([#107](https://github.com/nf-core/kmermaid/pull/107))
+* Add `sourmash sig merge` for aligned/unaligned signatures from bam files, and add `--skip_sig_merge` option to turn it off
 * Add `--protein_fastas` option for creating sketches of already-translated protein sequences
 * Add `--skip_compare option` to skip `sourmash_compare_sketches` process
+* Add merging of aligned/unaligned parts of single-cell data ([#117](https://github.com/nf-core/kmermaid/pull/117))
 * Add renamed package dependency orpheum (used to be known as sencha)
 
 ### `Fixed`
@@ -61,3 +63,5 @@ barcode fastq
 ### `Dependencies`
 
 ### `Deprecated`
+
+* Removed ability to specify multiple `--scaled` or `--num-hashes` values to enable merging of signatures
