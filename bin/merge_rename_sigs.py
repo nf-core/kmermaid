@@ -99,10 +99,10 @@ if __name__ == "__main__":
 
         merged_sigobjs = []
         for moltype, ksize in itertools.product(moltypes, ksizes):
-            merged_sigobj = merge(
+            merged = merge(
                 args.sigfiles, moltype=moltype, ksize=ksize, name=args.name
             )
-            merged_sigobjs.append(merged_sigobj)
+            merged_sigobjs.append(merged)
 
         with open(args.outsig, "wt") as f:
             sourmash.save_signatures(merged_sigobjs, fp=f)
