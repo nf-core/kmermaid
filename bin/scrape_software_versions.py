@@ -15,7 +15,7 @@ regexes = {
     "htslib": ["v_samtools.txt", r"htslib (\S+)"],
     "Sourmash": ["v_sourmash.txt", r"sourmash (\S+)"],
     "SortMeRNA": ["v_sortmerna.txt", r"SortMeRNA version (\S+),"],
-    "sencha": ["v_sencha.txt", r"Version: (\S+)"],
+    "orpheum": ["v_orpheum.txt", r"Version: (\S+)"],
 }
 results = OrderedDict()
 results["nf-core/kmermaid"] = '<span style="color:#999999;">N/A</span>'
@@ -29,7 +29,7 @@ results["Samtools"] = '<span style="color:#999999;">N/A</span>'
 results["SKA"] = '<span style="color:#999999;">N/A</span>'
 results["Sourmash"] = '<span style="color:#999999;">N/A</span>'
 results["SortMeRNA"] = '<span style="color:#999999;">N/A</span>'
-results["sencha"] = '<span style="color:#999999;">N/A</span>'
+results["orpheum"] = '<span style="color:#999999;">N/A</span>'
 
 # Search each file using its regex
 for k, v in regexes.items():
