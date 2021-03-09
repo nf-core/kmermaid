@@ -1,25 +1,13 @@
 # nf-core/kmermaid: Changelog
 
-## v1.0.0dev
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-### Documentation updates
+## v0.1.0dev - [date]
 
-### Pipeline enhancements & Fixes
+Initial release of nf-core/kmermaid, created with the [nf-core](https://nf-co.re/) template.
 
-* Add option to use Dayhoff encoding for sourmash
-* Add option to remove ribosomal RNA using sortMeRNA ([#74](https://github.com/nf-core/kmermaid/issues/74))
-* Actually propagate `--translate_peptide_ksize` down to `sencha` ([#83](https://github.com/nf-core/kmermaid/pull/83/))
-* Add option for `--scaled` signatures from [sourmash](https://sourmash.readthedocs.io/), specifically added the parameters `--sketch_scaled_log2`, `--sketch_scaled_log2` and renamed `--log2_sketch_size` --> `--sketch_num_hashes_log2`, and added `--sketch_num_hashes` ([#81](https://github.com/nf-core/kmermaid/pull/81))
-
-### Dependency Updates
-
-* Add samtools, screed, tqdm to dependencies
-* Add sortmerna=2.1b # for metatranscriptomics
-* Update sourmash to version 3.2.2
-
-## v0.1.0 - 6 March 2019
-
-Initial release of nf-core/kmermaid, created with the [nf-core](http://nf-co.re/) template.
+### `Added`
 
 * Add option to use Dayhoff encoding for sourmash.
 * Add `bam2fasta` process to kmermaid pipeline and flags involved.
@@ -30,20 +18,50 @@ Initial release of nf-core/kmermaid, created with the [nf-core](http://nf-co.re/
 * Add option to use compressed `.tgz` file containing output from 10X Genomics' `cellranger count` outputs, including `possorted_genome_bam.bam` and `barcodes.tsv` files
 * Add samtools_fastq_unaligned and samtools_fastq_aligned process for converting bam to per cell
 barcode fastq
-* Remove `one_signature_per_record` flag and add bam2fasta count_umis_percell and make_fastqs_percell instead of bam2fasta sharding method
-* Update renaming of `khtools` commands to `sencha`
-* Make sure `samtools_fastq_aligned` outputs ALL aligned reads, regardless of mapping quality or primary alignment status
-* Add `--protein_fastas` option for translated protein input
-* Rename splitkmer to `split_kmer` and add `--skip_compare option` to skip `sourmash_compare_sketches` process
+* Add version printing for sencha, bam2fasta, and sourmash in Dockerfile, update versions in environment.yml
+* For processes translate, sourmash compute  add cpus=1 as they are only serial ([#107](https://github.com/nf-core/kmermaid/pull/107))
+* Add `sourmash sig merge` for aligned/unaligned signatures from bam files, and add `--skip_sig_merge` option to turn it off
+* Add `--protein_fastas` option for creating sketches of already-translated protein sequences
+* Add `--skip_compare option` to skip `sourmash_compare_sketches` process
+* Add merging of aligned/unaligned parts of single-cell data ([#117](https://github.com/nf-core/kmermaid/pull/117))
+* Add renamed package dependency orpheum (used to be known as sencha)
+
+### `Fixed`
+
+#### Resources
+
 * Increase CPUs in `high_memory_long` profile from 1 to 10
+
+#### Naming
+
+* Rename splitkmer to `split_kmer`
+
+#### Per-cell fastqs and bams
+
+* Remove `one_signature_per_record` flag and add bam2fasta count_umis_percell and make_fastqs_percell instead of bam2fasta sharding method
+* Use ripgrep instead of bam2fasta to make per-cell fastq, which will hopefully make resuming long-running pipelines on bams much faster
+* Make sure `samtools_fastq_aligned` outputs ALL aligned reads, regardless of mapping quality or primary alignment status
+
+#### Sourmash
+
 * add `--skip_compute option` to skip `sourmash_compute_sketch_*`
+* Used `.combine()` instead of `each` to do cartesian product of all possible molecules, ksizes, and sketch values
+* Do `sourmash compute` on all input ksizes, and all peptide molecule types, at once to save disk reading/writing efforts
 
-### Dependency updates
+#### Translate
 
-* Add `ska` and `seqtk` to container dependencies
-* Add `fastp` to container requirements
-* Add `fastqc` to environment.yml
-* Add [czbiohub/khtools](https://github.com/czbiohub/kh-tools/) repo to environment.yml (now renamed to [czbiohub/sencha](https://github.com/czbiohub/sencha/))
-* Update Dockerfile with sourmash compute bam input dependencies
-* Add `track_abundance` feature to keep track of hashed kmer frequency.
-* Add [`czbiohub/bam2fasta`](https://github.com/czbiohub/bam2fasta/) repo to environment.yml
+* Updated sencha=1.0.3 to fix the bug in memory errors possibly with the numpy array on unique filenames ([PR #96 on orpheum](https://github.com/czbiohub/orpheum/pull/96))
+* Add option to write non-coding nucleotide sequences fasta files while doing sencha translate
+* Don't save translate csvs and jsons by default, add separate `--save_translate_json` and `--save_translate_csv`
+* Updated `sencha translate` default parameters to be `--ksize 8 --jaccard-threshold 0.05` because those were the most successful
+* Update renaming of `khtools` commands to `sencha`
+
+#### MultiQC
+
+* Fix the use of `skip_multiqc` flag condition with if and not when
+
+### `Dependencies`
+
+### `Deprecated`
+
+* Removed ability to specify multiple `--scaled` or `--num-hashes` values to enable merging of signatures

@@ -1,22 +1,26 @@
 # You can use this file to create a conda environment for this pipeline:
 #   conda env create -f environment.yml
-name: nf-core-kmermaid-1.0.0dev
+name: nf-core-kmermaid-0.1.0dev
 channels:
   - bioconda
   - conda-forge
   - defaults
+  - anaconda
 dependencies:
-  - conda-forge::r-data.table=1.12.4
-  - conda-forge::r-gplots=3.0.1.1
-  - bioconda::bioconductor-edger=3.28.0
-  - conda-forge::r-markdown=1.1
-  - bioconda::sourmash=3.2.2
+  - conda-forge::python=3.7.3
+  - conda-forge::markdown=3.1.1
+  - conda-forge::pymdown-extensions=6.0
+  - conda-forge::pygments=2.5.2
+  - conda-forge::tqdm=4.43.0
+  # - conda-forge::gxx_linux-64=7.3.0
+  - conda-forge::s3fs=0.4.2
+  - bioconda::htslib=1.11
+  - bioconda::sourmash=3.5.0
   - bioconda::samtools=1.10
   - bioconda::screed=1.0.4
-  - conda-forge::tqdm=4.43.0
   - bioconda::khmer=3.0.0a3
-  - conda-forge::gxx_linux-64=7.3.0
-  - conda-forge::rust=1.40.0
+  - bioconda::pysam=0.16.0
+  - anaconda::make=4.2.1
   - alabaster=0.7.12
   - fastp=0.20.0
   - fastqc=0.11.9
@@ -30,8 +34,8 @@ dependencies:
   - ska=1.0
   - sphinx=2.3.1
   - jupyter=1.0.0
-  - conda-forge::s3fs=0.4.2
   - sortmerna=2.1b # for metatranscriptomics
+  - ripgrep=12.1.1
   - pip:
-    - git+https://github.com/czbiohub/bam2fasta.git@master#egg=bam2fasta # master
-    - git+https://github.com/czbiohub/sencha.git@master#egg=sencha==1.0.0 # master - need to fix the version
+    - bam2fasta==1.0.8
+    - orpheum==1.0.4

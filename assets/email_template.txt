@@ -1,7 +1,12 @@
-========================================
+----------------------------------------------------
+                                        ,--./,-.
+        ___     __   __   __   ___     /,-._.--~\\
+  |\\ | |__  __ /  ` /  \\ |__) |__         }  {
+  | \\| |       \\__, \\__/ |  \\ |___     \\`-._,-`-,
+                                        `._,._,'
+  nf-core/kmermaid v${version}
+----------------------------------------------------
 
- nf-core/kmermaid v${version}
-========================================
 Run Name: $runName
 
 <% if (success){
@@ -16,6 +21,7 @@ The full error message was:
 ${errorReport}
 """
 } %>
+
 
 The workflow was completed at $dateComplete (duration: $duration)
 
@@ -32,4 +38,3 @@ Pipeline Configuration:
 --
 nf-core/kmermaid
 https://github.com/nf-core/kmermaid
-
