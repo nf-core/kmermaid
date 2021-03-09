@@ -509,6 +509,7 @@ translate_peptide_molecule = params.translate_peptide_molecule
 translate_jaccard_threshold = params.translate_jaccard_threshold
 track_abundance = params.track_abundance
 
+
 // Tenx parameters
 tenx_tags = params.tenx_tags
 tenx_cell_barcode_pattern = params.tenx_cell_barcode_pattern
@@ -1771,13 +1772,14 @@ workflow.onComplete {
     }
 
     // Write summary e-mail HTML to a file
-    def output_d = new File("${params.outdir}/pipeline_info/")
-    if (!output_d.exists()) {
-        output_d.mkdirs()
+    def output_d = file( "${params.outdir}/pipeline_info/" )
+    if( !output_d.exists() ) {
+      output_d.mkdirs()
     }
-    def output_hf = new File(output_d, "pipeline_report.html")
+    def output_hf = file("${params.outdir}/pipeline_report.html")
     output_hf.withWriter { w -> w << email_html }
-    def output_tf = new File(output_d, "pipeline_report.txt")
+    def output_tf = file("${params.outdir}/pipeline_report.txt")
+
     output_tf.withWriter { w -> w << email_txt }
 
     c_green = params.monochrome_logs ? '' : "\033[0;32m";
