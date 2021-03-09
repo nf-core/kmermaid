@@ -448,7 +448,7 @@ save_translate_json = params.save_translate_json
 // --- Parse the Sourmash parameters ----
 ksizes = params.ksizes?.toString().tokenize(',')
 Channel.from(params.ksizes?.toString().tokenize(','))
-  .into { ch_ksizes_for_compare_petide; ch_ksizes_for_compare_nucleotide }
+  .into { ch_ksizes_for_compare_peptide; ch_ksizes_for_compare_nucleotide }
 
 molecules = params.molecules?.toString().tokenize(',')
 peptide_molecules = molecules.findAll { it != "dna" }
@@ -1489,7 +1489,7 @@ if ((params.bam || params.tenx_tgz) && !params.skip_compute && !params.skip_sig_
 
     output:
     file(csv) into ch_sourmash_sig_describe_merged
-    set val(cell_id), val(sketch_id), val(moltypes), val(ksizes), file(output_sig) into ch_sourmash_sketches_merged, ch_sourmash_sketches_merged_to_view
+    set val(cell_id), val(sketch_id), val(moltypes), val(ksizes), file(output_sig) into ch_sourmash_sketches_merged, ch_sourmash_sketches_merged_to_view, ch_sourmash_sketches_merged_for_moltypes_ksizes
 
     script:
     // sketch_id = make_sketch_id(molecule, ksize, sketch_value, track_abundance, sketch_style)
@@ -1567,31 +1567,47 @@ if (!params.split_kmer && !params.skip_compare && !params.skip_compute) {
   ch_sourmash_sketches_merged_to_view
     .dump( tag: "ch_sourmash_sketches_to_view" )
 
+
+  ch_peptide_molecules_for_compare
+    .combine( ch_ksizes_for_compare_peptide )
+    .set { ch_sourmash_compare_params_peptide }
+
+  Channel.from("dna")  
+    .combine( ch_ksizes_for_compare_nucleotide )
+    .mix ( ch_sourmash_compare_params_peptide )
+    .set { ch_sourmash_compare_params_both }
+
   ch_sourmash_sketches_merged
-    // Drop first index which is the cell id
-    .map { [it[1], it[2].split(","), it[3].split(","), it[4]] }
+    // Drop first index (index 0) which is the cell id
+    // Drop the second index (index 1) which is the sketch id
+    // Keep only moltype
+    // Drop ksize
+    .map { [tuple(it[2].split(",")), it[4]] }
     .dump(tag: 'ch_sourmash_sketches_merged__map_split' )
-    .groupTuple(by: [0, 1, 2])
-    .dump(tag: 'ch_sourmash_sketches_merged__map_split__grouptuple' )
     .transpose()
-    .dump(tag: 'ch_sourmash_sketches_merged__map_split__grouptuple__transpose' )
+    .dump(tag: 'ch_sourmash_sketches_merged__map_split__tranpose' )
+    // Perform cartesian product on the molecules with compare params
+    .combine( ch_sourmash_compare_params_both, by: 0)
+    .dump(tag: 'ch_sourmash_sketches_merged__map_split__combine' )
+    .groupTuple(by: [0, 2])
     .dump(tag: 'ch_sourmash_sketches_to_compare' )
     .set { ch_sourmash_sketches_to_compare }
 
 
   process sourmash_compare_sketches {
     // Combine peptide and nucleotide sketches
-    tag "${sketch_id}"
+    tag "${compare_id}"
     publishDir "${params.outdir}/compare_sketches", mode: 'copy'
 
     input:
-    set file ("*.sig"), val(ksize), val(molecule) from ch_sourmash_sketches_to_compare
+    // Weird order but that's how it shakes out with the groupTuple
+    set val(molecule), file("*.sig"), val(ksize)  from ch_sourmash_sketches_to_compare
 
     output:
     file(csv)
 
     script:
-    compare_id = "molecule-${molecule}__ksize-${ksize}"
+    compare_id = "${molecule}__k=${ksize}"
     processes = "--processes ${task.cpus}"
     csv = "similarities__${compare_id}.csv"
     """
@@ -1599,8 +1615,10 @@ if (!params.split_kmer && !params.skip_compare && !params.skip_compute) {
           --ksize ${ksize} \\
           --${molecule} \\
           --csv ${csv} \\
-          $processes \\
+          ${processes} \\
           --traverse-directory .
+    # Use --traverse-directory instead of all the files explicitly to avoid
+    # "too many arguments" error for bash when there are lots of samples
     """
 
   }
