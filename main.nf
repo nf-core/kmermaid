@@ -1607,7 +1607,7 @@ if (!params.split_kmer && !params.skip_compare && !params.skip_compute) {
     file(csv)
 
     script:
-    compare_id = "${molecule}__k=${ksize}"
+    compare_id = "${molecule}__k-${ksize}"
     processes = "--processes ${task.cpus}"
     csv = "similarities__${compare_id}.csv"
     """

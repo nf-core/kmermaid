@@ -51,7 +51,12 @@ def merge(filenames, ksize, moltype, name=None, outsig=None):
             this_n += 1
             total_loaded += 1
 
-    merged_sigobj = sourmash.SourmashSignature(mh)
+    if total_loaded == 1:
+        merged_sigobj = sigobj
+    else:
+        merged_sigobj = sourmash.SourmashSignature(mh)
+
+    # Add a name if specified
     if name is not None:
         merged_sigobj._name = name
 
@@ -93,20 +98,20 @@ if __name__ == "__main__":
     # Only iterate and read over the sigfiles if there is really something to merge
     # "something to merge" = there is more than one sigfile. otherwise there's no point
     # in reading in the files only to make the same file again
-    if len(args.sigfiles) > 1:
-        ksizes = map(int, args.ksizes.split(","))
-        moltypes = args.moltypes.split(",")
+    # if len(args.sigfiles) > 1:
+    ksizes = map(int, args.ksizes.split(","))
+    moltypes = args.moltypes.split(",")
 
-        merged_sigobjs = []
-        for moltype, ksize in itertools.product(moltypes, ksizes):
-            merged = merge(
-                args.sigfiles, moltype=moltype, ksize=ksize, name=args.name
-            )
-            merged_sigobjs.append(merged)
+    merged_sigobjs = []
+    for moltype, ksize in itertools.product(moltypes, ksizes):
+        if moltype.lower() == 'dna':
+            moltype = moltype.upper()
+        merged = merge(args.sigfiles, moltype=moltype, ksize=ksize, name=args.name)
+        merged_sigobjs.append(merged)
 
-        with open(args.outsig, "wt") as f:
-            sourmash.save_signatures(merged_sigobjs, fp=f)
-    else:
-        # Otherwise, nothing to merge. Simply copy the file to the
-        # output signature location
-        shutil.copyfile(args.sigfiles[0], args.outsig)
+    with open(args.outsig, "wt") as f:
+        sourmash.save_signatures(merged_sigobjs, fp=f)
+    # else:
+    #     # Otherwise, nothing to merge. Simply copy the file to the
+    #     # output signature location
+    #     shutil.copyfile(args.sigfiles[0], args.outsig)
