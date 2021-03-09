@@ -386,12 +386,12 @@ if (!protein_input) {
   if (params.subsample && params.skip_trimming ) {
     subsample_reads_ch_unchecked
       .ifEmpty{  exit 1, "No reads provided! Check read input files" }
-      .set { subsample_ch_reads_for_ribosomal_removal }
+      .set { subsample_ch_reads_to_translate }
   }
   if (params.skip_trimming && !(params.bam || params.tenx_tgz)) {
     reads_ch_unchecked
       .ifEmpty{ exit 1, "No reads provided! Check read input files" }
-      .set { ch_reads_for_ribosomal_removal }
+      .set { ch_reads_to_translate }
     ch_read_files_trimming_to_check_size = Channel.empty()
   } else if (params.bam || params.tenx_tgz) {
     ch_non_bam_reads_unchecked
@@ -407,11 +407,11 @@ if (!protein_input) {
   // Since there exists protein input, don't check if these are empty
   if (params.subsample) {
     subsample_reads_ch_unchecked
-      .set { subsample_ch_reads_for_ribosomal_removal }
+      .set { subsample_ch_reads_to_translate }
   }
   if (params.skip_trimming) {
     reads_ch_unchecked
-      .set { ch_reads_for_ribosomal_removal }
+      .set { ch_reads_to_translate }
     ch_read_files_trimming_to_check_size = Channel.empty()
   } else if (!have_nucleotide_fasta_input) {
     ch_read_files_trimming_unchecked
@@ -430,15 +430,6 @@ if (params.split_kmer){
     params.ksizes = '21,27,33,51'
 }
 
-// Get rRNA databases
-// Default is set to bundled DB list in `assets/rrna-db-defaults.txt`
-
-rRNA_database = file(params.rrna_database_manifest)
-if (rRNA_database.isEmpty()) {exit 1, "File ${rRNA_database.getName()} is empty!"}
-Channel
-    .from( rRNA_database.readLines() )
-    .map { row -> file(row) }
-    .set { sortmerna_fasta }
 
 // --- Parse Translate parameters ---
 save_translate_csv = params.save_translate_csv
@@ -523,6 +514,26 @@ if (!params.write_barcode_meta_csv) {
 else {
   barcode_metadata_folder = "barcode_metadata"
 }
+
+
+//////////////////////////////////////////////////////////
+/* --  Parse Housekeeping K-mer removal parameters  -- */
+/////////////////////////////////////////////////////////
+housekeeping_protein_fasta = params.housekeeping_protein_fasta
+housekeeping_rna_fasta = params.housekeeping_rna_fasta
+
+need_refseq_download = !housekeeping_protein_fasta && !housekeeping_rna_fasta
+
+ch_refseq_moltype_to_fasta = Channel.from(["protein", housekeeping_protein_fasta], ["rna", housekeeping_rna_fasta])
+ch_refseq_moltype_to_fasta
+    // filter if the second item, the fasta is false
+    .filter{ !it[1] }
+    // Take only the first item, the molecule type
+    .map{ it[0] }
+    .set{ ch_refseq_moltypes_to_download }
+
+// Parse refseq taxonomy group to download
+refseq_taxonomy = params.refseq_taxonomy
 
 // Has the run name been specified by the user?
 //  this has the bonus effect of catching both -name and --name
@@ -851,8 +862,8 @@ if (params.tenx_tgz || params.bam) {
   // Put fastqs from aligned and unaligned reads into a single channel
   tenx_reads_aligned_concatenation_ch
     .mix( tenx_reads_unaligned_ch )
-    .dump(tag: "tenx_ch_reads_for_ribosomal_removal")
-    .set{ tenx_ch_reads_for_ribosomal_removal }
+    .dump(tag: "tenx_ch_reads_to_translate")
+    .set{ tenx_ch_reads_to_translate }
 
   if ((params.tenx_min_umi_per_cell > 0) || !params.barcodes_file) {
     process count_umis_per_cell {
@@ -898,14 +909,14 @@ if (params.tenx_tgz || params.bam) {
     good_barcodes_ch = tenx_bam_barcodes_ch
   }
 
-  tenx_ch_reads_for_ribosomal_removal
+  tenx_ch_reads_to_translate
     .combine( good_barcodes_ch, by: 0 )
-    .dump( tag: 'tenx_ch_reads_for_ribosomal_removal__combine__good_barcodes_ch' )
+    .dump( tag: 'tenx_ch_reads_to_translate__combine__good_barcodes_ch' )
     .map{ it -> [it[0], it[1], it[2], it[3].splitText()] }
     .transpose()
-    .dump( tag: 'tenx_ch_reads_for_ribosomal_removal__combine__good_barcodes_ch__transpose' )
+    .dump( tag: 'tenx_ch_reads_to_translate__combine__good_barcodes_ch__transpose' )
     .map{ it -> [it[0], it[1], it[2], it[3].replaceAll("\\s+", "") ] }
-    .dump( tag: 'tenx_ch_reads_for_ribosomal_removal__combine__good_barcodes_ch__transpose__no_newlines' )
+    .dump( tag: 'tenx_ch_reads_to_translate__combine__good_barcodes_ch__transpose__no_newlines' )
     .set{ tenx_reads_with_good_barcodes_ch }
 
   process extract_per_cell_fastqs {
@@ -949,8 +960,8 @@ if (params.tenx_tgz || params.bam) {
   // // Filtering out fastq.gz files less than 200 bytes (arbitary number)
   // // ~200 bytes is about the size of a file with a single read or less
   // // We can't use .size() > 0 because it's fastq.gz is gzipped content
-  // per_channel_cell_ch_reads_for_ribosomal_removal
-  //   .dump(tag: 'per_channel_cell_ch_reads_for_ribosomal_removal')
+  // per_channel_cell_ch_reads_to_translate
+  //   .dump(tag: 'per_channel_cell_ch_reads_to_translate')
   //   .flatten()
   //   .filter{ it -> it.size() > 200 }   // each item is just a single file, no need to do it[1]
   //   .map{ it -> tuple(it.simpleName, file(it)) }
@@ -960,7 +971,7 @@ if (params.tenx_tgz || params.bam) {
   if (params.skip_trimming) {
     ch_non_bam_reads
       .concat(per_cell_fastqs_ch)
-      .set { ch_reads_for_ribosomal_removal }
+      .set { ch_reads_to_translate }
   } else {
     ch_non_bam_reads
       .mix ( per_cell_fastqs_ch )
@@ -1053,10 +1064,10 @@ if ( have_nucleotide_input ) {
     ch_reads_trimmed
       .concat( fastas_ch )
       .dump ( tag: 'trimmed_reads__concat_fastas' )
-      .set { subsample_ch_reads_for_ribosomal_removal }
+      .set { subsample_ch_reads_to_translate }
   } else {
     // Concatenate trimmed reads with fastas for signature generation
-    ch_reads_for_ribosomal_removal = ch_reads_trimmed.concat(fastas_ch)
+    ch_reads_to_translate = ch_reads_trimmed.concat(fastas_ch)
   }
 } else {
   ch_fastp_results = Channel.from(false)
@@ -1068,10 +1079,10 @@ if (params.subsample) {
     publishDir "${params.outdir}/seqtk/", mode: params.publish_dir_mode
 
     input:
-    set val(id), file(reads) from subsample_ch_reads_for_ribosomal_removal
+    set val(id), file(reads) from subsample_ch_reads_to_translate
 
     output:
-    set val(id), file("*_${params.subsample}.fastq.gz") into ch_reads_for_ribosomal_removal
+    set val(id), file("*_${params.subsample}.fastq.gz") into ch_reads_to_translate
 
     script:
     read1 = reads[0]
@@ -1085,99 +1096,6 @@ if (params.subsample) {
     """
     }
   }
-
-/*
- * STEP 2+ - SortMeRNA - remove rRNA sequences on request
- */
-if (!params.remove_ribo_rna) {
-    ch_reads_for_ribosomal_removal
-        .set { ch_reads_to_translate }
-    sortmerna_logs = Channel.empty()
-} else {
-    process sortmerna_index {
-        label 'mid_memory_long'
-        label 'mid_cpu'
-        tag "${fasta.baseName}"
-
-        input:
-        file(fasta) from sortmerna_fasta
-
-        output:
-        val("${fasta.baseName}") into sortmerna_db_name
-        file("$fasta") into sortmerna_db_fasta
-        file("${fasta.baseName}*") into sortmerna_db
-
-        script:
-        """
-        indexdb_rna --ref $fasta,${fasta.baseName} -m 3072 -v
-        """
-    }
-
-    process sortmerna {
-        label 'mid_memory_long'
-        label 'mid_cpu'
-        tag "$name"
-        publishDir "${params.outdir}/SortMeRNA", mode: "${params.publish_dir_mode}",
-            saveAs: {filename ->
-                if (filename.indexOf("_rRNA_report.txt") > 0) "logs/$filename"
-                else if (params.save_non_rrna_reads) "reads/$filename"
-                else null
-            }
-
-        input:
-        set val(name), file(reads) from ch_reads_for_ribosomal_removal
-        val(db_name) from sortmerna_db_name.collect()
-        file(db_fasta) from sortmerna_db_fasta.collect()
-        file(db) from sortmerna_db.collect()
-
-        output:
-        set val(name), file("*.fq.gz") into ch_reads_to_translate
-        file "*_rRNA_report.txt" into sortmerna_logs
-
-
-        script:
-        //concatenate reference files: ${db_fasta},${db_name}:${db_fasta},${db_name}:...
-        def Refs = ''
-        for (i=0; i<db_fasta.size(); i++) { Refs+= ":${db_fasta[i]},${db_name[i]}" }
-        Refs = Refs.substring(1)
-
-        // One set of reads --> single end
-        if (reads[1] == null) {
-            """
-            gzip -d --force < ${reads} > all-reads.fastq
-            sortmerna --ref ${Refs} \
-                --reads all-reads.fastq \
-                --num_alignments 1 \
-                -a ${task.cpus} \
-                --fastx \
-                --aligned rRNA-reads \
-                --other non-rRNA-reads \
-                --log -v
-            gzip --force < non-rRNA-reads.fastq > ${name}.fq.gz
-            mv rRNA-reads.log ${name}_rRNA_report.txt
-            """
-        } else {
-            """
-            gzip -d --force < ${reads[0]} > reads-fw.fq
-            gzip -d --force < ${reads[1]} > reads-rv.fq
-            merge-paired-reads.sh reads-fw.fq reads-rv.fq all-reads.fastq
-            sortmerna --ref ${Refs} \
-                --reads all-reads.fastq \
-                --num_alignments 1 \
-                -a ${task.cpus} \
-                --fastx --paired_in \
-                --aligned rRNA-reads \
-                --other non-rRNA-reads \
-                --log -v
-            unmerge-paired-reads.sh non-rRNA-reads.fastq non-rRNA-reads-fw.fq non-rRNA-reads-rv.fq
-            gzip < non-rRNA-reads-fw.fq > ${name}-fw.fq.gz
-            gzip < non-rRNA-reads-rv.fq > ${name}-rv.fq.gz
-            mv rRNA-reads.log ${name}_rRNA_report.txt
-            """
-        }
-    }
-  }
-
 
 
   if (params.reference_proteome_fasta){
@@ -1399,6 +1317,100 @@ if (!params.skip_compute && (protein_input || params.reference_proteome_fasta)){
   sourmash_sketches_peptide = Channel.empty()
 }
 
+
+if (!params.skip_remove_housekeeping_genes) {
+  ///////////////////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////////////////
+  /* --                                                                     -- */
+  /* --              REMOVE K-MERS FROM HOUSEKEEPING GENES                  -- */
+  /* --                                                                     -- */
+  ///////////////////////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////////////////// 
+
+
+
+  ///////////////////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////////////////
+  /* --                                                                     -- */
+  /* --         DOWNLOAD NUCLEOTIDE AND PROTEIN SEQS FROM REFSEQ            -- */
+  /* --                                                                     -- */
+  ///////////////////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////////////////
+  /*
+  * STEP 6 - rsync to download refeseq
+  */
+  if (need_refseq_download){
+    // No fastas provided for removing housekeeping genes
+    process download_refseq {
+      tag "${refseq_taxonomy}"
+      label "process_low"
+      publishDir "${params.outdir}/ncbi_refseq/", mode: 'copy'
+
+      input:
+      val refseq_moltype from ch_refseq_moltypes_to_download
+
+      output:
+      set val(refseq_moltype), file(output_fasta) into ch_refseq_fasta_to_filter
+
+      script:
+      output_fasta = "${refseq_taxonomy}--\$RELEASE_NUMBER--\$DATE.${refseq_moltype}.fa.gz"
+      """
+      rsync \\
+            --prune-empty-dirs \\
+            --archive \\
+            --verbose \\
+            --recursive \\
+            --include '*${refseq_moltype}.faa.gz' \\
+            --exclude '/*' \\
+            rsync://ftp.ncbi.nlm.nih.gov/refseq/release/${refseq_taxonomy}/ .
+      wget https://ftp.ncbi.nlm.nih.gov/refseq/release/RELEASE_NUMBER
+      DATE=\$(date +'%Y-%M-%d')
+      RELEASE_NUMBER=\$(cat RELEASE_NUMBER)
+      zcat *.${refseq_moltype}.faa.gz | gzip -c - > ${output_fasta}
+      """
+    }
+  }
+
+  ///////////////////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////////////////
+  /* --                                                                     -- */
+  /* --              REMOVE K-MERS FROM HOUSEKEEPING GENES                  -- */
+  /* --                                                                     -- */
+  ///////////////////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////////////////
+  /*
+  * STEP 7 - Filter fastas from refseq
+  */
+  if (need_refseq_download){
+    // No fastas provided for removing housekeeping genes
+    process filter_fasta_housekeeping {
+      tag "${refseq_taxonomy}"
+      label "process_low"
+      publishDir "${params.outdir}/ncbi_refseq/", mode: 'copy'
+
+      input:
+      set val(refseq_moltype), file(fasta) from ch_refseq_fasta_to_filter
+
+      output:
+      set val(refseq_moltype), file(output_fasta_gz) into (ch_houskeeping_fasta)
+
+      script:
+      output_fasta = "${fasta.basename}__only_housekeeping_genes.fa"
+      output_fasta_gz = "${fasta.basename}__only_housekeeping_genes.fa.gz"
+      """
+      filter_fasta_regex.py \\
+          --input-fasta ${fasta} \\
+          --output-fasta ${output_fasta} \\
+          --regex-pattern '${params.housekeeping_gene_regex}'
+      gzip -c ${output_fasta} > ${output_fasta_gz}
+      """
+    }
+  }
+}
+
+
+
+
 if (params.split_kmer){
      process ska_compare_sketches {
     tag "${sketch_id}"
@@ -1481,7 +1493,6 @@ if (!params.skip_multiqc){
       input:
       file multiqc_config from ch_multiqc_config
       file ('fastp/*') from ch_fastp_results.collect().ifEmpty([])
-      file ('sortmerna/*') from sortmerna_logs.collect().ifEmpty([])
       file ('software_versions/*') from ch_software_versions_yaml.collect()
       file workflow_summary from ch_workflow_summary.collectFile(name: "workflow_summary_mqc.yaml")
 
