@@ -1521,15 +1521,50 @@ if ((params.bam || params.tenx_tgz) && !params.skip_compute && !params.skip_sig_
     # Add csv showing number of hashes at each ksize
     sourmash sig describe --csv ${csv} ${output_sig}
     """
+
   }
 
-} else if (!params.skip_compute) {
+
+  ch_sourmash_sketches_merged_to_view
+    .dump( tag: "ch_sourmash_sketches_to_view" )
+
+  ch_peptide_molecules_for_compare
+    .combine( ch_ksizes_for_compare_peptide )
+    .set { ch_sourmash_compare_params_peptide }
+
+  Channel.from("dna")  
+    .combine( ch_ksizes_for_compare_nucleotide )
+    .mix ( ch_sourmash_compare_params_peptide )
+    .set { ch_sourmash_compare_params_both }
+
+  ch_sourmash_sketches_merged
+    // Drop first index (index 0) which is the cell id
+    // Drop the second index (index 1) which is the sketch id
+    // Keep only moltype
+    // Drop ksize
+    .map { [tuple(it[2].split(",")), it[4]] }
+    .dump(tag: 'ch_sourmash_sketches_merged__map_split' )
+    .transpose()
+    .dump(tag: 'ch_sourmash_sketches_merged__map_split__tranpose' )
+    // Perform cartesian product on the molecules with compare params
+    .combine( ch_sourmash_compare_params_both, by: 0)
+    .dump(tag: 'ch_sourmash_sketches_merged__map_split__combine' )
+    .groupTuple(by: [0, 2])
+    .dump(tag: 'ch_sourmash_sketches_to_compare' )
+    .set { ch_sourmash_sketches_to_compare }
+
+// } else if (!params.skip_compute) {
+//   sourmash_sketches_nucleotide
+//     .mix ( sourmash_sketches_peptide )
+//     .dump ( tag: 'skip_merge__ch_sourmash_sketches_to_comapre' )
+//     .set { ch_sourmash_sketches_to_comapre }
+//   ch_sourmash_sig_describe_merged = Channel.empty()
+} else {
+  // Use "mix" to aggregate the nucleotide and peptide sketches into one place
   sourmash_sketches_nucleotide
     .mix ( sourmash_sketches_peptide )
     .dump ( tag: 'skip_merge__ch_sourmash_sketches_to_comapre' )
     .set { ch_sourmash_sketches_to_comapre }
-  ch_sourmash_sig_describe_merged = Channel.empty()
-} else {
   ch_sourmash_sig_describe_merged = Channel.empty()
 }
 
@@ -1578,35 +1613,8 @@ if (!params.split_kmer && !params.skip_compare && !params.skip_compute) {
   // sourmash_sketches_peptide_for_compare
   //   .mix ( sourmash_sketches_nucleotide_for_compare )
   //   .set { ch_sourmash_sketches_to_compare }
-  ch_sourmash_sketches_merged_to_view
-    .dump( tag: "ch_sourmash_sketches_to_view" )
 
-
-  ch_peptide_molecules_for_compare
-    .combine( ch_ksizes_for_compare_peptide )
-    .set { ch_sourmash_compare_params_peptide }
-
-  Channel.from("dna")  
-    .combine( ch_ksizes_for_compare_nucleotide )
-    .mix ( ch_sourmash_compare_params_peptide )
-    .set { ch_sourmash_compare_params_both }
-
-  ch_sourmash_sketches_merged
-    // Drop first index (index 0) which is the cell id
-    // Drop the second index (index 1) which is the sketch id
-    // Keep only moltype
-    // Drop ksize
-    .map { [tuple(it[2].split(",")), it[4]] }
-    .dump(tag: 'ch_sourmash_sketches_merged__map_split' )
-    .transpose()
-    .dump(tag: 'ch_sourmash_sketches_merged__map_split__tranpose' )
-    // Perform cartesian product on the molecules with compare params
-    .combine( ch_sourmash_compare_params_both, by: 0)
-    .dump(tag: 'ch_sourmash_sketches_merged__map_split__combine' )
-    .groupTuple(by: [0, 2])
-    .dump(tag: 'ch_sourmash_sketches_to_compare' )
-    .set { ch_sourmash_sketches_to_compare }
-
+  // ch_sourmash_sketches_to_compare = Channel.empty()
 
   process sourmash_compare_sketches {
     // Combine peptide and nucleotide sketches
@@ -1615,7 +1623,7 @@ if (!params.split_kmer && !params.skip_compare && !params.skip_compute) {
 
     input:
     // Weird order but that's how it shakes out with the groupTuple
-    set val(molecule), file("*.sig"), val(ksize)  from ch_sourmash_sketches_to_compare
+    set val(molecule), file("*.sig"), val(ksize) from ch_sourmash_sketches_to_compare
 
     output:
     file(csv)
