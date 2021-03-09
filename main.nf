@@ -1461,24 +1461,18 @@ if ((params.bam || params.tenx_tgz) && !params.skip_compute && !params.skip_sig_
     .dump( tag: 'fastq_id_to_cells__combine__sketches__grouptuple' )
     .map { it -> [it[0].unique(), it[1], it[2].unique(), it[3], it[4], it[5], it[6]] }
     .dump( tag: 'fastq_id_to_cells__combine__sketches__grouptuple__unique' )
-    .branch {
-      to_merge: it[1].length() > 1
-      // only one of aligned or unaligned reads here
-      // No merging necessary
-      single: it[1].length() == 1
-    }
-    .set { ch_sourmash_sketches_branched }
-
-  ch_sourmash_sketches_branched
-    .to_merge
-    .dump ( tag: 'ch_sourmash_sketches_to_merge' )
     .set { ch_sourmash_sketches_to_merge }
 
-  ch_sourmash_sketches_branched
-    .single
-    .map { [it[0][0], it[1], it[2][0], it[3], it[4], it[5], file(it[6][0])] }
-    .dump ( tag: 'ch_sourmash_sketches_to_mix_with_merged' )
-    .set { ch_sourmash_sketches_to_mix_with_merged }
+  // ch_sourmash_sketches_branched
+  //   .to_merge
+  //   .dump ( tag: 'ch_sourmash_sketches_to_merge' )
+  //   .set { ch_sourmash_sketches_to_merge }
+
+  // ch_sourmash_sketches_branched
+  //   .single
+  //   .map { [it[0][0], it[1], it[2][0], it[3], it[4], it[5], file(it[6][0])] }
+  //   .dump ( tag: 'ch_sourmash_sketches_to_mix_with_merged' )
+  //   .set { ch_sourmash_sketches_to_mix_with_merged }
 
   process sourmash_sig_merge {
     tag "${sig_id}"
@@ -1495,47 +1489,20 @@ if ((params.bam || params.tenx_tgz) && !params.skip_compute && !params.skip_sig_
 
     output:
     file(csv) into ch_sourmash_sig_describe_merged
-    set val(cell_id), val(sketch_id), val(molecules), val(ksizes), file(output_sig) into ch_sourmash_sketches_merged, ch_sourmash_sketches_merged_to_view
+    set val(cell_id), val(sketch_id), val(moltypes), val(ksizes), file(output_sig) into ch_sourmash_sketches_merged, ch_sourmash_sketches_merged_to_view
 
     script:
     // sketch_id = make_sketch_id(molecule, ksize, sketch_value, track_abundance, sketch_style)
-    sig_id = "${cell_id}__${sketch_id}"
+    sig_id = "${cell_id}---${sketch_id}"
     csv = "${sig_id}.csv"
     output_sig = "${sig_id}.sig"
-    println(moltypes)
     """
-    ## --- Doing this big crazy loop in bash because the sigfiles are so small, it's not --- ##
-    ## --- worth spinning up docker images for each one, so doing within bash instead    --- ##
-    # Parse ksizes in bash
-    KSIZES=\$(echo ${ksizes} | tr ',' ' ')
-
-    # Parse molecule types in bash
-    MOLTYPES=\$(echo ${moltypes} | tr ',' ' ')
-
-
-    # Iterate over ksizes
-    for MOLTYPE in \$MOLTYPES; do
-      MOLTYPE_FLAG=\$(echo -n "--\$MOLTYPE")
-      for KSIZE in \$KSIZES; do
-        # Can only merge one kize at a time
-        sourmash sig merge \\
-            \$MOLTYPE_FLAG \\
-            -k \$KSIZE \\
-            -o merged_\$MOLTYPE\_\$KSIZE.sig \\
-            ${sigs}
-
-        # "sig merge" gives default automatic name of md5sum which isn't helpful
-        # --> rename to cell id
-        sourmash sig rename \\
-            \$MOLTYPE_FLAG \\
-            -k \$KSIZE \\
-            -o merged_renamed_\$MOLTYPE\_\$KSIZE.sig \\
-            merged_\$MOLTYPE\_\$KSIZE.sig '${cell_id}'
-      done
-    done
-
-    # Concatenate all ksizes together
-    sourmash sig cat merged_renamed*.sig > ${output_sig}
+    merge_rename_sigs.py \\
+        --ksizes ${ksizes} \\
+        --moltypes ${moltypes} \\
+        --name '${cell_id}' \\
+        --outsig ${output_sig} \\
+        ${sigs}
 
     # Add csv showing number of hashes at each ksize
     sourmash sig describe --csv ${csv} ${output_sig}
@@ -1597,6 +1564,8 @@ if (!params.split_kmer && !params.skip_compare && !params.skip_compute) {
   // sourmash_sketches_peptide_for_compare
   //   .mix ( sourmash_sketches_nucleotide_for_compare )
   //   .set { ch_sourmash_sketches_to_compare }
+  ch_sourmash_sketches_merged_to_view
+    .dump( tag: "ch_sourmash_sketches_to_view" )
 
   ch_sourmash_sketches_merged
     // Drop first index which is the cell id
@@ -1609,8 +1578,7 @@ if (!params.split_kmer && !params.skip_compare && !params.skip_compute) {
     .dump(tag: 'ch_sourmash_sketches_to_compare' )
     .set { ch_sourmash_sketches_to_compare }
 
-  ch_sourmash_sketches_merged_to_view
-    .dump( tag: "ch_sourmash_sketches_to_view" )
+
   process sourmash_compare_sketches {
     // Combine peptide and nucleotide sketches
     tag "${sketch_id}"
