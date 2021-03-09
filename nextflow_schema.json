@@ -224,11 +224,6 @@
                     "description": "A barcode is only considered a valid barcode read and its signature is written if number of umis are greater than tenx_min_umi_per_cell",
                     "fa_icon": "fas fa-percentage"
                 },
-                "shard_size": {
-                    "type": "integer",
-                    "description": "Number of alignment to contain in each sharded bam file",
-                    "fa_icon": "fas fa-percentage"
-                },
                 "barcodes_file": {
                     "type": "string",
                     "description": "For bam files, Optional absolute path to a .tsv barcodes file if the input is unfiltered 10x bam file",
@@ -286,6 +281,10 @@
                     "type": "boolean",
                     "description": "Skip sourmash compare.",
                     "fa_icon": "fas fa-fast-forward"
+                },
+                "skip_sig_merge": {
+                    "type": "boolean",
+                    "description": "Skip merging aligned+unaligned reads per cell (keep aligned/unaligned separate)"
                 },
                 "skip_multiqc": {
                     "type": "boolean",

@@ -12,8 +12,9 @@ dependencies:
   - conda-forge::pymdown-extensions=6.0
   - conda-forge::pygments=2.5.2
   - conda-forge::tqdm=4.43.0
-  - conda-forge::gxx_linux-64=7.3.0
+  # - conda-forge::gxx_linux-64=7.3.0
   - conda-forge::s3fs=0.4.2
+  - bioconda::htslib=1.11
   - bioconda::sourmash=3.5.0
   - bioconda::samtools=1.10
   - bioconda::screed=1.0.4
@@ -37,4 +38,4 @@ dependencies:
   - ripgrep=12.1.1
   - pip:
     - bam2fasta==1.0.8
-    - sencha==1.0.3
+    - orpheum==1.0.4

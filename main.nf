@@ -89,6 +89,7 @@ def helpMessage() {
       --skip_trimming               If provided, skip fastp trimming of reads
       --skip_compare                If provided, skip comparison of hashes using sourmash compare
       --skip_compute                If provided, skip computing of signatures using sourmash compute
+      --skip_sig_merge              If provided, skip merging of aligned/unaligned signatures created from bam files or tenx tgz files
 
      Sketch size options:
       --sketch_num_hashes           Number of hashes to use for making the sketches.
@@ -449,7 +450,7 @@ save_translate_json = params.save_translate_json
 // --- Parse the Sourmash parameters ----
 ksizes = params.ksizes?.toString().tokenize(',')
 Channel.from(params.ksizes?.toString().tokenize(','))
-  .into { ch_ksizes_for_compare_petide; ch_ksizes_for_compare_nucleotide }
+  .into { ch_ksizes_for_compare_peptide; ch_ksizes_for_compare_nucleotide }
 
 molecules = params.molecules?.toString().tokenize(',')
 peptide_molecules = molecules.findAll { it != "dna" }
@@ -476,35 +477,40 @@ if (!have_sketch_value && !params.split_kmer) {
 
 
 
-def make_sketch_id (molecule, ksizes, sketch_value, track_abundance, sketch_style) {
-  if (sketch_style == 'size') {
-    sketch_value = "num_hashes-${sketch_value}"
+// added "_for_id" to all variables to avoid variable scoping errors
+def make_sketch_id (
+  molecule_for_id, ksizes_for_id, sketch_value_for_id, track_abundance_for_id, sketch_style_for_id
+  ) {
+  if (sketch_style_for_id == 'size') {
+    style_value = "num_hashes-${sketch_value_for_id}"
   } else {
-    sketch_value = "scaled-${sketch_value}"
+    style_value = "scaled-${sketch_value_for_id}"
   }
 
-  sketch_id = "molecule-${molecule}__ksize-${ksizes}__${sketch_value}__track_abundance-${track_abundance}"
-  return sketch_id
+  this_sketch_id = "molecule-${molecule_for_id}__ksize-${ksizes_for_id}__${style_value}__track_abundance-${track_abundance_for_id}"
+  return this_sketch_id
 }
 
 // Create the --num-hashes or --scaled flag for sourmash
-def make_sketch_value_flag(sketch_style, sketch_value) {
-  if (sketch_style == "size") {
-    number_flag = "--num-hashes ${sketch_value}"
-  } else if (sketch_style == "scaled" ) {
-    number_flag = "--scaled ${sketch_value}"
+// added "_for_flag" to all variables to avoid variable scoping errors
+def make_sketch_value_flag(sketch_style_for_flag, sketch_value_for_flag) {
+  if (sketch_style_for_flag == "size") {
+    number_flag = "--num-hashes ${sketch_value_for_flag}"
+  } else if (sketch_style_for_flag == "scaled" ) {
+    number_flag = "--scaled ${sketch_value_for_flag}"
   } else {
-    exit 1, "${sketch_style} is not a valid sketch counting style! Only 'scaled' and 'size' are valid"
+    exit 1, "${sketch_style_for_flag} is not a valid sketch counting style! Only 'scaled' and 'size' are valid"
   }
   return number_flag
 }
 
 int bloomfilter_tablesize = Math.round(Float.valueOf(params.bloomfilter_tablesize))
 
-peptide_ksize = params.translate_peptide_ksize
-peptide_molecule = params.translate_peptide_molecule
-jaccard_threshold = params.translate_jaccard_threshold
+translate_peptide_ksize = params.translate_peptide_ksize
+translate_peptide_molecule = params.translate_peptide_molecule
+translate_jaccard_threshold = params.translate_jaccard_threshold
 track_abundance = params.track_abundance
+
 
 // Tenx parameters
 tenx_tags = params.tenx_tags
@@ -544,10 +550,11 @@ if (workflow.profile.contains('awsbatch')) {
 }
 
 // Stage config files
-ch_multiqc_config = file("$projectDir/assets/multiqc_config.yaml", checkIfExists: true)
+projectDir = workflow.projectDir
+ch_multiqc_config = file("${workflow.projectDir}/assets/multiqc_config.yaml", checkIfExists: true)
 ch_multiqc_custom_config = params.multiqc_config ? Channel.fromPath(params.multiqc_config, checkIfExists: true) : Channel.empty()
-ch_output_docs = file("$projectDir/docs/output.md", checkIfExists: true)
-ch_output_docs_images = file("$projectDir/docs/images/", checkIfExists: true)
+ch_output_docs = file("${workflow.projectDir}/docs/output.md", checkIfExists: true)
+ch_output_docs_images = file("${workflow.projectDir}/docs/images/", checkIfExists: true)
 
 
 // Header log info
@@ -665,7 +672,7 @@ process get_software_versions {
     ska version &> v_ska.txt
     sortmerna --version &> v_sortmerna.txt
     sourmash -v &> v_sourmash.txt
-    pip show sencha &> v_sencha.txt
+    pip show orpheum &> v_orpheum.txt
     scrape_software_versions.py &> software_versions_mqc.yaml
     """
 }
@@ -674,7 +681,7 @@ if ( !params.split_kmer && have_sketch_value ) {
   /*
    * Validate sketch sizes
    */
-  process validate_sketch_values {
+  process validate_sketch_value {
       publishDir "${params.outdir}/pipeline_info", mode: params.publish_dir_mode,
       saveAs: {filename ->
           if (filename.indexOf(".txt") > 0) filename
@@ -687,59 +694,52 @@ if ( !params.split_kmer && have_sketch_value ) {
       val sketch_scaled_log2
 
       output:
-      file sketch_values into ch_sketch_values_unparsed
+      file sketch_value into ch_sketch_value_unparsed
       file sketch_style into ch_sketch_style_unparsed
 
       script:
       sketch_style = "sketch_style.txt"
-      sketch_values = 'sketch_values.txt'
+      sketch_value = 'sketch_value.txt'
       """
-      validate_sketch_values.py \\
+      validate_sketch_value.py \\
         --sketch_num_hashes ${sketch_num_hashes} \\
         --sketch_num_hashes_log2 ${sketch_num_hashes_log2} \\
         --sketch_scaled ${sketch_scaled} \\
         --sketch_scaled_log2 ${sketch_scaled_log2} \\
-        --output ${sketch_values} \\
+        --output ${sketch_value} \\
         --sketch_style ${sketch_style}
       """
   }
 
   // Parse sketch style into value
-  ch_sketch_style_unparsed
+  sketch_style_parsed = ch_sketch_style_unparsed
     .splitText()
     .dump ( tag: 'ch_sketch_style' )
     .map { it -> it.replaceAll('\\n', '' ) }
-    // .first()
+    .first()
     .dump ( tag: 'sketch_style_parsed' )
-    .into { ch_sketch_style_for_nucleotides; ch_sketch_style_for_proteins }
+    .collect ()
+  // get first item of returned array from .collect()
+  // sketch_style_parsed = sketch_style_parsed[0]
+    // .into { ch_sketch_style_for_nucleotides; ch_sketch_style_for_proteins }
   // sketch_style = sketch_styles[0]
   // println "sketch_style_parsed: ${sketch_style_parsed}"
   // println "sketch_style: ${sketch_style}"
 
   // Parse file into values
-  ch_sketch_values_unparsed
+  sketch_value_parsed = ch_sketch_value_unparsed
     .splitText()
     .map { it -> it.replaceAll('\\n', '')}
-    .dump ( tag : 'sketch_values_parsed' )
-    .into { ch_sketch_values_for_proteins; ch_sketch_values_for_dna }
+    .first()
+    .dump ( tag : 'sketch_value_parsed' )
+    .collect()
+  // get first item of returned array from .collect()
+  // sketch_value_parsed = sketch_value_parsed[0]
+    // .into { ch_sketch_value_for_proteins; ch_sketch_value_for_dna }
 
 }
 
 // Combine sketch values with ksize and molecule types
-
-// ch_peptide_molecules
-  // .combine ( ch_ksizes_for_proteins )
-ch_sketch_style_for_proteins
-  // .combine ( ch_sketch_style_for_proteins )
-  .combine ( ch_sketch_values_for_proteins )
-  .set { ch_sourmash_protein_sketch_params }
-
-
-// ch_ksizes_for_dna
-  // .combine ( ch_sketch_style_for_nucleotides )
-ch_sketch_style_for_nucleotides
-  .combine ( ch_sketch_values_for_dna )
-  .set { ch_sourmash_dna_sketch_params }
 
 
 
@@ -752,19 +752,19 @@ if (params.reference_proteome_fasta){
 
     input:
     file(peptides) from ch_reference_proteome_fasta
-    peptide_ksize
-    peptide_molecule
+    translate_peptide_ksize
+    translate_peptide_molecule
 
     output:
-    set val(bloom_id), val(peptide_molecule), file("${peptides.simpleName}__${bloom_id}.bloomfilter") into ch_sencha_bloom_filter
+    set val(bloom_id), val(translate_peptide_molecule), file("${peptides.simpleName}__${bloom_id}.bloomfilter") into ch_orpheum_bloom_filter
 
     script:
-    bloom_id = "molecule-${peptide_molecule}_ksize-${peptide_ksize}"
+    bloom_id = "molecule-${translate_peptide_molecule}_ksize-${translate_peptide_ksize}"
     """
-    sencha index \\
+    orpheum index \\
       --tablesize ${bloomfilter_tablesize} \\
-      --molecule ${peptide_molecule} \\
-      --peptide-ksize ${peptide_ksize} \\
+      --molecule ${translate_peptide_molecule} \\
+      --peptide-ksize ${translate_peptide_ksize} \\
       --save-as ${peptides.simpleName}__${bloom_id}.bloomfilter \\
       ${peptides}
     """
@@ -911,10 +911,10 @@ if (params.tenx_tgz || params.bam) {
     .set{ tenx_reads_with_good_barcodes_ch }
 
   process extract_per_cell_fastqs {
-    tag "${is_aligned_channel_id}__${cell_barcode}"
+    tag "${fastq_id}"
     label "low_memory"
-    errorStrategy 'ignore'
-    publishDir "${params.outdir}/10x-fastqs/per-cell/${channel_id}/", mode: params.publish_dir_mode, pattern: '*.fastq.gz', saveAs: { filename -> "${filename.replace("|", "-")}"}
+    errorStrategy { task.exitStatus in [143,137,104,134,139] ? 'retry' : 'ignore' }
+    publishDir "${params.outdir}/10x-fastqs/per-cell/${channel_id}/", mode: 'copy', pattern: '*.fastq.gz', saveAs: { filename -> "${filename.replace("|", "-")}"}
 
     input:
     // Example input:
@@ -926,10 +926,8 @@ if (params.tenx_tgz || params.bam) {
     set val(fastq_id), val(cell_id), val(is_aligned) into ch_fastq_id_to_cell_id_is_aligned
 
     script:
-    is_aligned_channel_id = "${channel_id}__${is_aligned}"
-    processes = "--processes ${task.cpus}"
     this_cell_barcode = tenx_cell_barcode_pattern.replace('([ACGT]+)', cell_barcode)
-    fastq_id = "${is_aligned_channel_id}__${is_aligned}__${cell_barcode}"
+    fastq_id = "${channel_id}__${is_aligned}__${cell_barcode}"
     cell_id = "${channel_id}__${cell_barcode}"
     this_cell_fastq_gz = "${fastq_id}.fastq.gz"
     """
@@ -940,11 +938,11 @@ if (params.tenx_tgz || params.bam) {
       '${this_cell_barcode}' \\
       ${reads} \\
       | gzip -c - \\
-      > ${this_cell_fastq_gz}
+      > ${this_cell_fastq_gz} || touch ${this_cell_fastq_gz}
     """
   }
   per_cell_fastqs_ch_possibly_empty
-    // gzipped files are 20 bytes
+    // Empty gzipped files are 20 bytes
     .filter { it -> it[1].size() > 20 }
     .set { per_cell_fastqs_ch }
   // // Make per-cell fastqs into a flat channel that matches the read channels of yore
@@ -1199,7 +1197,7 @@ if (!params.remove_ribo_rna) {
           }
 
       input:
-      set bloom_id, molecule, file(bloom_filter) from ch_sencha_bloom_filter.collect()
+      set bloom_id, molecule, file(bloom_filter) from ch_orpheum_bloom_filter.collect()
       set sample_id, file(reads) from ch_reads_to_translate
 
       output:
@@ -1217,14 +1215,14 @@ if (!params.remove_ribo_rna) {
       json_flag = save_translate_json ? "--json-summary ${translate_json}" : ''
 
       """
-      sencha translate \\
+      orpheum translate \\
         --molecule ${molecule} \\
         --coding-nucleotide-fasta ${sample_id}__coding_reads_nucleotides.fasta \\
         --noncoding-nucleotide-fasta ${sample_id}__noncoding_reads_nucleotides.fasta \\
         ${csv_flag} \\
         ${json_flag} \\
-        --jaccard-threshold ${jaccard_threshold} \\
-        --peptide-ksize ${peptide_ksize} \\
+        --jaccard-threshold ${translate_jaccard_threshold} \\
+        --peptide-ksize ${translate_peptide_ksize} \\
         --peptides-are-bloom-filter \\
         ${bloom_filter} \\
         ${reads} > ${sample_id}__coding_reads_peptides.fasta
@@ -1238,18 +1236,22 @@ if (!params.remove_ribo_rna) {
     // it[1] = sequence fasta file
     ch_translated_protein_seqs
       .mix ( ch_protein_fastas )
+      .dump ( tag: 'ch_protein_seq_to_sketch_from_translate' )
       .set { ch_protein_seq_to_sketch }
     // Remove empty files
     // it[0] = sample bloom id
     // it[1] = sequence fasta file
     ch_noncoding_nucleotides_nonempty =  ch_noncoding_nucleotides_potentially_empty.filter{ it[1].size() > 0 }
-    ch_translatable_nucleotide_seqs.filter{ it[1].size() > 0 }
-      .mix( ch_noncoding_nucleotides_nonempty)
+    ch_translatable_nucleotide_seqs
+      .dump( tag: 'ch_translatable_nucleotide_seqs' )
+      .filter{ it[1].size() > 0 }
+      .dump ( tag: 'ch_reads_to_sketch__from_translate' )
       .set { ch_reads_to_sketch }
 
   } else {
     // Send reads directly into coding/noncoding
     ch_reads_to_translate
+      .dump ( tag: 'ch_reads_to_sketch__no_translation' )
       .set{ ch_reads_to_sketch }
   }
 
@@ -1289,10 +1291,6 @@ if (!params.remove_ribo_rna) {
 
       }
   } else if (!params.skip_compute) {
-    ch_sourmash_dna_sketch_params
-      .combine ( ch_reads_to_sketch )
-      .dump ( tag: 'ch_sourmash_dna_params_with_reads' )
-      .set { ch_sourmash_sketch_params_with_reads }
 
     process sourmash_compute_sketch_fastx_nucleotide {
       tag "${sig_id}"
@@ -1305,18 +1303,26 @@ if (!params.remove_ribo_rna) {
           }
 
       input:
-      set val(sketch_style), val(sketch_value), val(sample_id), file(reads) from ch_sourmash_sketch_params_with_reads
       val track_abundance
+      val sketch_value_parsed
+      val sketch_style_parsed
+      set val(sample_id), file(reads) from ch_reads_to_sketch
 
       output:
       file(csv) into ch_sourmash_sig_describe_nucleotides
-      file(sig) into sourmash_sketches_all_nucleotide
+      set val(sample_id), val(sketch_id), val("dna"), val(params.ksizes), file(sig) into sourmash_sketches_all_nucleotide
 
       script:
       // Don't calculate DNA signature if this is protein, to minimize disk,
       // memory and IO requirements in the future
-      sketch_id = make_sketch_id("dna", params.ksizes, sketch_value, track_abundance, sketch_style)
-      sketch_value_flag = make_sketch_value_flag(sketch_style, sketch_value)
+      sketch_id = make_sketch_id(
+        "dna", 
+        params.ksizes, 
+        sketch_value_parsed[0], 
+        track_abundance, 
+        sketch_style_parsed[0]
+      )
+      sketch_value_flag = make_sketch_value_flag(sketch_style_parsed[0], sketch_value_parsed[0])
       track_abundance_flag = track_abundance ? '--track-abundance' : ''
       sig_id = "${sample_id}__${sketch_id}"
       sig = "${sig_id}.sig"
@@ -1333,7 +1339,15 @@ if (!params.remove_ribo_rna) {
         sourmash sig describe --csv ${csv} ${sig}
       """
     }
-    sourmash_sketches_nucleotide = sourmash_sketches_all_nucleotide.filter{ it.size() > 0 }
+    sourmash_sketches_all_nucleotide
+      .filter{ it[3].size() > 0 }
+      .dump ( tag: "sourmash_sketches_all_nucleotide" )
+      .set { sourmash_sketches_nucleotide }
+  } else {
+  sourmash_sketches_nucleotide = Channel.empty()
+  ch_protein_fastas
+    .set { ch_protein_seq_to_sketch }
+  ch_sourmash_sig_describe_nucleotides = Channel.empty()
   }
 } else {
   sourmash_sketches_nucleotide = Channel.empty()
@@ -1342,6 +1356,7 @@ if (!params.remove_ribo_rna) {
 
   ch_protein_fastas
     .set { ch_protein_seq_to_sketch }
+  ch_sourmash_sig_describe_nucleotides = Channel.empty()
 }
 
 
@@ -1361,10 +1376,6 @@ if (!have_nucleotide_input) {
 
 
 if (!params.skip_compute && (protein_input || params.reference_proteome_fasta)){
-  ch_sourmash_protein_sketch_params
-    .combine ( ch_protein_seq_to_sketch )
-    .dump ( tag: 'ch_sourmash_protein_params_with_reads' )
-    .set { ch_sourmash_protein_sketch_params_with_reads }
 
   process sourmash_compute_sketch_fastx_peptide {
     tag "${sig_id}"
@@ -1378,15 +1389,24 @@ if (!params.skip_compute && (protein_input || params.reference_proteome_fasta)){
 
     input:
     val track_abundance
-    set val(sketch_style), val(sketch_value), val(sample_id), file(reads) from ch_sourmash_protein_sketch_params_with_reads
+    val sketch_value_parsed
+    val sketch_style_parsed
+    set val(sample_id), file(reads) from ch_protein_seq_to_sketch
 
     output:
     file(csv) into ch_sourmash_sig_describe_peptides
-    file(sig) into sourmash_sketches_all_peptide
+    set val(sample_id), val(sketch_id), val(peptide_molecules_comma_separated), val(params.ksizes), file(sig) into sourmash_sketches_all_peptide
 
     script:
-    sketch_id = make_sketch_id(peptide_molecules_comma_separated, params.ksizes, sketch_value, track_abundance, sketch_style)
-    sketch_value_flag = make_sketch_value_flag(sketch_style, sketch_value)
+    sketch_id = make_sketch_id(
+      peptide_molecules_comma_separated, 
+      params.ksizes, 
+      sketch_value_parsed[0], 
+      track_abundance, 
+      sketch_style_parsed[0]
+    )
+
+    sketch_value_flag = make_sketch_value_flag(sketch_style_parsed[0], sketch_value_parsed[0])
     track_abundance_flag = track_abundance ? '--track-abundance' : ''
     sig_id = "${sample_id}__${sketch_id}"
     sig = "${sig_id}.sig"
@@ -1405,9 +1425,112 @@ if (!params.skip_compute && (protein_input || params.reference_proteome_fasta)){
       sourmash sig describe --csv ${csv} ${sig}
     """
     }
-  sourmash_sketches_peptide = sourmash_sketches_all_peptide.filter{ it.size() > 0 }
+  sourmash_sketches_peptide = sourmash_sketches_all_peptide.filter{ it[3].size() > 0 }
 } else {
   sourmash_sketches_peptide = Channel.empty()
+  ch_sourmash_sig_describe_peptides = Channel.empty()
+}
+
+// -------------
+// Merge signatures from same sample id and sketch id
+// -------------
+if ((params.bam || params.tenx_tgz) && !params.skip_compute && !params.skip_sig_merge) {
+
+  sourmash_sketches_nucleotide
+    .mix ( sourmash_sketches_peptide )
+    .dump ( tag: 'ch_sourmash_sketches_mixed' )
+    .set { ch_sourmash_sketches_mixed }
+
+  ch_fastq_id_to_cell_id_is_aligned
+    .dump( tag: 'ch_fastq_id_to_cell_id_is_aligned' )
+    .combine ( ch_sourmash_sketches_mixed, by: 0 )
+    .unique()
+    .dump( tag: 'fastq_id_to_cells__combine__sketches' )
+    // [DUMP: fastq_id_to_cells__combine__sketches] 
+    // ['mouse_brown_fat_ptprc_plus_unaligned__aligned__CTGAAGTCAATGGTCT', 
+    //   mouse_brown_fat_ptprc_plus_unaligned__CTGAAGTCAATGGTCT, 
+    //   'aligned', 
+    //   molecule-dna__ksize-3__num_hashes-4__track_abundance-false, 
+    //   'dna', 
+    //   '3', 
+    //   mouse_brown_fat_ptprc_plus_unaligned__aligned__CTGAAGTCAATGGTCT__molecule-dna__ksize-3__num_hashes-4__track_abundance-false.sig]
+    // it[0]: fastq_id, e.g. "mouse_brown_fat_ptprc_plus_unaligned__aligned__CTGAAGTCAATGGTCT" (contains aligned/unaligned)
+    // it[1]: cell_id, e.g. "mouse_brown_fat_ptprc_plus_unaligned__CTGAAGTCAATGGTCT"
+    // it[2]: is_aligned, e.g. "aligned"
+    // it[3]: sketch_id, e.g. molecule-dna__ksize-3__num_hashes-4__track_abundance-false
+    // it[4]: molecule, e.g. 'dna'
+    // it[5]: ksize, e.g. '3'
+    // it[6]: signature file, e.g. mouse_brown_fat_ptprc_plus_unaligned__aligned__CTGAAGTCAATGGTCT__molecule-dna__ksize-3__num_hashes-4__track_abundance-false.sig
+    .groupTuple( by: [1, 3, 4, 5] )
+    // [DUMP: fastq_id_to_cells__combine__sketches__grouptuple] 
+    // [
+    //   ['mouse_brown_fat_ptprc_plus_unaligned__aligned__GCGCAGTCATGCCTTC'], 
+    //   mouse_brown_fat_ptprc_plus_unaligned__GCGCAGTCATGCCTTC, 
+    //   ['aligned'], 
+    //   molecule-dna__ksize-3,9__scaled-2__track_abundance-false, 
+    //   'dna', 
+    //    '3,9', 
+    //    [mouse_brown_fat_ptprc_plus_unaligned__aligned__GCGCAGTCATGCCTTC__molecule-dna__ksize-3,9__scaled-2__track_abundance-false.sig]
+    // ]
+    .dump( tag: 'fastq_id_to_cells__combine__sketches__grouptuple' )
+    .map { it -> [it[0].unique(), it[1], it[2].unique(), it[3], it[4], it[5], it[6]] }
+    .dump( tag: 'fastq_id_to_cells__combine__sketches__grouptuple__unique' )
+    .set { ch_sourmash_sketches_to_merge }
+
+  // ch_sourmash_sketches_branched
+  //   .to_merge
+  //   .dump ( tag: 'ch_sourmash_sketches_to_merge' )
+  //   .set { ch_sourmash_sketches_to_merge }
+
+  // ch_sourmash_sketches_branched
+  //   .single
+  //   .map { [it[0][0], it[1], it[2][0], it[3], it[4], it[5], file(it[6][0])] }
+  //   .dump ( tag: 'ch_sourmash_sketches_to_mix_with_merged' )
+  //   .set { ch_sourmash_sketches_to_mix_with_merged }
+
+  process sourmash_sig_merge {
+    tag "${sig_id}"
+    label "low_memory"
+    publishDir "${params.outdir}/sketches_merged/${sketch_id}", mode: "${params.publish_dir_mode}",
+        saveAs: {filename ->
+            if (filename.indexOf(".csv") > 0) "description/$filename"
+            else if (filename.indexOf(".sig") > 0) "sigs/$filename"
+            else null
+        }
+
+    input:
+    set val(fasta_ids), val(cell_id), val(is_aligned), val(sketch_id), val(moltypes), val(ksizes), file(sigs) from ch_sourmash_sketches_to_merge
+
+    output:
+    file(csv) into ch_sourmash_sig_describe_merged
+    set val(cell_id), val(sketch_id), val(moltypes), val(ksizes), file(output_sig) into ch_sourmash_sketches_merged, ch_sourmash_sketches_merged_to_view, ch_sourmash_sketches_merged_for_moltypes_ksizes
+
+    script:
+    // sketch_id = make_sketch_id(molecule, ksize, sketch_value, track_abundance, sketch_style)
+    sig_id = "${cell_id}---${sketch_id}"
+    csv = "${sig_id}.csv"
+    output_sig = "${sig_id}.sig"
+    """
+    merge_rename_sigs.py \\
+        --ksizes ${ksizes} \\
+        --moltypes ${moltypes} \\
+        --name '${cell_id}' \\
+        --outsig ${output_sig} \\
+        ${sigs}
+
+    # Add csv showing number of hashes at each ksize
+    sourmash sig describe --csv ${csv} ${output_sig}
+    """
+  }
+
+} else if (!params.skip_compute) {
+  sourmash_sketches_nucleotide
+    .mix ( sourmash_sketches_peptide )
+    .dump ( tag: 'skip_merge__ch_sourmash_sketches_to_comapre' )
+    .set { ch_sourmash_sketches_to_comapre }
+  ch_sourmash_sig_describe_merged = Channel.empty()
+} else {
+  ch_sourmash_sig_describe_merged = Channel.empty()
 }
 
 if (params.split_kmer){
@@ -1431,43 +1554,74 @@ if (params.split_kmer){
   }
 // If skip_compute is true, skip compare must be specified as true as well
 if (!params.split_kmer && !params.skip_compare && !params.skip_compute) {
-  // Combine peptide and nucleotide sketches
-  sourmash_sketches_nucleotide
-    .collect()
-    // Set as a list so that combine does cartesian product of all signatures
-    .map { it -> [it] }
+  // // Combine peptide and nucleotide sketches
+  // sourmash_sketches_nucleotide
+  //   .collect()
+  //   // Set as a list so that combine does cartesian product of all signatures
+  //   .map { it -> [it] }
+  //   .combine( ch_ksizes_for_compare_nucleotide )
+  //   .dump( tag: 'sourmash_sketches_nucleotide__ksizes' )
+  //   .map { x -> [x[0], x[1], 'dna'] }
+  //   .dump( tag: 'sourmash_sketches_nucleotide__ksizes__molecules' )
+  //   .set { sourmash_sketches_nucleotide_for_compare }
+
+  // sourmash_sketches_peptide
+  //   .collect()
+  //   // Set as a list so that combine does cartesian product of all signatures
+  //   .map { it -> [it] }
+  //   .combine( ch_ksizes_for_compare_petide )
+  //   .dump( tag: 'sourmash_sketches_peptide__ksizes' )
+  //   .combine( ch_peptide_molecules )
+  //   .dump( tag: 'sourmash_sketches_peptide__ksizes__molecules' )
+  //   .set { sourmash_sketches_peptide_for_compare }
+
+  // sourmash_sketches_peptide_for_compare
+  //   .mix ( sourmash_sketches_nucleotide_for_compare )
+  //   .set { ch_sourmash_sketches_to_compare }
+  ch_sourmash_sketches_merged_to_view
+    .dump( tag: "ch_sourmash_sketches_to_view" )
+
+
+  ch_peptide_molecules_for_compare
+    .combine( ch_ksizes_for_compare_peptide )
+    .set { ch_sourmash_compare_params_peptide }
+
+  Channel.from("dna")  
     .combine( ch_ksizes_for_compare_nucleotide )
-    .dump( tag: 'sourmash_sketches_nucleotide__ksizes' )
-    .map { x -> [x[0], x[1], 'dna'] }
-    .dump( tag: 'sourmash_sketches_nucleotide__ksizes__molecules' )
-    .set { sourmash_sketches_nucleotide_for_compare }
+    .mix ( ch_sourmash_compare_params_peptide )
+    .set { ch_sourmash_compare_params_both }
 
-  sourmash_sketches_peptide
-    .collect()
-    // Set as a list so that combine does cartesian product of all signatures
-    .map { it -> [it] }
-    .combine( ch_ksizes_for_compare_petide )
-    .dump( tag: 'sourmash_sketches_peptide__ksizes' )
-    .combine( ch_peptide_molecules )
-    .dump( tag: 'sourmash_sketches_peptide__ksizes__molecules' )
-    .set { sourmash_sketches_peptide_for_compare }
-
-  sourmash_sketches_peptide_for_compare
-    .mix ( sourmash_sketches_nucleotide_for_compare )
+  ch_sourmash_sketches_merged
+    // Drop first index (index 0) which is the cell id
+    // Drop the second index (index 1) which is the sketch id
+    // Keep only moltype
+    // Drop ksize
+    .map { [tuple(it[2].split(",")), it[4]] }
+    .dump(tag: 'ch_sourmash_sketches_merged__map_split' )
+    .transpose()
+    .dump(tag: 'ch_sourmash_sketches_merged__map_split__tranpose' )
+    // Perform cartesian product on the molecules with compare params
+    .combine( ch_sourmash_compare_params_both, by: 0)
+    .dump(tag: 'ch_sourmash_sketches_merged__map_split__combine' )
+    .groupTuple(by: [0, 2])
+    .dump(tag: 'ch_sourmash_sketches_to_compare' )
     .set { ch_sourmash_sketches_to_compare }
 
+
   process sourmash_compare_sketches {
+    // Combine peptide and nucleotide sketches
     tag "${compare_id}"
-    publishDir "${params.outdir}/compare_sketches", mode: params.publish_dir_mode
+    publishDir "${params.outdir}/compare_sketches", mode: 'copy'
 
     input:
-    set file ("*.sig"), val(ksize), val(molecule) from ch_sourmash_sketches_to_compare
+    // Weird order but that's how it shakes out with the groupTuple
+    set val(molecule), file("*.sig"), val(ksize)  from ch_sourmash_sketches_to_compare
 
     output:
     file(csv)
 
     script:
-    compare_id = "molecule-${molecule}__ksize-${ksize}"
+    compare_id = "${molecule}__k-${ksize}"
     processes = "--processes ${task.cpus}"
     csv = "similarities__${compare_id}.csv"
     """
@@ -1475,8 +1629,10 @@ if (!params.split_kmer && !params.skip_compare && !params.skip_compute) {
           --ksize ${ksize} \\
           --${molecule} \\
           --csv ${csv} \\
-          $processes \\
+          ${processes} \\
           --traverse-directory .
+    # Use --traverse-directory instead of all the files explicitly to avoid
+    # "too many arguments" error for bash when there are lots of samples
     """
 
   }
@@ -1492,6 +1648,9 @@ if (!params.skip_multiqc){
       publishDir "${params.outdir}/MultiQC", mode: "${params.publish_dir_mode}"
       input:
       file multiqc_config from ch_multiqc_config
+      file ("sourmash_describe_sig_merge/") from ch_sourmash_sig_describe_merged.collect().ifEmpty([])
+      file ("sourmash_describe_peptides/") from ch_sourmash_sig_describe_peptides.collect().ifEmpty([])
+      file ("sourmash_describe_nucleotides/") from ch_sourmash_sig_describe_nucleotides.collect().ifEmpty([])
       file ('fastp/*') from ch_fastp_results.collect().ifEmpty([])
       file ('sortmerna/*') from sortmerna_logs.collect().ifEmpty([])
       file ('software_versions/*') from ch_software_versions_yaml.collect()
@@ -1544,6 +1703,8 @@ workflow.onComplete {
     if (!workflow.success) {
         subject = "[nf-core/kmermaid] FAILED: $workflow.runName"
     }
+    projectDir = workflow.projectDir
+
     def email_fields = [:]
     email_fields['version'] = workflow.manifest.version
     email_fields['runName'] = custom_runName ?: workflow.runName
@@ -1590,18 +1751,18 @@ workflow.onComplete {
 
     // Render the TXT template
     def engine = new groovy.text.GStringTemplateEngine()
-    def tf = new File("$projectDir/assets/email_template.txt")
+    def tf = new File("${workflow.projectDir}/assets/email_template.txt")
     def txt_template = engine.createTemplate(tf).make(email_fields)
     def email_txt = txt_template.toString()
 
     // Render the HTML template
-    def hf = new File("$projectDir/assets/email_template.html")
+    def hf = new File("${workflow.projectDir}/assets/email_template.html")
     def html_template = engine.createTemplate(hf).make(email_fields)
     def email_html = html_template.toString()
 
     // Render the sendmail template
-    def smail_fields = [ email: email_address, subject: subject, email_txt: email_txt, email_html: email_html, baseDir: "$projectDir", mqcFile: mqc_report, mqcMaxSize: params.max_multiqc_email_size.toBytes() ]
-    def sf = new File("$projectDir/assets/sendmail_template.txt")
+    def smail_fields = [ email: email_address, subject: subject, email_txt: email_txt, email_html: email_html, baseDir: "${workflow.projectDir}", mqcFile: mqc_report, mqcMaxSize: params.max_multiqc_email_size.toBytes() ]
+    def sf = new File("${workflow.projectDir}/assets/sendmail_template.txt")
     def sendmail_template = engine.createTemplate(sf).make(smail_fields)
     def sendmail_html = sendmail_template.toString()
 
@@ -1625,13 +1786,14 @@ workflow.onComplete {
     }
 
     // Write summary e-mail HTML to a file
-    def output_d = new File("${params.outdir}/pipeline_info/")
-    if (!output_d.exists()) {
-        output_d.mkdirs()
+    def output_d = file( "${params.outdir}/pipeline_info/" )
+    if( !output_d.exists() ) {
+      output_d.mkdirs()
     }
-    def output_hf = new File(output_d, "pipeline_report.html")
+    def output_hf = file("${params.outdir}/pipeline_report.html")
     output_hf.withWriter { w -> w << email_html }
-    def output_tf = new File(output_d, "pipeline_report.txt")
+    def output_tf = file("${params.outdir}/pipeline_report.txt")
+
     output_tf.withWriter { w -> w << email_txt }
 
     c_green = params.monochrome_logs ? '' : "\033[0;32m";
