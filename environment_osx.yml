@@ -12,7 +12,7 @@ dependencies:
   - conda-forge::pymdown-extensions=6.0
   - conda-forge::pygments=2.5.2
   - conda-forge::tqdm=4.43.0
-  - conda-forge::gxx_linux-64=7.3.0
+  - conda-forge::clangxx_osx-64=11.1.0
   - conda-forge::s3fs=0.4.2
   - bioconda::sourmash=3.5.0
   - bioconda::samtools=1.10
