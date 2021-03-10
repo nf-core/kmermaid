@@ -67,15 +67,18 @@ jobs:
           - "test --sketch_scaled 2,4 --sketch_num_hashes_log2 false"
           - "test_bam --barcodes_file false --rename_10x_barcodes false --save_fastas false --write_barcodes_meta_csv false"
           - "test_bam --rename_10x_barcodes false --write_barcodes_meta_csv false"
+          - "test_bam --skip_sig_merge"
           - "test_bam --write_barcodes_meta_csv false"
           - "test_bam --barcodes_file false --rename_10x_barcodes false"
           - "test_bam --rename_10x_barcodes false"
           - "test_fastas"
           - "test_protein_fastas"
           - "test_remove_ribo"
+          - "test_sig_merge"
           - "test_tenx_tgz"
           - "test_translate"
           - "test_translate_bam"
+          - "test_translate_bam --skip_sig_merge"
     steps:
       - name: Check out pipeline code
         uses: actions/checkout@v2
