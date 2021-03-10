@@ -1342,31 +1342,32 @@ if (!params.skip_remove_housekeeping_genes) {
   if (need_refseq_download){
     // No fastas provided for removing housekeeping genes
     process download_refseq {
-      tag "${refseq_taxonomy}"
+      tag "${refseq_taxonomy}--${refseq_moltype}"
       label "process_low"
-      publishDir "${params.outdir}/ncbi_refseq/", mode: 'copy'
+      publishDir "${params.outdir}/reference/ncbi_refseq/", mode: 'copy'
 
       input:
       val refseq_moltype from ch_refseq_moltypes_to_download
 
       output:
-      set val(refseq_moltype), file(output_fasta) into ch_refseq_fasta_to_filter
+      set val(refseq_moltype), file("${refseq_taxonomy}--*.${refseq_moltype}.fa.gz") into ch_refseq_fasta_to_filter
 
       script:
       output_fasta = "${refseq_taxonomy}--\$RELEASE_NUMBER--\$DATE.${refseq_moltype}.fa.gz"
+      include_fasta = params.test_mini_refseq_download ? "${refseq_taxonomy}.1.${refseq_moltype}.f*a.gz"  : "*${refseq_moltype}.f*a.gz" 
       """
       rsync \\
             --prune-empty-dirs \\
             --archive \\
             --verbose \\
             --recursive \\
-            --include '*${refseq_moltype}.faa.gz' \\
+            --include '${include_fasta}' \\
             --exclude '/*' \\
             rsync://ftp.ncbi.nlm.nih.gov/refseq/release/${refseq_taxonomy}/ .
       wget https://ftp.ncbi.nlm.nih.gov/refseq/release/RELEASE_NUMBER
       DATE=\$(date +'%Y-%M-%d')
       RELEASE_NUMBER=\$(cat RELEASE_NUMBER)
-      zcat *.${refseq_moltype}.faa.gz | gzip -c - > ${output_fasta}
+      zcat ${refseq_taxonomy}.*.${refseq_moltype}*.gz | gzip -c - > ${output_fasta}
       """
     }
   }
@@ -1379,33 +1380,109 @@ if (!params.skip_remove_housekeeping_genes) {
   ///////////////////////////////////////////////////////////////////////////////
   ///////////////////////////////////////////////////////////////////////////////
   /*
-  * STEP 7 - Filter fastas from refseq
+  * STEP 7 - Get only housekeeping genes from 
   */
-  if (need_refseq_download){
-    // No fastas provided for removing housekeeping genes
-    process filter_fasta_housekeeping {
-      tag "${refseq_taxonomy}"
-      label "process_low"
-      publishDir "${params.outdir}/ncbi_refseq/", mode: 'copy'
+  // Keep genes whose names match housekeeping gene regular expression pattern
+  process extract_fasta_housekeeping {
+    tag "${refseq_moltype}"
+    label "process_low"
+    publishDir "${params.outdir}/reference/housekeeping_genes/", mode: 'copy'
 
-      input:
-      set val(refseq_moltype), file(fasta) from ch_refseq_fasta_to_filter
+    input:
+    set val(refseq_moltype), file(fasta) from ch_refseq_fasta_to_filter
 
-      output:
-      set val(refseq_moltype), file(output_fasta_gz) into (ch_houskeeping_fasta)
+    output:
+    set val(refseq_moltype), file(output_fasta_gz) into (ch_houskeeping_fasta)
 
-      script:
-      output_fasta = "${fasta.basename}__only_housekeeping_genes.fa"
-      output_fasta_gz = "${fasta.basename}__only_housekeeping_genes.fa.gz"
-      """
-      filter_fasta_regex.py \\
-          --input-fasta ${fasta} \\
-          --output-fasta ${output_fasta} \\
-          --regex-pattern '${params.housekeeping_gene_regex}'
-      gzip -c ${output_fasta} > ${output_fasta_gz}
-      """
-    }
+    script:
+    output_fasta = "${fasta.baseName}__only_housekeeping_genes.fa"
+    output_fasta_gz = "${fasta.baseName}__only_housekeeping_genes.fa.gz"
+    """
+    filter_fasta_regex.py \\
+        --input-fasta ${fasta} \\
+        --output-fasta ${output_fasta} \\
+        --regex-pattern '${params.housekeeping_gene_regex}'
+    gzip -c ${output_fasta} > ${output_fasta_gz}
+    """
   }
+
+  ///////////////////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////////////////
+  /* --                                                                     -- */
+  /* --          COMPUTE HOUSEKEEPING GENE K-MER SIGNATURE                  -- */
+  /* --                                                                     -- */
+  ///////////////////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////////////////
+  /*
+  * STEP 8 - Compute Housekeeping Gene K-mer Signature
+  */
+  // No fastas provided for removing housekeeping genes
+  process compute_housekeeping_kmer_sig {
+    tag "${refseq_moltype}"
+    label "process_low"
+    publishDir "${params.outdir}/reference/housekeeping_genes/", mode: 'copy'
+
+    input:
+    set val(refseq_moltype), file(fasta) from ch_houskeeping_fasta
+
+    output:
+    set val(sourmash_moltype), file(sig) into ch_houskeeping_sig
+
+    script:
+    sourmash_moltype = refseq_moltype == "protein" ? "protein,dayhoff" : 'dna'
+    sketch_id = make_sketch_id(sourmash_moltype, params.ksizes, sketch_value, track_abundance, sketch_style)
+
+    moltype_flags = refseq_moltype == "protein" ? '--protein --dayhoff' : '--dna'
+    track_abundance_flag = track_abundance ? '--track-abundance' : ''
+    sig_id = "${ch_houskeeping_fasta.baseName}__${sketch_id}"
+    sig = "${sig_id}.sig"
+    csv = "${sig_id}.csv"
+    """
+    sourmash compute \\
+      ${sketch_value_flag} \\
+      --ksizes ${params.ksizes} \\
+      ${moltype_flags} \\
+      ${track_abundance_flag} \\
+      --output ${sig} \\
+      --name '${sample_id}' \\
+      ${fasta}
+    sourmash sig describe --csv ${csv} ${sig}
+    """
+  }
+  
+
+  // ///////////////////////////////////////////////////////////////////////////////
+  // ///////////////////////////////////////////////////////////////////////////////
+  // /* --                                                                     -- */
+  // /* --              REMOVE K-MERS FROM HOUSEKEEPING GENES                  -- */
+  // /* --                                                                     -- */
+  // ///////////////////////////////////////////////////////////////////////////////
+  // ///////////////////////////////////////////////////////////////////////////////
+  // /*
+  // * STEP 9 - Remove housekeeping gene k-mers from single cells
+  // */
+  // process subtract_houskeeping_kmers {
+  //   tag "${refseq_taxonomy}"
+  //   label "process_low"
+  //   publishDir "${params.outdir}/reference/housekeeping_genes/", mode: 'copy'
+
+  //   input:
+  //   set val(refseq_moltype), file(fasta) from ch_refseq_fasta_to_filter
+
+  //   output:
+  //   set val(refseq_moltype), file(output_fasta_gz) into (ch_houskeeping_fasta)
+
+  //   script:
+  //   output_fasta = "${fasta.baseName}__only_housekeeping_genes.fa"
+  //   output_fasta_gz = "${fasta.baseName}__only_housekeeping_genes.fa.gz"
+  //   """
+  //   filter_fasta_regex.py \\
+  //       --input-fasta ${fasta} \\
+  //       --output-fasta ${output_fasta} \\
+  //       --regex-pattern '${params.housekeeping_gene_regex}'
+  //   gzip -c ${output_fasta} > ${output_fasta_gz}
+  //   """
+  // }
 }
 
 
