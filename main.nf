@@ -1428,6 +1428,10 @@ if ((params.bam || params.tenx_tgz) && !params.skip_compute && !params.skip_sig_
     """
   }
 
+  ch_sourmash_sketches_merged_to_view
+    .dump( tag: "ch_sourmash_sketches_to_view" )
+
+
 } else if (!params.skip_compute) {
   sourmash_sketches_nucleotide
     .mix ( sourmash_sketches_peptide )
@@ -1544,6 +1548,9 @@ if (!params.skip_remove_housekeeping_genes) {
     publishDir "${params.outdir}/reference/housekeeping_genes/", mode: 'copy'
 
     input:
+    val track_abundance
+    val sketch_value_parsed
+    val sketch_style_parsed
     set val(refseq_moltype), file(fasta) from ch_houskeeping_fasta
 
     output:
@@ -1551,7 +1558,15 @@ if (!params.skip_remove_housekeeping_genes) {
 
     script:
     sourmash_moltype = refseq_moltype == "protein" ? "protein,dayhoff" : 'dna'
-    sketch_id = make_sketch_id(sourmash_moltype, params.ksizes, sketch_value, track_abundance, sketch_style)
+    sketch_id = make_sketch_id(
+      peptide_molecules_comma_separated, 
+      params.ksizes, 
+      sketch_value_parsed[0], 
+      track_abundance, 
+      sketch_style_parsed[0]
+    )
+
+    sketch_value_flag = make_sketch_value_flag(sketch_style_parsed[0], sketch_value_parsed[0])
 
     moltype_flags = refseq_moltype == "protein" ? '--protein --dayhoff' : '--dna'
     track_abundance_flag = track_abundance ? '--track-abundance' : ''
@@ -1654,8 +1669,6 @@ if (!params.split_kmer && !params.skip_compare && !params.skip_compute) {
   // sourmash_sketches_peptide_for_compare
   //   .mix ( sourmash_sketches_nucleotide_for_compare )
   //   .set { ch_sourmash_sketches_to_compare }
-  ch_sourmash_sketches_merged_to_view
-    .dump( tag: "ch_sourmash_sketches_to_view" )
 
 
   ch_peptide_molecules_for_compare
@@ -1666,6 +1679,8 @@ if (!params.split_kmer && !params.skip_compare && !params.skip_compute) {
     .combine( ch_ksizes_for_compare_nucleotide )
     .mix ( ch_sourmash_compare_params_peptide )
     .set { ch_sourmash_compare_params_both }
+
+  ch_sourmash_sketches_merged = Channel.empty()
 
   ch_sourmash_sketches_merged
     // Drop first index (index 0) which is the cell id
