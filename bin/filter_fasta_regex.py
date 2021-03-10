@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import argparse
 import re
 
@@ -39,6 +41,4 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    filter_fasta_with_regex(
-        parser.input_fasta, parser.output_fasta, parser.regex_pattern
-    )
+    filter_fasta_with_regex(args.input_fasta, args.output_fasta, args.regex_pattern)
