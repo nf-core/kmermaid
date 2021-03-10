@@ -441,9 +441,10 @@ save_translate_json = params.save_translate_json
 // --- Parse the Sourmash parameters ----
 ksizes = params.ksizes?.toString().tokenize(',')
 Channel.from(params.ksizes?.toString().tokenize(','))
-  .into { ch_ksizes_for_compare_peptide; ch_ksizes_for_compare_nucleotide }
+  .into { ch_ksizes_for_nucleotide; ch_ksizes_for_peptide; ch_ksizes_for_compare_peptide; ch_ksizes_for_compare_nucleotide }
 
 molecules = params.molecules?.toString().tokenize(',')
+nucleotide_molecules = molecules.findAll { it == "dna" }
 peptide_molecules = molecules.findAll { it != "dna" }
 peptide_molecules_comma_separated = peptide_molecules.join(",")
 peptide_molecule_flags = peptide_molecules.collect { it -> "--${it}" }.join ( " " )
@@ -451,8 +452,22 @@ peptide_molecule_flags = peptide_molecules.collect { it -> "--${it}" }.join ( " 
 Channel.from( molecules )
   .set { ch_molecules }
 
+Channel.from( nucleotide_molecules )
+  .into { ch_nucleotide_molecules; ch_nucleotide_molecules_for_subtract; ch_nucleotide_molecules_for_compare }
+
 Channel.from( peptide_molecules )
-  .into { ch_peptide_molecules; ch_peptide_molecules_for_compare }
+  .into { ch_peptide_molecules; ch_peptide_molecules_for_subtract; ch_peptide_molecules_for_compare }
+
+
+ch_peptide_molecules
+  .combine( ch_ksizes_for_peptide )
+  .set { ch_sourmash_params_peptide }
+
+ch_nucleotide_molecules 
+  .combine( ch_ksizes_for_nucleotide )
+  .mix ( ch_sourmash_params_peptide )
+  .dump ( tag: 'ch_sourmash_params' )
+  .into { ch_sourmash_params_for_compare ; ch_sourmash_params_for_subtract }
 
 // Parse sketch value and style parameters
 sketch_num_hashes = params.sketch_num_hashes
@@ -684,6 +699,7 @@ process get_software_versions {
     ska version &> v_ska.txt
     sourmash -v &> v_sourmash.txt
     pip show orpheum &> v_orpheum.txt
+    python --version &> v_python.txt
     scrape_software_versions.py &> software_versions_mqc.yaml
     """
 }
@@ -1510,9 +1526,9 @@ if (!params.skip_remove_housekeeping_genes) {
             --exclude '/*' \\
             rsync://ftp.ncbi.nlm.nih.gov/refseq/release/${refseq_taxonomy}/ .
       wget https://ftp.ncbi.nlm.nih.gov/refseq/release/RELEASE_NUMBER
-      DATE=\$(date +'%Y-%M-%d')
+      DATE=\$(date +'%Y-%m-%d')
       RELEASE_NUMBER=\$(cat RELEASE_NUMBER)
-      zcat ${refseq_taxonomy}.*.${refseq_moltype}*.gz | gzip -c - > ${output_fasta}
+      gzcat ${refseq_taxonomy}.*.${refseq_moltype}*.gz | gzip -c - > ${output_fasta}
       """
     }
   }
@@ -1529,7 +1545,7 @@ if (!params.skip_remove_housekeeping_genes) {
   */
   // Keep genes whose names match housekeeping gene regular expression pattern
   process extract_fasta_housekeeping {
-    tag "${refseq_moltype}"
+    tag "${fasta.baseName}"
     label "process_low"
     publishDir "${params.outdir}/reference/housekeeping_genes/", mode: 'copy'
 
@@ -1537,7 +1553,7 @@ if (!params.skip_remove_housekeeping_genes) {
     set val(refseq_moltype), file(fasta) from ch_refseq_fasta_to_filter
 
     output:
-    set val(refseq_moltype), file(output_fasta_gz) into (ch_houskeeping_fasta)
+    set val(refseq_moltype), file(output_fasta_gz) into ch_housekeeping_fasta, ch_housekeeping_fasta_to_view
 
     script:
     output_fasta = "${fasta.baseName}__only_housekeeping_genes.fa"
@@ -1550,6 +1566,9 @@ if (!params.skip_remove_housekeeping_genes) {
     gzip -c ${output_fasta} > ${output_fasta_gz}
     """
   }
+  
+  ch_housekeeping_fasta_to_view
+    .dump( tag: 'ch_housekeeping_fasta' )
 
   ///////////////////////////////////////////////////////////////////////////////
   ///////////////////////////////////////////////////////////////////////////////
@@ -1563,7 +1582,7 @@ if (!params.skip_remove_housekeeping_genes) {
   */
   // No fastas provided for removing housekeeping genes
   process compute_housekeeping_kmer_sig {
-    tag "${refseq_moltype}"
+    tag "${fasta.baseName}"
     label "process_low"
     publishDir "${params.outdir}/reference/housekeeping_genes/", mode: 'copy'
 
@@ -1571,26 +1590,30 @@ if (!params.skip_remove_housekeeping_genes) {
     val track_abundance
     val sketch_value_parsed
     val sketch_style_parsed
-    set val(refseq_moltype), file(fasta) from ch_houskeeping_fasta
+    set val(refseq_moltype), file(fasta) from ch_housekeeping_fasta
 
     output:
-    set val(sourmash_moltype), file(sig) into ch_houskeeping_sig
+    set val(sourmash_moltypes), file(sig) into ch_housekeeping_sig
 
     script:
-    sourmash_moltype = refseq_moltype == "protein" ? "protein,dayhoff" : 'dna'
+    is_protein = refseq_moltype == "protein"
+    sourmash_moltype = is_protein ? "protein,dayhoff" : 'dna'
+    sourmash_moltypes = tuple(sourmash_moltype.split(","))
     sketch_id = make_sketch_id(
-      peptide_molecules_comma_separated, 
+      sourmash_moltype, 
       params.ksizes, 
       sketch_value_parsed[0], 
       track_abundance, 
       sketch_style_parsed[0]
     )
 
-    sketch_value_flag = make_sketch_value_flag(sketch_style_parsed[0], sketch_value_parsed[0])
-
-    moltype_flags = refseq_moltype == "protein" ? '--protein --dayhoff' : '--dna'
+    sketch_value_flag = make_sketch_value_flag(
+      sketch_style_parsed[0], 
+      sketch_value_parsed[0]
+    )
+    moltype_flags = is_protein ? '--protein --dayhoff --input-is-protein' : '--dna'
     track_abundance_flag = track_abundance ? '--track-abundance' : ''
-    sig_id = "${ch_houskeeping_fasta.baseName}__${sketch_id}"
+    sig_id = "${fasta.baseName}__${sketch_id}"
     sig = "${sig_id}.sig"
     csv = "${sig_id}.csv"
     """
@@ -1600,12 +1623,55 @@ if (!params.skip_remove_housekeeping_genes) {
       ${moltype_flags} \\
       ${track_abundance_flag} \\
       --output ${sig} \\
-      --name '${sample_id}' \\
+      --name '${fasta.baseName}' \\
       ${fasta}
     sourmash sig describe --csv ${csv} ${sig}
     """
   }
-  
+
+  ch_sourmash_sketches_merged
+    // index 2: moltypes
+    // index 4: signature
+    .map { tuple( tuple(it[2].split(",")), it[4] ) }
+    .transpose()
+    .dump( tag: 'ch_sourmash_sketches_moltype_to_sig' )
+    .groupTuple( by: 0 )
+    .dump( tag: 'ch_sourmash_sketches_moltype_to_sig__groupTuple' )
+    .set { ch_sourmash_sketches_moltype_to_sigs }
+
+  ch_housekeeping_sig
+    .dump( tag: 'ch_housekeeping_sig' )
+    .transpose()
+    .dump( tag: 'ch_housekeeping_sig__transposed' )
+    .combine( ch_sourmash_params_for_subtract, by: 0)
+    .dump( tag: 'ch_housekeeping_sig__transposed__combined' )
+    .combine ( ch_sourmash_sketches_moltype_to_sigs, by: 0 )
+    .dump( tag: 'ch_housekeeping_sig__transposed__combined_joined' )
+    .into { ch_subtract_params_with_sigs; ch_subtract_params_to_sigs_for_siglist }
+
+  ch_subtract_params_to_sigs_for_siglist
+    .dump ( tag: 'ch_subtract_params_to_sigs_for_siglist' )
+    .transpose()
+    .dump ( tag: 'ch_subtract_params_to_sigs_for_siglist__transpose')
+    .collectFile() { it -> 
+      [ "${it[0]}__${it[2]}.txt", "${it[3].getFileName()}\n"] 
+    }
+      .dump ( tag: 'ch_subtract_params_to_sigs_for_siglist__transpose__collectfile' )
+      .map { [ tuple( it.baseName.split('__') ), it] }
+      .map { [ it[0][0], it[0][1], it[1] ] }
+      // .dump ( tag: 'ch_subtract_params_to_sigs_for_siglist__transpose__collectfile__map' )
+      // .transpose()
+      .dump ( tag: 'ch_subtract_params_with_siglist' )
+      .set { ch_subtract_params_with_siglist }
+
+  ch_subtract_params_with_sigs
+    // Reorder so molecule (it[0]) and ksize (it[2]) are first
+    .map{ [it[0], it[2], it[1], it[3]] }
+    .dump ( tag: 'ch_subtract_params_with_sigs__map' )
+    .combine( ch_subtract_params_with_siglist,  by: [0, 1] )
+    .dump( tag: 'ch_sigs_with_houskeeping_sig_to_subtract' )
+    .set { ch_sigs_with_houskeeping_sig_to_subtract }
+
 
   // ///////////////////////////////////////////////////////////////////////////////
   // ///////////////////////////////////////////////////////////////////////////////
@@ -1617,28 +1683,38 @@ if (!params.skip_remove_housekeeping_genes) {
   // /*
   // * STEP 9 - Remove housekeeping gene k-mers from single cells
   // */
-  // process subtract_houskeeping_kmers {
-  //   tag "${refseq_taxonomy}"
-  //   label "process_low"
-  //   publishDir "${params.outdir}/reference/housekeeping_genes/", mode: 'copy'
+  process subtract_houskeeping_kmers {
+    tag "${subtract_id}"
+    label "process_medium"
+    publishDir "${params.outdir}/sketches_subtract_housekeeping_kmers/${subtract_id}", mode: 'copy'
 
-  //   input:
-  //   set val(refseq_moltype), file(fasta) from ch_refseq_fasta_to_filter
+    input:
+    val sketch_value_parsed
+    val sketch_style_parsed
+    set val(molecule), val(ksize), file(housekeeping_sig), file(sigs), file(siglist) from ch_sigs_with_houskeeping_sig_to_subtract
 
-  //   output:
-  //   set val(refseq_moltype), file(output_fasta_gz) into (ch_houskeeping_fasta)
+    output:
+    set val(molecule), val(ksize), file("subtracted/*.sig") into ch_sigs_houskeeping_removed
+    
+    script:
+    subtract_id = "${molecule}__k-${ksize}"
+    sketch_value_flag = make_sketch_value_flag(
+        sketch_style_parsed[0], 
+        sketch_value_parsed[0]
+    )
+    track_abundance_flag = track_abundance ? '--track-abundance' : ''
 
-  //   script:
-  //   output_fasta = "${fasta.baseName}__only_housekeeping_genes.fa"
-  //   output_fasta_gz = "${fasta.baseName}__only_housekeeping_genes.fa.gz"
-  //   """
-  //   filter_fasta_regex.py \\
-  //       --input-fasta ${fasta} \\
-  //       --output-fasta ${output_fasta} \\
-  //       --regex-pattern '${params.housekeeping_gene_regex}'
-  //   gzip -c ${output_fasta} > ${output_fasta_gz}
-  //   """
-  // }
+    """
+    subtract \\
+        ${track_abundance_flag} \\
+        ${sketch_value_flag} \\
+        --ksize ${ksize} \\
+        --encoding ${molecule} \\
+        --output subtracted/ \\
+        ${housekeeping_sig} \\
+        ${siglist}
+    """
+  }
 }
 
 
@@ -1692,14 +1768,6 @@ if (!params.split_kmer && !params.skip_compare && !params.skip_compute) {
 
   // ch_sourmash_sketches_to_compare = Channel.empty()
 
-  ch_peptide_molecules_for_compare
-    .combine( ch_ksizes_for_compare_peptide )
-    .set { ch_sourmash_compare_params_peptide }
-
-  Channel.from("dna")  
-    .combine( ch_ksizes_for_compare_nucleotide )
-    .mix ( ch_sourmash_compare_params_peptide )
-    .set { ch_sourmash_compare_params_both }
 
   ch_sourmash_sketches_merged = Channel.empty()
 
@@ -1713,7 +1781,7 @@ if (!params.split_kmer && !params.skip_compare && !params.skip_compute) {
     .transpose()
     .dump(tag: 'ch_sourmash_sketches_merged__map_split__tranpose' )
     // Perform cartesian product on the molecules with compare params
-    .combine( ch_sourmash_compare_params_both, by: 0)
+    .combine( ch_sourmash_params_for_compare, by: 0)
     .dump(tag: 'ch_sourmash_sketches_merged__map_split__combine' )
     .groupTuple(by: [0, 2])
     .dump(tag: 'ch_sourmash_sketches_to_compare' )
