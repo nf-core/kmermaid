@@ -49,7 +49,7 @@ jobs:
           wget -qO- get.nextflow.io | bash
           sudo mv nextflow /usr/local/bin/
 
-      - name: Run pipeline with test data
+      - name: Run pipeline with basic test data
         run: |
           nextflow run ${GITHUB_WORKSPACE} -profile test,docker
 
