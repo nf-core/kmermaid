@@ -680,8 +680,8 @@ process get_software_versions {
     bam2fasta info &> v_bam2fasta.txt
     fastp --version &> v_fastp.txt
     samtools --version &> v_samtools.txt
+    rsync --version &> v_rsync.txt
     ska version &> v_ska.txt
-    sortmerna --version &> v_sortmerna.txt
     sourmash -v &> v_sourmash.txt
     pip show orpheum &> v_orpheum.txt
     scrape_software_versions.py &> software_versions_mqc.yaml
