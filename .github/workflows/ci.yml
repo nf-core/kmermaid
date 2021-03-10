@@ -63,8 +63,8 @@ jobs:
     strategy:
       matrix:
         profile_flags:
-          - "test --sketch_num_hashes 2,4 --sketch_num_hashes_log2 false"
-          - "test --sketch_scaled 2,4 --sketch_num_hashes_log2 false"
+          - "test --sketch_num_hashes 20 --sketch_num_hashes_log2 false"
+          - "test --sketch_scaled 20 --sketch_num_hashes_log2 false"
           - "test_bam --barcodes_file false --rename_10x_barcodes false --save_fastas false --write_barcodes_meta_csv false"
           - "test_bam --rename_10x_barcodes false --write_barcodes_meta_csv false"
           - "test_bam --skip_sig_merge"
