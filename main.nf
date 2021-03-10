@@ -1528,30 +1528,7 @@ if ((params.bam || params.tenx_tgz) && !params.skip_compute && !params.skip_sig_
   ch_sourmash_sketches_merged_to_view
     .dump( tag: "ch_sourmash_sketches_to_view" )
 
-  ch_peptide_molecules_for_compare
-    .combine( ch_ksizes_for_compare_peptide )
-    .set { ch_sourmash_compare_params_peptide }
 
-  Channel.from("dna")  
-    .combine( ch_ksizes_for_compare_nucleotide )
-    .mix ( ch_sourmash_compare_params_peptide )
-    .set { ch_sourmash_compare_params_both }
-
-  ch_sourmash_sketches_merged
-    // Drop first index (index 0) which is the cell id
-    // Drop the second index (index 1) which is the sketch id
-    // Keep only moltype
-    // Drop ksize
-    .map { [tuple(it[2].split(",")), it[4]] }
-    .dump(tag: 'ch_sourmash_sketches_merged__map_split' )
-    .transpose()
-    .dump(tag: 'ch_sourmash_sketches_merged__map_split__tranpose' )
-    // Perform cartesian product on the molecules with compare params
-    .combine( ch_sourmash_compare_params_both, by: 0)
-    .dump(tag: 'ch_sourmash_sketches_merged__map_split__combine' )
-    .groupTuple(by: [0, 2])
-    .dump(tag: 'ch_sourmash_sketches_to_compare' )
-    .set { ch_sourmash_sketches_to_compare }
 
 // } else if (!params.skip_compute) {
 //   sourmash_sketches_nucleotide
@@ -1563,8 +1540,8 @@ if ((params.bam || params.tenx_tgz) && !params.skip_compute && !params.skip_sig_
   // Use "mix" to aggregate the nucleotide and peptide sketches into one place
   sourmash_sketches_nucleotide
     .mix ( sourmash_sketches_peptide )
-    .dump ( tag: 'skip_merge__ch_sourmash_sketches_to_comapre' )
-    .set { ch_sourmash_sketches_to_comapre }
+    .dump ( tag: 'skip_merge__ch_sourmash_sketches_to_compare' )
+    .set { ch_sourmash_sketches_merged }
   ch_sourmash_sig_describe_merged = Channel.empty()
 }
 
@@ -1586,7 +1563,7 @@ if (params.split_kmer){
     """
 
     }
-  }
+}
 // If skip_compute is true, skip compare must be specified as true as well
 if (!params.split_kmer && !params.skip_compare && !params.skip_compute) {
   // // Combine peptide and nucleotide sketches
@@ -1615,6 +1592,31 @@ if (!params.split_kmer && !params.skip_compare && !params.skip_compute) {
   //   .set { ch_sourmash_sketches_to_compare }
 
   // ch_sourmash_sketches_to_compare = Channel.empty()
+
+  ch_peptide_molecules_for_compare
+    .combine( ch_ksizes_for_compare_peptide )
+    .set { ch_sourmash_compare_params_peptide }
+
+  Channel.from("dna")  
+    .combine( ch_ksizes_for_compare_nucleotide )
+    .mix ( ch_sourmash_compare_params_peptide )
+    .set { ch_sourmash_compare_params_both }
+
+  ch_sourmash_sketches_merged
+    // Drop first index (index 0) which is the cell id
+    // Drop the second index (index 1) which is the sketch id
+    // Keep only moltype
+    // Drop ksize
+    .map { [tuple(it[2].split(",")), it[4]] }
+    .dump(tag: 'ch_sourmash_sketches_merged__map_split' )
+    .transpose()
+    .dump(tag: 'ch_sourmash_sketches_merged__map_split__tranpose' )
+    // Perform cartesian product on the molecules with compare params
+    .combine( ch_sourmash_compare_params_both, by: 0)
+    .dump(tag: 'ch_sourmash_sketches_merged__map_split__combine' )
+    .groupTuple(by: [0, 2])
+    .dump(tag: 'ch_sourmash_sketches_to_compare' )
+    .set { ch_sourmash_sketches_to_compare }
 
   process sourmash_compare_sketches {
     // Combine peptide and nucleotide sketches
@@ -1736,7 +1738,6 @@ workflow.onComplete {
     email_fields['summary']['Nextflow Build'] = workflow.nextflow.build
     email_fields['summary']['Nextflow Compile Timestamp'] = workflow.nextflow.timestamp
 
-    // TODO nf-core: If not using MultiQC, strip out this code (including params.max_multiqc_email_size)
     // On success try attach the multiqc report
     def mqc_report = null
     try {
@@ -1759,18 +1760,18 @@ workflow.onComplete {
 
     // Render the TXT template
     def engine = new groovy.text.GStringTemplateEngine()
-    def tf = new File("${workflow.projectDir}/assets/email_template.txt")
+    def tf = new File("$projectDir/assets/email_template.txt")
     def txt_template = engine.createTemplate(tf).make(email_fields)
     def email_txt = txt_template.toString()
 
     // Render the HTML template
-    def hf = new File("${workflow.projectDir}/assets/email_template.html")
+    def hf = new File("$projectDir/assets/email_template.html")
     def html_template = engine.createTemplate(hf).make(email_fields)
     def email_html = html_template.toString()
 
     // Render the sendmail template
-    def smail_fields = [ email: email_address, subject: subject, email_txt: email_txt, email_html: email_html, baseDir: "${workflow.projectDir}", mqcFile: mqc_report, mqcMaxSize: params.max_multiqc_email_size.toBytes() ]
-    def sf = new File("${workflow.projectDir}/assets/sendmail_template.txt")
+    def smail_fields = [ email: email_address, subject: subject, email_txt: email_txt, email_html: email_html, projectDir: "$projectDir", mqcFile: mqc_report, mqcMaxSize: params.max_multiqc_email_size.toBytes() ]
+    def sf = new File("$projectDir/assets/sendmail_template.txt")
     def sendmail_template = engine.createTemplate(sf).make(smail_fields)
     def sendmail_html = sendmail_template.toString()
 
