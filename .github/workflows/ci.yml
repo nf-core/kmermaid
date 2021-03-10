@@ -72,6 +72,7 @@ jobs:
           - "test_bam --write_barcodes_meta_csv false"
           - "test_bam --barcodes_file false --rename_10x_barcodes false"
           - "test_bam --rename_10x_barcodes false"
+          - "test_download_refseq"
           - "test_fastas"
           - "test_protein_fastas"
           - "test_remove_ribo"
