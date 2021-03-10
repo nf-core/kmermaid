@@ -193,7 +193,9 @@ tenx_tgz_ch = Channel.empty()
 
 // Boolean for if an nucleotide input exists anywhere
 have_nucleotide_fasta_input = params.fastas || params.fasta_paths
-have_nucleotide_input = params.input_paths || params.sra || params.csv_pairs || params.csv_singles || params.read_pairs || params.read_singles || have_nucleotide_fasta_input || params.bam || params.tenx_tgz
+have_nucleotide_fastq_input = params.input_paths || params.sra || params.csv_pairs || params.csv_singles || params.read_pairs || params.read_singles || params.bam || params.tenx_tgz
+have_nucleotide_input = have_nucleotide_fasta_input || have_nucleotide_fastq_input
+
 
 if (!params.split_kmer){
   have_sketch_num_hashes = params.sketch_num_hashes || params.sketch_num_hashes_log2 || params.sketch_scaled || params.sketch_scaled_log2
@@ -663,6 +665,7 @@ process get_software_versions {
     publishDir "${params.outdir}/pipeline_info", mode: params.publish_dir_mode,
         saveAs: { filename ->
                       if (filename.indexOf(".csv") > 0) filename
+                      if (filename.indexOf(".yaml") > 0) filename
                       else null
                 }
 
@@ -979,7 +982,7 @@ if (params.tenx_tgz || params.bam) {
 
 
 if ( have_nucleotide_input ) {
-  if (!params.skip_trimming){
+  if (!params.skip_trimming && have_nucleotide_fastq_input){
     process fastp {
         label 'process_low'
         tag "$name"
@@ -1067,6 +1070,7 @@ if ( have_nucleotide_input ) {
     ch_reads_to_translate = ch_reads_trimmed.concat(fastas_ch)
   }
 } else {
+  ch_reads_to_translate = fastas_ch
   ch_fastp_results = Channel.from(false)
 }
 
@@ -1103,7 +1107,10 @@ if (params.subsample) {
         saveAs: {
           filename ->
               if (save_translate_csv && filename.indexOf(".csv") > 0) "$filename"
-              if (save_translate_json && filename.indexOf(".json") > 0) "$filename"
+              else if (save_translate_json && filename.indexOf(".json") > 0) "$filename"
+              else if (filename.indexOf("_noncoding_reads_nucleotides") > 0) "noncoding_nucleotides/${filename}"
+              else if (filename.indexOf("_coding_reads_nucleotides") > 0) "coding_nucleotides/${filename}"
+              else if (filename.indexOf("_coding_reads_peptides") > 0) "coding_peptides/${filename}"
               else "$filename"
           }
 
@@ -1262,6 +1269,9 @@ if (params.subsample) {
   }
 } else {
   sourmash_sketches_nucleotide = Channel.empty()
+  ch_fastp_results = Channel.from(false)
+  sortmerna_logs = Channel.from(false)
+
   ch_protein_fastas
     .set { ch_protein_seq_to_sketch }
   ch_sourmash_sig_describe_nucleotides = Channel.empty()
@@ -1272,11 +1282,14 @@ if (params.subsample) {
 if ((!have_nucleotide_input) || params.skip_trimming || have_nucleotide_fasta_input) {
   // Only protein input or skip trimming, or fastas which can't be trimmed.
   ch_fastp_results = Channel.from(false)
+  sortmerna_logs = Channel.from(false)
+
 }
 
 if (!have_nucleotide_input) {
   // Only protein input, can't do sortMeRNA
   sortmerna_logs = Channel.empty()
+  ch_fastp_results = Channel.from(false)
 }
 
 
@@ -1426,19 +1439,26 @@ if ((params.bam || params.tenx_tgz) && !params.skip_compute && !params.skip_sig_
     # Add csv showing number of hashes at each ksize
     sourmash sig describe --csv ${csv} ${output_sig}
     """
+
   }
 
   ch_sourmash_sketches_merged_to_view
     .dump( tag: "ch_sourmash_sketches_to_view" )
 
 
-} else if (!params.skip_compute) {
+
+// } else if (!params.skip_compute) {
+//   sourmash_sketches_nucleotide
+//     .mix ( sourmash_sketches_peptide )
+//     .dump ( tag: 'skip_merge__ch_sourmash_sketches_to_comapre' )
+//     .set { ch_sourmash_sketches_to_comapre }
+//   ch_sourmash_sig_describe_merged = Channel.empty()
+} else {
+  // Use "mix" to aggregate the nucleotide and peptide sketches into one place
   sourmash_sketches_nucleotide
     .mix ( sourmash_sketches_peptide )
-    .dump ( tag: 'skip_merge__ch_sourmash_sketches_to_comapre' )
-    .set { ch_sourmash_sketches_to_comapre }
-  ch_sourmash_sig_describe_merged = Channel.empty()
-} else {
+    .dump ( tag: 'skip_merge__ch_sourmash_sketches_to_compare' )
+    .set { ch_sourmash_sketches_merged }
   ch_sourmash_sig_describe_merged = Channel.empty()
 }
 
@@ -1642,7 +1662,7 @@ if (params.split_kmer){
     """
 
     }
-  }
+}
 // If skip_compute is true, skip compare must be specified as true as well
 if (!params.split_kmer && !params.skip_compare && !params.skip_compute) {
   // // Combine peptide and nucleotide sketches
@@ -1670,6 +1690,7 @@ if (!params.split_kmer && !params.skip_compare && !params.skip_compute) {
   //   .mix ( sourmash_sketches_nucleotide_for_compare )
   //   .set { ch_sourmash_sketches_to_compare }
 
+  // ch_sourmash_sketches_to_compare = Channel.empty()
 
   ch_peptide_molecules_for_compare
     .combine( ch_ksizes_for_compare_peptide )
@@ -1698,7 +1719,6 @@ if (!params.split_kmer && !params.skip_compare && !params.skip_compute) {
     .dump(tag: 'ch_sourmash_sketches_to_compare' )
     .set { ch_sourmash_sketches_to_compare }
 
-
   process sourmash_compare_sketches {
     // Combine peptide and nucleotide sketches
     tag "${compare_id}"
@@ -1706,7 +1726,7 @@ if (!params.split_kmer && !params.skip_compare && !params.skip_compute) {
 
     input:
     // Weird order but that's how it shakes out with the groupTuple
-    set val(molecule), file("*.sig"), val(ksize)  from ch_sourmash_sketches_to_compare
+    set val(molecule), file("*.sig"), val(ksize) from ch_sourmash_sketches_to_compare
 
     output:
     file(csv)
@@ -1733,6 +1753,7 @@ if (!params.split_kmer && !params.skip_compare && !params.skip_compute) {
 /*
  * STEP 16 - MultiQC
  */
+ // Only trimmming (fastp) and removing ribo rna
 if (!params.skip_multiqc){
     process multiqc {
       publishDir "${params.outdir}/MultiQC", mode: "${params.publish_dir_mode}"
@@ -1817,7 +1838,6 @@ workflow.onComplete {
     email_fields['summary']['Nextflow Build'] = workflow.nextflow.build
     email_fields['summary']['Nextflow Compile Timestamp'] = workflow.nextflow.timestamp
 
-    // TODO nf-core: If not using MultiQC, strip out this code (including params.max_multiqc_email_size)
     // On success try attach the multiqc report
     def mqc_report = null
     try {
@@ -1840,18 +1860,18 @@ workflow.onComplete {
 
     // Render the TXT template
     def engine = new groovy.text.GStringTemplateEngine()
-    def tf = new File("${workflow.projectDir}/assets/email_template.txt")
+    def tf = new File("$projectDir/assets/email_template.txt")
     def txt_template = engine.createTemplate(tf).make(email_fields)
     def email_txt = txt_template.toString()
 
     // Render the HTML template
-    def hf = new File("${workflow.projectDir}/assets/email_template.html")
+    def hf = new File("$projectDir/assets/email_template.html")
     def html_template = engine.createTemplate(hf).make(email_fields)
     def email_html = html_template.toString()
 
     // Render the sendmail template
-    def smail_fields = [ email: email_address, subject: subject, email_txt: email_txt, email_html: email_html, baseDir: "${workflow.projectDir}", mqcFile: mqc_report, mqcMaxSize: params.max_multiqc_email_size.toBytes() ]
-    def sf = new File("${workflow.projectDir}/assets/sendmail_template.txt")
+    def smail_fields = [ email: email_address, subject: subject, email_txt: email_txt, email_html: email_html, projectDir: "$projectDir", mqcFile: mqc_report, mqcMaxSize: params.max_multiqc_email_size.toBytes() ]
+    def sf = new File("$projectDir/assets/sendmail_template.txt")
     def sendmail_template = engine.createTemplate(sf).make(smail_fields)
     def sendmail_html = sendmail_template.toString()
 

@@ -38,4 +38,4 @@ dependencies:
   - rsync=3.2.3
   - pip:
     - bam2fasta==1.0.8
-    - sencha==1.0.3
+    - orpheum==1.0.4
