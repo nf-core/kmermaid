@@ -14,7 +14,7 @@ ENV PATH /opt/conda/envs/nf-core-kmermaid-0.1.0dev/bin:$PATH
 RUN conda env export --name nf-core-kmermaid-0.1.0dev > nf-core-kmermaid-0.1.0dev.yml
 
 # Install super fast rust code to remove nuisance hashes (e.g. ribosomal) from signatures
-RUN git clone https://github.com/luizirber/2021-01-27-olga-remove-protein/ 
+RUN git clone https://github.com/olgabot/2021-01-27-olga-remove-protein.git@olgabot/mut-warning
 RUN cd 2021-01-27-olga-remove-protein  && cargo build --release 
 # Add "subtract" command to path
 ENV PATH $HOME/2021-01-27-olga-remove-protein/target/release:$PATH
