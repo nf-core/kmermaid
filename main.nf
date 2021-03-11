@@ -544,18 +544,45 @@ else {
 housekeeping_protein_fasta = params.housekeeping_protein_fasta
 housekeeping_rna_fasta = params.housekeeping_rna_fasta
 
-need_refseq_download = !housekeeping_protein_fasta && !housekeeping_rna_fasta
+housekeeping_protein_sig = params.housekeeping_protein_sig
+housekeeping_rna_sig = params.housekeeping_rna_sig
 
-ch_refseq_moltype_to_fasta = Channel.from(["protein", housekeeping_protein_fasta], ["rna", housekeeping_rna_fasta])
-ch_refseq_moltype_to_fasta
-    // filter if the second item, the fasta is false
-    .filter{ !it[1] }
+have_housekeeping_fastas = housekeeping_protein_fasta && housekeeping_rna_fasta
+have_housekeeping_sigs = housekeeping_protein_sig && housekeeping_rna_sig
+need_refseq_download = (!have_housekeeping_fastas) && (!have_housekeeping_sigs)
+
+if (have_housekeeping_fastas) {
+  Channel.from(
+    ["protein", file(housekeeping_protein_fasta)], 
+    ["rna", file(housekeeping_rna_fasta)])
+    .into { ch_housekeeping_fasta; ch_refseq_moltype_to_fasta }
+
+  ch_refseq_moltype_to_fasta
+    // Check if protein molecules were even specified 
+    .filter{ 
+      it[0] == "protein" ? peptide_molecules.size() > 0 : nucleotide_molecules.size() > 0 
+    }
     // Take only the first item, the molecule type
     .map{ it[0] }
     .set{ ch_refseq_moltypes_to_download }
+}
+
+if (have_housekeeping_sigs) {
+  // Use sourmash moltypes of "protein,dayhoff" instead of the original protein
+  // as used for the fastas as that's what matches the sourmash outputs
+  ch_housekeeping_sig = Channel.from(
+    ["protein,dayhoff", file(housekeeping_protein_sig)], 
+    ["dna", file(housekeeping_rna_sig)]
+  )
+}
+
 
 // Parse refseq taxonomy group to download
-refseq_taxonomy = params.refseq_taxonomy
+housekeeping_refseq_taxonomy = params.housekeeping_refseq_taxonomy
+/////////////////////////////////////////////////////////////
+/* -- END: Parse Housekeeping K-mer removal parameters  -- */
+/////////////////////////////////////////////////////////////
+
 
 // Has the run name been specified by the user?
 //  this has the bonus effect of catching both -name and --name
@@ -619,11 +646,17 @@ if(params.tenx_tgz) summary["10x SAM tags"] = params.tenx_tags
 if(params.tenx_tgz) summary["10x Cell pattern"] = params.tenx_cell_barcode_pattern
 if(params.tenx_tgz) summary["10x UMI pattern"] = params.tenx_molecular_barcode_pattern
 if(params.tenx_tgz) summary['Min UMI/cell'] = params.tenx_min_umi_per_cell
-// Extract coding parameters
-if(params.translate_proteome_fasta) summary["Peptide fasta"] = params.translate_proteome_fasta
-if(params.translate_proteome_fasta) summary['Peptide ksize'] = params.translate_peptide_ksize
-if(params.translate_proteome_fasta) summary['Peptide molecule'] = params.translate_peptide_molecule
-if(params.translate_proteome_fasta) summary['Bloom filter table size'] = params.bloomfilter_tablesize
+// Orpheum Translate parameters
+if(params.translate_proteome_fasta) summary["Orpheum Translate Peptide fasta"] = params.translate_proteome_fasta
+if(params.translate_proteome_fasta) summary['Orpheum Translate Peptide ksize'] = params.translate_peptide_ksize
+if(params.translate_proteome_fasta) summary['Orpheum Translate Peptide molecule'] = params.translate_peptide_molecule
+if(params.translate_proteome_fasta) summary['Oprheum Translate Bloom filter table size'] = params.bloomfilter_tablesize
+// Housekeeping k-mer removal paramters
+if(params.housekeeping_protein_fasta) summary["Housekeping Peptide fasta"] = params.housekeeping_protein_fasta
+if(params.housekeeping_rna_fasta) summary["Housekeping RNA fasta"] = params.housekeeping_rna_fasta
+if(params.housekeeping_protein_sig) summary["Housekeping Peptide K-mer Signature"] = params.housekeeping_protein_sig
+if(params.housekeeping_rna_sig) summary["Housekeping RNA K-mer Signature"] = params.housekeeping_rna_sig
+if(need_refseq_download) summary["Housekeeping Refseq Taxonomy"] = params.housekeeping_refseq_taxonomy
 // Resource information
 summary['Max Resources']    = "$params.max_memory memory, $params.max_cpus cpus, $params.max_time time per job"
 if(workflow.containerEngine) summary['Container'] = "$workflow.containerEngine - $workflow.container"
@@ -1503,7 +1536,7 @@ if (!params.skip_remove_housekeeping_genes) {
   if (need_refseq_download){
     // No fastas provided for removing housekeeping genes
     process download_refseq {
-      tag "${refseq_taxonomy}--${refseq_moltype}"
+      tag "${housekeeping_refseq_taxonomy}--${refseq_moltype}"
       label "process_low"
       publishDir "${params.outdir}/reference/ncbi_refseq/", mode: 'copy'
 
@@ -1511,11 +1544,11 @@ if (!params.skip_remove_housekeeping_genes) {
       val refseq_moltype from ch_refseq_moltypes_to_download
 
       output:
-      set val(refseq_moltype), file("${refseq_taxonomy}--*.${refseq_moltype}.fa.gz") into ch_refseq_fasta_to_filter
+      set val(refseq_moltype), file("${housekeeping_refseq_taxonomy}--*.${refseq_moltype}.fa.gz") into ch_refseq_fasta_to_filter
 
       script:
-      output_fasta = "${refseq_taxonomy}--\$RELEASE_NUMBER--\$DATE.${refseq_moltype}.fa.gz"
-      include_fasta = params.test_mini_refseq_download ? "${refseq_taxonomy}.1.${refseq_moltype}.f*a.gz"  : "*${refseq_moltype}.f*a.gz" 
+      output_fasta = "${housekeeping_refseq_taxonomy}--\$RELEASE_NUMBER--\$DATE.${refseq_moltype}.fa.gz"
+      include_fasta = params.test_mini_refseq_download ? "${housekeeping_refseq_taxonomy}.1.${refseq_moltype}.f*a.gz"  : "*${refseq_moltype}.f*a.gz" 
       """
       rsync \\
             --prune-empty-dirs \\
@@ -1524,110 +1557,113 @@ if (!params.skip_remove_housekeeping_genes) {
             --recursive \\
             --include '${include_fasta}' \\
             --exclude '/*' \\
-            rsync://ftp.ncbi.nlm.nih.gov/refseq/release/${refseq_taxonomy}/ .
+            rsync://ftp.ncbi.nlm.nih.gov/refseq/release/${housekeeping_refseq_taxonomy}/ .
       wget https://ftp.ncbi.nlm.nih.gov/refseq/release/RELEASE_NUMBER
       DATE=\$(date +'%Y-%m-%d')
       RELEASE_NUMBER=\$(cat RELEASE_NUMBER)
-      gzcat ${refseq_taxonomy}.*.${refseq_moltype}*.gz | gzip -c - > ${output_fasta}
+      gzcat ${housekeeping_refseq_taxonomy}.*.${refseq_moltype}*.gz | gzip -c - > ${output_fasta}
       """
     }
+
+    ///////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////
+    /* --                                                                     -- */
+    /* --              REMOVE K-MERS FROM HOUSEKEEPING GENES                  -- */
+    /* --                                                                     -- */
+    ///////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////
+    /*
+    * STEP 7 - Get only housekeeping genes from 
+    */
+    // Keep genes whose names match housekeeping gene regular expression pattern
+    process extract_fasta_housekeeping {
+      tag "${fasta.baseName}"
+      label "process_low"
+      publishDir "${params.outdir}/reference/housekeeping_genes/", mode: 'copy'
+
+      input:
+      set val(refseq_moltype), file(fasta) from ch_refseq_fasta_to_filter
+
+      output:
+      set val(refseq_moltype), file(output_fasta_gz) into ch_housekeeping_fasta, ch_housekeeping_fasta_to_view
+
+      script:
+      output_fasta = "${fasta.baseName}__only_housekeeping_genes.fa"
+      output_fasta_gz = "${fasta.baseName}__only_housekeeping_genes.fa.gz"
+      """
+      filter_fasta_regex.py \\
+          --input-fasta ${fasta} \\
+          --output-fasta ${output_fasta} \\
+          --regex-pattern '${params.housekeeping_gene_regex}'
+      gzip -c ${output_fasta} > ${output_fasta_gz}
+      """
+    }
+    
+    ch_housekeeping_fasta_to_view
+      .dump( tag: 'ch_housekeeping_fasta' )
   }
 
-  ///////////////////////////////////////////////////////////////////////////////
-  ///////////////////////////////////////////////////////////////////////////////
-  /* --                                                                     -- */
-  /* --              REMOVE K-MERS FROM HOUSEKEEPING GENES                  -- */
-  /* --                                                                     -- */
-  ///////////////////////////////////////////////////////////////////////////////
-  ///////////////////////////////////////////////////////////////////////////////
-  /*
-  * STEP 7 - Get only housekeeping genes from 
-  */
-  // Keep genes whose names match housekeeping gene regular expression pattern
-  process extract_fasta_housekeeping {
-    tag "${fasta.baseName}"
-    label "process_low"
-    publishDir "${params.outdir}/reference/housekeeping_genes/", mode: 'copy'
+  if (!have_housekeeping_sigs) {
+      ///////////////////////////////////////////////////////////////////////////////
+      ///////////////////////////////////////////////////////////////////////////////
+      /* --                                                                     -- */
+      /* --          COMPUTE HOUSEKEEPING GENE K-MER SIGNATURE                  -- */
+      /* --                                                                     -- */
+      ///////////////////////////////////////////////////////////////////////////////
+      ///////////////////////////////////////////////////////////////////////////////
+      /*
+      * STEP 8 - Compute Housekeeping Gene K-mer Signature
+      */
+      // No fastas provided for removing housekeeping genes
+      process compute_housekeeping_kmer_sig {
+        tag "${fasta.baseName}"
+        label "process_low"
+        publishDir "${params.outdir}/reference/housekeeping_genes/", mode: 'copy'
 
-    input:
-    set val(refseq_moltype), file(fasta) from ch_refseq_fasta_to_filter
+        input:
+        val track_abundance
+        val sketch_value_parsed
+        val sketch_style_parsed
+        set val(refseq_moltype), file(fasta) from ch_housekeeping_fasta
 
-    output:
-    set val(refseq_moltype), file(output_fasta_gz) into ch_housekeeping_fasta, ch_housekeeping_fasta_to_view
+        output:
+        set val(sourmash_moltypes), file(sig) into ch_housekeeping_sig
 
-    script:
-    output_fasta = "${fasta.baseName}__only_housekeeping_genes.fa"
-    output_fasta_gz = "${fasta.baseName}__only_housekeeping_genes.fa.gz"
-    """
-    filter_fasta_regex.py \\
-        --input-fasta ${fasta} \\
-        --output-fasta ${output_fasta} \\
-        --regex-pattern '${params.housekeeping_gene_regex}'
-    gzip -c ${output_fasta} > ${output_fasta_gz}
-    """
+        script:
+        is_protein = refseq_moltype == "protein"
+        sourmash_moltype = is_protein ? "protein,dayhoff" : 'dna'
+        sourmash_moltypes = tuple(sourmash_moltype.split(","))
+        sketch_id = make_sketch_id(
+          sourmash_moltype, 
+          params.ksizes, 
+          sketch_value_parsed[0], 
+          track_abundance, 
+          sketch_style_parsed[0]
+        )
+
+        sketch_value_flag = make_sketch_value_flag(
+          sketch_style_parsed[0], 
+          sketch_value_parsed[0]
+        )
+        moltype_flags = is_protein ? '--protein --dayhoff --input-is-protein' : '--dna'
+        track_abundance_flag = track_abundance ? '--track-abundance' : ''
+        sig_id = "${fasta.baseName}__${sketch_id}"
+        sig = "${sig_id}.sig"
+        csv = "${sig_id}.csv"
+        """
+        sourmash compute \\
+          ${sketch_value_flag} \\
+          --ksizes ${params.ksizes} \\
+          ${moltype_flags} \\
+          ${track_abundance_flag} \\
+          --output ${sig} \\
+          --name '${fasta.baseName}' \\
+          ${fasta}
+        sourmash sig describe --csv ${csv} ${sig}
+        """
+      }
   }
-  
-  ch_housekeeping_fasta_to_view
-    .dump( tag: 'ch_housekeeping_fasta' )
 
-  ///////////////////////////////////////////////////////////////////////////////
-  ///////////////////////////////////////////////////////////////////////////////
-  /* --                                                                     -- */
-  /* --          COMPUTE HOUSEKEEPING GENE K-MER SIGNATURE                  -- */
-  /* --                                                                     -- */
-  ///////////////////////////////////////////////////////////////////////////////
-  ///////////////////////////////////////////////////////////////////////////////
-  /*
-  * STEP 8 - Compute Housekeeping Gene K-mer Signature
-  */
-  // No fastas provided for removing housekeeping genes
-  process compute_housekeeping_kmer_sig {
-    tag "${fasta.baseName}"
-    label "process_low"
-    publishDir "${params.outdir}/reference/housekeeping_genes/", mode: 'copy'
-
-    input:
-    val track_abundance
-    val sketch_value_parsed
-    val sketch_style_parsed
-    set val(refseq_moltype), file(fasta) from ch_housekeeping_fasta
-
-    output:
-    set val(sourmash_moltypes), file(sig) into ch_housekeeping_sig
-
-    script:
-    is_protein = refseq_moltype == "protein"
-    sourmash_moltype = is_protein ? "protein,dayhoff" : 'dna'
-    sourmash_moltypes = tuple(sourmash_moltype.split(","))
-    sketch_id = make_sketch_id(
-      sourmash_moltype, 
-      params.ksizes, 
-      sketch_value_parsed[0], 
-      track_abundance, 
-      sketch_style_parsed[0]
-    )
-
-    sketch_value_flag = make_sketch_value_flag(
-      sketch_style_parsed[0], 
-      sketch_value_parsed[0]
-    )
-    moltype_flags = is_protein ? '--protein --dayhoff --input-is-protein' : '--dna'
-    track_abundance_flag = track_abundance ? '--track-abundance' : ''
-    sig_id = "${fasta.baseName}__${sketch_id}"
-    sig = "${sig_id}.sig"
-    csv = "${sig_id}.csv"
-    """
-    sourmash compute \\
-      ${sketch_value_flag} \\
-      --ksizes ${params.ksizes} \\
-      ${moltype_flags} \\
-      ${track_abundance_flag} \\
-      --output ${sig} \\
-      --name '${fasta.baseName}' \\
-      ${fasta}
-    sourmash sig describe --csv ${csv} ${sig}
-    """
-  }
 
   ch_sourmash_sketches_merged
     // index 2: moltypes
