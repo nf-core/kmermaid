@@ -120,7 +120,7 @@ def helpMessage() {
                                     to new name, e.g. with channel or cell annotation label
 
     Translate RNA-seq reads into protein-coding sequences options:
-      --reference_proteome_fasta    Path to a well-curated fasta file of protein sequences. Used to filter for coding reads
+      --translate_proteome_fasta    Path to a well-curated fasta file of protein sequences. Used to filter for coding reads
       --translate_peptide_ksize     K-mer size to use for translating RNA into protein.
                                     Default: 9, which is good for 'protein'. If using dayhoff, suggest 15
       --translate_peptide_molecule  Which molecular encoding to use for translating. Default: "protein"
@@ -324,10 +324,10 @@ if (params.protein_fastas){
   ch_protein_fastas = Channel.empty()
 }
 
-if (params.reference_proteome_fasta) {
-Channel.fromPath(params.reference_proteome_fasta, checkIfExists: true)
-     .ifEmpty { exit 1, "Reference proteome file not found: ${params.reference_proteome_fasta}" }
-     .set{ ch_reference_proteome_fasta }
+if (params.translate_proteome_fasta) {
+Channel.fromPath(params.translate_proteome_fasta, checkIfExists: true)
+     .ifEmpty { exit 1, "Reference proteome file not found: ${params.translate_proteome_fasta}" }
+     .set{ ch_translate_proteome_fasta }
 }
 
 ////////////////////////////////////////////////////
@@ -620,10 +620,10 @@ if(params.tenx_tgz) summary["10x Cell pattern"] = params.tenx_cell_barcode_patte
 if(params.tenx_tgz) summary["10x UMI pattern"] = params.tenx_molecular_barcode_pattern
 if(params.tenx_tgz) summary['Min UMI/cell'] = params.tenx_min_umi_per_cell
 // Extract coding parameters
-if(params.reference_proteome_fasta) summary["Peptide fasta"] = params.reference_proteome_fasta
-if(params.reference_proteome_fasta) summary['Peptide ksize'] = params.translate_peptide_ksize
-if(params.reference_proteome_fasta) summary['Peptide molecule'] = params.translate_peptide_molecule
-if(params.reference_proteome_fasta) summary['Bloom filter table size'] = params.bloomfilter_tablesize
+if(params.translate_proteome_fasta) summary["Peptide fasta"] = params.translate_proteome_fasta
+if(params.translate_proteome_fasta) summary['Peptide ksize'] = params.translate_peptide_ksize
+if(params.translate_proteome_fasta) summary['Peptide molecule'] = params.translate_peptide_molecule
+if(params.translate_proteome_fasta) summary['Bloom filter table size'] = params.bloomfilter_tablesize
 // Resource information
 summary['Max Resources']    = "$params.max_memory memory, $params.max_cpus cpus, $params.max_time time per job"
 if(workflow.containerEngine) summary['Container'] = "$workflow.containerEngine - $workflow.container"
@@ -770,7 +770,7 @@ if ( !params.split_kmer && have_sketch_value ) {
 
 
 
-if (params.reference_proteome_fasta){
+if (params.translate_proteome_fasta){
   process make_protein_index {
     tag "${peptides}__${bloom_id}"
     label "low_memory"
@@ -778,7 +778,7 @@ if (params.reference_proteome_fasta){
     publishDir "${params.outdir}/protein_index", mode: params.publish_dir_mode
 
     input:
-    file(peptides) from ch_reference_proteome_fasta
+    file(peptides) from ch_translate_proteome_fasta
     translate_peptide_ksize
     translate_peptide_molecule
 
@@ -1115,7 +1115,7 @@ if (params.subsample) {
   }
 
 
-  if (params.reference_proteome_fasta){
+  if (params.translate_proteome_fasta){
     process translate {
       tag "${sample_id}"
       label "low_memory_long"
@@ -1309,7 +1309,7 @@ if (!have_nucleotide_input) {
 }
 
 
-if (!params.skip_compute && (protein_input || params.reference_proteome_fasta)){
+if (!params.skip_compute && (protein_input || params.translate_proteome_fasta)){
 
   process sourmash_compute_sketch_fastx_peptide {
     tag "${sig_id}"
