@@ -539,23 +539,23 @@ else {
 
 
 //////////////////////////////////////////////////////////
-/* --  Parse Housekeeping K-mer removal parameters  -- */
+/* --  Parse constitutive K-mer removal parameters  -- */
 /////////////////////////////////////////////////////////
-housekeeping_protein_fasta = params.housekeeping_protein_fasta
-housekeeping_rna_fasta = params.housekeeping_rna_fasta
+constitutive_protein_fasta = params.constitutive_protein_fasta
+constitutive_rna_fasta = params.constitutive_rna_fasta
 
-housekeeping_protein_sig = params.housekeeping_protein_sig
-housekeeping_rna_sig = params.housekeeping_rna_sig
+constitutive_protein_sig = params.constitutive_protein_sig
+constitutive_rna_sig = params.constitutive_rna_sig
 
-have_housekeeping_fastas = housekeeping_protein_fasta && housekeeping_rna_fasta
-have_housekeeping_sigs = housekeeping_protein_sig && housekeeping_rna_sig
-need_refseq_download = (!have_housekeeping_fastas) && (!have_housekeeping_sigs)
+have_constitutive_fastas = constitutive_protein_fasta && constitutive_rna_fasta
+have_constitutive_sigs = constitutive_protein_sig && constitutive_rna_sig
+need_refseq_download = (!have_constitutive_fastas) && (!have_constitutive_sigs)
 
-if (have_housekeeping_fastas) {
+if (have_constitutive_fastas) {
   Channel.from(
-    ["protein", file(housekeeping_protein_fasta)], 
-    ["rna", file(housekeeping_rna_fasta)])
-    .into { ch_housekeeping_fasta; ch_refseq_moltype_to_fasta }
+    ["protein", file(constitutive_protein_fasta)], 
+    ["rna", file(constitutive_rna_fasta)])
+    .into { ch_constitutive_fasta; ch_refseq_moltype_to_fasta }
 
   ch_refseq_moltype_to_fasta
     // Check if protein molecules were even specified 
@@ -567,20 +567,20 @@ if (have_housekeeping_fastas) {
     .set{ ch_refseq_moltypes_to_download }
 }
 
-if (have_housekeeping_sigs) {
+if (have_constitutive_sigs) {
   // Use sourmash moltypes of "protein,dayhoff" instead of the original protein
   // as used for the fastas as that's what matches the sourmash outputs
-  ch_housekeeping_sig = Channel.from(
-    ["protein,dayhoff", file(housekeeping_protein_sig)], 
-    ["dna", file(housekeeping_rna_sig)]
+  ch_constitutive_sig = Channel.from(
+    ["protein,dayhoff", file(constitutive_protein_sig)], 
+    ["dna", file(constitutive_rna_sig)]
   )
 }
 
 
 // Parse refseq taxonomy group to download
-housekeeping_refseq_taxonomy = params.housekeeping_refseq_taxonomy
+constitutive_refseq_taxonomy = params.constitutive_refseq_taxonomy
 /////////////////////////////////////////////////////////////
-/* -- END: Parse Housekeeping K-mer removal parameters  -- */
+/* -- END: Parse constitutive K-mer removal parameters  -- */
 /////////////////////////////////////////////////////////////
 
 
@@ -651,12 +651,12 @@ if(params.translate_proteome_fasta) summary["Orpheum Translate Peptide fasta"] =
 if(params.translate_proteome_fasta) summary['Orpheum Translate Peptide ksize'] = params.translate_peptide_ksize
 if(params.translate_proteome_fasta) summary['Orpheum Translate Peptide molecule'] = params.translate_peptide_molecule
 if(params.translate_proteome_fasta) summary['Oprheum Translate Bloom filter table size'] = params.bloomfilter_tablesize
-// Housekeeping k-mer removal paramters
-if(params.housekeeping_protein_fasta) summary["Housekeping Peptide fasta"] = params.housekeeping_protein_fasta
-if(params.housekeeping_rna_fasta) summary["Housekeping RNA fasta"] = params.housekeeping_rna_fasta
-if(params.housekeeping_protein_sig) summary["Housekeping Peptide K-mer Signature"] = params.housekeeping_protein_sig
-if(params.housekeeping_rna_sig) summary["Housekeping RNA K-mer Signature"] = params.housekeeping_rna_sig
-if(need_refseq_download) summary["Housekeeping Refseq Taxonomy"] = params.housekeeping_refseq_taxonomy
+// constitutive k-mer removal paramters
+if(params.constitutive_protein_fasta) summary["Constitutive Peptide fasta"] = params.constitutive_protein_fasta
+if(params.constitutive_rna_fasta) summary["Constitutive RNA fasta"] = params.constitutive_rna_fasta
+if(params.constitutive_protein_sig) summary["Constitutive Peptide K-mer Signature"] = params.constitutive_protein_sig
+if(params.constitutive_rna_sig) summary["Constitutive RNA K-mer Signature"] = params.constitutive_rna_sig
+if(need_refseq_download) summary["Constitutive GBenes' Refseq Taxonomy"] = params.constitutive_refseq_taxonomy
 // Resource information
 summary['Max Resources']    = "$params.max_memory memory, $params.max_cpus cpus, $params.max_time time per job"
 if(workflow.containerEngine) summary['Container'] = "$workflow.containerEngine - $workflow.container"
@@ -1512,11 +1512,11 @@ if ((params.bam || params.tenx_tgz) && !params.skip_compute && !params.skip_sig_
 }
 
 
-if (!params.skip_remove_housekeeping_genes) {
+if (!params.skip_remove_constitutive_genes) {
   ///////////////////////////////////////////////////////////////////////////////
   ///////////////////////////////////////////////////////////////////////////////
   /* --                                                                     -- */
-  /* --              REMOVE K-MERS FROM HOUSEKEEPING GENES                  -- */
+  /* --              REMOVE K-MERS FROM constitutive GENES                  -- */
   /* --                                                                     -- */
   ///////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////// 
@@ -1534,9 +1534,9 @@ if (!params.skip_remove_housekeeping_genes) {
   * STEP 6 - rsync to download refeseq
   */
   if (need_refseq_download){
-    // No fastas provided for removing housekeeping genes
+    // No fastas provided for removing constitutive genes
     process download_refseq {
-      tag "${housekeeping_refseq_taxonomy}--${refseq_moltype}"
+      tag "${constitutive_refseq_taxonomy}--${refseq_moltype}"
       label "process_low"
       publishDir "${params.outdir}/reference/ncbi_refseq/", mode: 'copy'
 
@@ -1544,11 +1544,11 @@ if (!params.skip_remove_housekeeping_genes) {
       val refseq_moltype from ch_refseq_moltypes_to_download
 
       output:
-      set val(refseq_moltype), file("${housekeeping_refseq_taxonomy}--*.${refseq_moltype}.fa.gz") into ch_refseq_fasta_to_filter
+      set val(refseq_moltype), file("${constitutive_refseq_taxonomy}--*.${refseq_moltype}.fa.gz") into ch_refseq_fasta_to_filter
 
       script:
-      output_fasta = "${housekeeping_refseq_taxonomy}--\$RELEASE_NUMBER--\$DATE.${refseq_moltype}.fa.gz"
-      include_fasta = params.test_mini_refseq_download ? "${housekeeping_refseq_taxonomy}.1.${refseq_moltype}.f*a.gz"  : "*${refseq_moltype}.f*a.gz" 
+      output_fasta = "${constitutive_refseq_taxonomy}--\$RELEASE_NUMBER--\$DATE.${refseq_moltype}.fa.gz"
+      include_fasta = params.test_mini_refseq_download ? "${constitutive_refseq_taxonomy}.1.${refseq_moltype}.f*a.gz"  : "*${refseq_moltype}.f*a.gz" 
       """
       rsync \\
             --prune-empty-dirs \\
@@ -1557,77 +1557,77 @@ if (!params.skip_remove_housekeeping_genes) {
             --recursive \\
             --include '${include_fasta}' \\
             --exclude '/*' \\
-            rsync://ftp.ncbi.nlm.nih.gov/refseq/release/${housekeeping_refseq_taxonomy}/ .
+            rsync://ftp.ncbi.nlm.nih.gov/refseq/release/${constitutive_refseq_taxonomy}/ .
       wget https://ftp.ncbi.nlm.nih.gov/refseq/release/RELEASE_NUMBER
       DATE=\$(date +'%Y-%m-%d')
       RELEASE_NUMBER=\$(cat RELEASE_NUMBER)
-      gzcat ${housekeeping_refseq_taxonomy}.*.${refseq_moltype}*.gz | gzip -c - > ${output_fasta}
+      gzcat ${constitutive_refseq_taxonomy}.*.${refseq_moltype}*.gz | gzip -c - > ${output_fasta}
       """
     }
 
     ///////////////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////////
     /* --                                                                     -- */
-    /* --              REMOVE K-MERS FROM HOUSEKEEPING GENES                  -- */
+    /* --              REMOVE K-MERS FROM constitutive GENES                  -- */
     /* --                                                                     -- */
     ///////////////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////////
     /*
-    * STEP 7 - Get only housekeeping genes from 
+    * STEP 7 - Get only constitutive genes from 
     */
-    // Keep genes whose names match housekeeping gene regular expression pattern
-    process extract_fasta_housekeeping {
+    // Keep genes whose names match constitutive gene regular expression pattern
+    process extract_fasta_constitutive {
       tag "${fasta.baseName}"
       label "process_low"
-      publishDir "${params.outdir}/reference/housekeeping_genes/", mode: 'copy'
+      publishDir "${params.outdir}/reference/constitutive_genes/", mode: 'copy'
 
       input:
       set val(refseq_moltype), file(fasta) from ch_refseq_fasta_to_filter
 
       output:
-      set val(refseq_moltype), file(output_fasta_gz) into ch_housekeeping_fasta, ch_housekeeping_fasta_to_view
+      set val(refseq_moltype), file(output_fasta_gz) into ch_constitutive_fasta, ch_constitutive_fasta_to_view
 
       script:
-      output_fasta = "${fasta.baseName}__only_housekeeping_genes.fa"
-      output_fasta_gz = "${fasta.baseName}__only_housekeeping_genes.fa.gz"
+      output_fasta = "${fasta.baseName}__only_constitutive_genes.fa"
+      output_fasta_gz = "${fasta.baseName}__only_constitutive_genes.fa.gz"
       """
       filter_fasta_regex.py \\
           --input-fasta ${fasta} \\
           --output-fasta ${output_fasta} \\
-          --regex-pattern '${params.housekeeping_gene_regex}'
+          --regex-pattern '${params.constitutive_gene_regex}'
       gzip -c ${output_fasta} > ${output_fasta_gz}
       """
     }
     
-    ch_housekeeping_fasta_to_view
-      .dump( tag: 'ch_housekeeping_fasta' )
+    ch_constitutive_fasta_to_view
+      .dump( tag: 'ch_constitutive_fasta' )
   }
 
-  if (!have_housekeeping_sigs) {
+  if (!have_constitutive_sigs) {
       ///////////////////////////////////////////////////////////////////////////////
       ///////////////////////////////////////////////////////////////////////////////
       /* --                                                                     -- */
-      /* --          COMPUTE HOUSEKEEPING GENE K-MER SIGNATURE                  -- */
+      /* --          COMPUTE constitutive GENE K-MER SIGNATURE                  -- */
       /* --                                                                     -- */
       ///////////////////////////////////////////////////////////////////////////////
       ///////////////////////////////////////////////////////////////////////////////
       /*
-      * STEP 8 - Compute Housekeeping Gene K-mer Signature
+      * STEP 8 - Compute constitutive Gene K-mer Signature
       */
-      // No fastas provided for removing housekeeping genes
-      process compute_housekeeping_kmer_sig {
+      // No fastas provided for removing constitutive genes
+      process compute_constitutive_kmer_sig {
         tag "${fasta.baseName}"
         label "process_low"
-        publishDir "${params.outdir}/reference/housekeeping_genes/", mode: 'copy'
+        publishDir "${params.outdir}/reference/constitutive_genes/", mode: 'copy'
 
         input:
         val track_abundance
         val sketch_value_parsed
         val sketch_style_parsed
-        set val(refseq_moltype), file(fasta) from ch_housekeeping_fasta
+        set val(refseq_moltype), file(fasta) from ch_constitutive_fasta
 
         output:
-        set val(sourmash_moltypes), file(sig) into ch_housekeeping_sig
+        set val(sourmash_moltypes), file(sig) into ch_constitutive_sig
 
         script:
         is_protein = refseq_moltype == "protein"
@@ -1675,14 +1675,14 @@ if (!params.skip_remove_housekeeping_genes) {
     .dump( tag: 'ch_sourmash_sketches_moltype_to_sig__groupTuple' )
     .set { ch_sourmash_sketches_moltype_to_sigs }
 
-  ch_housekeeping_sig
-    .dump( tag: 'ch_housekeeping_sig' )
+  ch_constitutive_sig
+    .dump( tag: 'ch_constitutive_sig' )
     .transpose()
-    .dump( tag: 'ch_housekeeping_sig__transposed' )
+    .dump( tag: 'ch_constitutive_sig__transposed' )
     .combine( ch_sourmash_params_for_subtract, by: 0)
-    .dump( tag: 'ch_housekeeping_sig__transposed__combined' )
+    .dump( tag: 'ch_constitutive_sig__transposed__combined' )
     .combine ( ch_sourmash_sketches_moltype_to_sigs, by: 0 )
-    .dump( tag: 'ch_housekeeping_sig__transposed__combined_joined' )
+    .dump( tag: 'ch_constitutive_sig__transposed__combined_joined' )
     .into { ch_subtract_params_with_sigs; ch_subtract_params_to_sigs_for_siglist }
 
   ch_subtract_params_to_sigs_for_siglist
@@ -1712,22 +1712,22 @@ if (!params.skip_remove_housekeeping_genes) {
   // ///////////////////////////////////////////////////////////////////////////////
   // ///////////////////////////////////////////////////////////////////////////////
   // /* --                                                                     -- */
-  // /* --              REMOVE K-MERS FROM HOUSEKEEPING GENES                  -- */
+  // /* --              REMOVE K-MERS FROM constitutive GENES                  -- */
   // /* --                                                                     -- */
   // ///////////////////////////////////////////////////////////////////////////////
   // ///////////////////////////////////////////////////////////////////////////////
   // /*
-  // * STEP 9 - Remove housekeeping gene k-mers from single cells
+  // * STEP 9 - Remove constitutive gene k-mers from single cells
   // */
   process subtract_houskeeping_kmers {
     tag "${subtract_id}"
     label "process_medium"
-    publishDir "${params.outdir}/sketches_subtract_housekeeping_kmers/${subtract_id}", mode: 'copy'
+    publishDir "${params.outdir}/sketches_subtract_constitutive_kmers/${subtract_id}", mode: 'copy'
 
     input:
     val sketch_value_parsed
     val sketch_style_parsed
-    set val(molecule), val(ksize), file(housekeeping_sig), file(sigs), file(siglist) from ch_sigs_with_houskeeping_sig_to_subtract
+    set val(molecule), val(ksize), file(constitutive_sig), file(sigs), file(siglist) from ch_sigs_with_houskeeping_sig_to_subtract
 
     output:
     set val(molecule), val(ksize), file("subtracted/*.sig") into ch_sigs_houskeeping_removed
@@ -1747,7 +1747,7 @@ if (!params.skip_remove_housekeeping_genes) {
         --ksize ${ksize} \\
         --encoding ${molecule} \\
         --output subtracted/ \\
-        ${housekeeping_sig} \\
+        ${constitutive_sig} \\
         ${siglist}
     """
   }
