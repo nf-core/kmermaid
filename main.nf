@@ -446,6 +446,8 @@ Channel.from(params.ksizes?.toString().tokenize(','))
 molecules = params.molecules?.toString().tokenize(',')
 nucleotide_molecules = molecules.findAll { it == "dna" }
 peptide_molecules = molecules.findAll { it != "dna" }
+// have_protein_input = params.translate_proteome_fasta || params.protein_fastas || protein_input
+// peptide_molecules = 
 peptide_molecules_comma_separated = peptide_molecules.join(",")
 peptide_molecule_flags = peptide_molecules.collect { it -> "--${it}" }.join ( " " )
 
@@ -1721,8 +1723,8 @@ if (!params.skip_remove_constitutive_genes) {
     .map{ [it[0], it[2], it[1], it[3]] }
     .dump ( tag: 'ch_subtract_params_with_sigs__map' )
     .combine( ch_subtract_params_with_siglist,  by: [0, 1] )
-    .dump( tag: 'ch_sigs_with_houskeeping_sig_to_subtract' )
-    .set { ch_sigs_with_houskeeping_sig_to_subtract }
+    .dump( tag: 'ch_sigs_with_constitutive_sig_to_subtract' )
+    .set { ch_sigs_with_constitutive_sig_to_subtract }
 
 
   // ///////////////////////////////////////////////////////////////////////////////
@@ -1735,7 +1737,7 @@ if (!params.skip_remove_constitutive_genes) {
   // /*
   // * STEP 9 - Remove constitutive gene k-mers from single cells
   // */
-  process subtract_houskeeping_kmers {
+  process subtract_constitutive_kmers {
     tag "${subtract_id}"
     label "process_medium"
     publishDir "${params.outdir}/sketches_subtract_constitutive_kmers/${subtract_id}", mode: 'copy'
@@ -1743,10 +1745,10 @@ if (!params.skip_remove_constitutive_genes) {
     input:
     val sketch_value_parsed
     val sketch_style_parsed
-    set val(molecule), val(ksize), file(constitutive_sig), file(sigs), file(siglist) from ch_sigs_with_houskeeping_sig_to_subtract
+    set val(molecule), val(ksize), file(constitutive_sig), file(sigs), file(siglist) from ch_sigs_with_constitutive_sig_to_subtract
 
     output:
-    set val(molecule), val(ksize), file("subtracted/*.sig") into ch_sigs_houskeeping_removed
+    set val(molecule), val(ksize), file("subtracted/*.sig") into ch_sigs_constitutive_removed
     
     script:
     subtract_id = "${molecule}__k-${ksize}"
@@ -1767,6 +1769,29 @@ if (!params.skip_remove_constitutive_genes) {
         ${siglist}
     """
   }
+
+  ch_sigs_constitutive_removed
+    // .groupTuple( by: [0, 1] )
+    .transpose( by: 2 )
+    .set{ ch_sourmash_sketches_to_compare }
+
+} else {
+  ch_sourmash_sketches_merged
+    .map { [tuple(it[2].split(",")), it[4]] }
+    .dump(tag: 'ch_sourmash_sketches_merged__map_split' )
+    .transpose()
+    .dump(tag: 'ch_sourmash_sketches_merged__map_split__tranpose' )
+    // Perform cartesian product on the molecules with compare params
+    .combine( ch_sourmash_params_for_compare, by: 0)
+    .dump(tag: 'ch_sourmash_sketches_merged__map_split__combine' )
+    // .groupTuple(by: [0, 2])
+    .dump(tag: 'ch_sourmash_sketches_to_compare' )
+    // Reorder so signature files are last
+    // moltype, ksize, signature file
+    .map { [it[0], it[2], it[1]] }
+    .set { ch_sourmash_sketches_to_compare }
+
+    ch_sourmash_sig_describe_merged = Channel.empty()
 }
 
 
@@ -1793,51 +1818,23 @@ if (params.split_kmer){
 }
 // If skip_compute is true, skip compare must be specified as true as well
 if (!params.split_kmer && !params.skip_compare && !params.skip_compute) {
-  // // Combine peptide and nucleotide sketches
-  // sourmash_sketches_nucleotide
-  //   .collect()
-  //   // Set as a list so that combine does cartesian product of all signatures
-  //   .map { it -> [it] }
-  //   .combine( ch_ksizes_for_compare_nucleotide )
-  //   .dump( tag: 'sourmash_sketches_nucleotide__ksizes' )
-  //   .map { x -> [x[0], x[1], 'dna'] }
-  //   .dump( tag: 'sourmash_sketches_nucleotide__ksizes__molecules' )
-  //   .set { sourmash_sketches_nucleotide_for_compare }
+  ch_sourmash_compare_sketch_params_to_sketches = Channel.create()
 
-  // sourmash_sketches_peptide
-  //   .collect()
-  //   // Set as a list so that combine does cartesian product of all signatures
-  //   .map { it -> [it] }
-  //   .combine( ch_ksizes_for_compare_petide )
-  //   .dump( tag: 'sourmash_sketches_peptide__ksizes' )
-  //   .combine( ch_peptide_molecules )
-  //   .dump( tag: 'sourmash_sketches_peptide__ksizes__molecules' )
-  //   .set { sourmash_sketches_peptide_for_compare }
-
-  // sourmash_sketches_peptide_for_compare
-  //   .mix ( sourmash_sketches_nucleotide_for_compare )
-  //   .set { ch_sourmash_sketches_to_compare }
-
-  // ch_sourmash_sketches_to_compare = Channel.empty()
-
-
-  ch_sourmash_sketches_merged = Channel.empty()
-
-  ch_sourmash_sketches_merged
-    // Drop first index (index 0) which is the cell id
-    // Drop the second index (index 1) which is the sketch id
-    // Keep only moltype
-    // Drop ksize
-    .map { [tuple(it[2].split(",")), it[4]] }
-    .dump(tag: 'ch_sourmash_sketches_merged__map_split' )
-    .transpose()
-    .dump(tag: 'ch_sourmash_sketches_merged__map_split__tranpose' )
-    // Perform cartesian product on the molecules with compare params
-    .combine( ch_sourmash_params_for_compare, by: 0)
-    .dump(tag: 'ch_sourmash_sketches_merged__map_split__combine' )
-    .groupTuple(by: [0, 2])
-    .dump(tag: 'ch_sourmash_sketches_to_compare' )
-    .set { ch_sourmash_sketches_to_compare }
+  ch_sourmash_sketches_to_compare
+    .tap ( ch_sourmash_compare_sketch_params_to_sketches )
+    .dump( tag: 'ch_compare_params_to_sigs_for_siglist__transpose' )
+    .collectFile() { it -> 
+      [ "${it[0]}__${it[1]}.txt", "${it[2].getFileName()}\n"] 
+    }
+    .dump ( tag: 'ch_compare_params_to_sigs_for_siglist__transpose__collectfile' )
+    .map { [ tuple( it.baseName.split('__') ), it] }
+    .map { [ it[0][0], it[0][1], it[1] ] }
+    .dump ( tag: 'ch_compare_params_with_siglist' )
+    .combine( ch_sourmash_compare_sketch_params_to_sketches,  by: [0, 1] )
+    .dump( tag: 'ch_compare_params_with_siglist__add_sketches' )
+    .groupTuple( by: [0, 1, 2] )
+    .dump ( tag: 'ch_compare_params_with_siglist__add_sketches__groupTuple' )
+    .set { ch_sourmash_params_to_siglist_sketches }
 
   process sourmash_compare_sketches {
     // Combine peptide and nucleotide sketches
@@ -1845,8 +1842,8 @@ if (!params.split_kmer && !params.skip_compare && !params.skip_compute) {
     publishDir "${params.outdir}/compare_sketches", mode: 'copy'
 
     input:
-    // Weird order but that's how it shakes out with the groupTuple
-    set val(molecule), file("*.sig"), val(ksize) from ch_sourmash_sketches_to_compare
+    // file(sigs) is necessary to stage all the signature files present in file(siglist)
+    set val(molecule), val(ksize), file(siglist), file(sigs) from ch_sourmash_params_to_siglist_sketches
 
     output:
     file(csv)
@@ -1861,7 +1858,7 @@ if (!params.split_kmer && !params.skip_compare && !params.skip_compute) {
           --${molecule} \\
           --csv ${csv} \\
           ${processes} \\
-          --traverse-directory .
+          --from-file ${siglist}
     # Use --traverse-directory instead of all the files explicitly to avoid
     # "too many arguments" error for bash when there are lots of samples
     """
