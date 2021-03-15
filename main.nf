@@ -581,6 +581,15 @@ if (have_constitutive_sigs) {
     ["protein,dayhoff", file(constitutive_protein_sig)], 
     ["dna", file(constitutive_rna_sig)]
   )
+
+  ch_refseq_moltype_to_fasta
+    // Check if protein molecules were even specified 
+    .filter{ 
+      it[0] == "protein" ? peptide_molecules.size() > 0 : nucleotide_molecules.size() > 0 
+    }
+    // Take only the first item, the molecule type
+    .map{ it[0] }
+    .set{ ch_refseq_moltypes_to_download }
 }
 
 
@@ -1568,7 +1577,7 @@ if (!params.skip_remove_constitutive_genes) {
       wget https://ftp.ncbi.nlm.nih.gov/refseq/release/RELEASE_NUMBER
       DATE=\$(date +'%Y-%m-%d')
       RELEASE_NUMBER=\$(cat RELEASE_NUMBER)
-      gzcat ${constitutive_refseq_taxonomy}.*.${refseq_moltype}*.gz | gzip -c - > ${output_fasta}
+      zcat ${constitutive_refseq_taxonomy}.*.${refseq_moltype}*.gz | gzip -c - > ${output_fasta}
       """
     }
 
