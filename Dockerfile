@@ -17,7 +17,7 @@ RUN conda env export --name nf-core-kmermaid-0.1.0dev > nf-core-kmermaid-0.1.0de
 RUN git clone -b olgabot/mut-warning https://github.com/olgabot/2021-01-27-olga-remove-protein.git
 # Soft link all conda C-related libraries to their non-prefixed name 
 # for rust to be able to build the C libraries
-RUN for f in $(ls /opt/conda/envs/nf-core-kmermaid-0.1.0dev/bin/x86_64-conda_cos6-linux-gnu*); do g=$(echo $f | sed 's:x86_64-conda_cos6-linux-gnu-::') ; echo $g ; done
+RUN for f in $(ls /opt/conda/envs/nf-core-kmermaid-0.1.0dev/bin/x86_64-conda_cos6-linux-gnu*); do g=$(echo $f | sed 's:x86_64-conda_cos6-linux-gnu-::') ; echo $g; ln -s $f $g ; done
 RUN cd 2021-01-27-olga-remove-protein && cargo build --release 
 # Add "subtract" command to path
 ENV PATH $HOME/2021-01-27-olga-remove-protein/target/release:$PATH
