@@ -565,6 +565,13 @@ if (have_constitutive_fastas) {
     // Take only the first item, the molecule type
     .map{ it[0] }
     .set{ ch_refseq_moltypes_to_download }
+} else {
+  // Don't look at the fastas, only check the parsed molecule types
+  Channel.from(['protein', 'rna'])
+    .filter{ 
+      it == "protein" ? peptide_molecules.size() > 0 : nucleotide_molecules.size() > 0 
+    }
+    .set{ ch_refseq_moltypes_to_download }
 }
 
 if (have_constitutive_sigs) {
