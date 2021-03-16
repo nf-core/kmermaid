@@ -61,6 +61,7 @@ jobs:
       NXF_VER: '20.07.1'
       NXF_ANSI_LOG: false
     strategy:
+      fail-fast: false
       matrix:
         profile_flags:
           - "test --sketch_scaled false --sketch_scaled_log2 2"
