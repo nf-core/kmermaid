@@ -588,7 +588,7 @@ if (have_constitutive_sigs) {
   Channel.from(
     ["protein", file(constitutive_protein_sig)], 
     ["rna", file(constitutive_rna_sig)])
-    .into { ch_refseq_moltype_to_sig }
+    .set { ch_refseq_moltype_to_sig }
 
   ch_refseq_moltype_to_sig
     // Check if protein molecules were even specified 
@@ -665,11 +665,11 @@ if (params.sketch_num_hashes_log2) summary['Sketch Sizes (log2)']      = params.
 if (params.sketch_scaled) summary['Sketch scaled']               = params.sketch_scaled
 if (params.sketch_scaled_log2) summary['Sketch scaled (log2)']   = params.sketch_scaled_log2
 // 10x parameters
-if(params.tenx_tgz) summary["10x .tgz"] = params.tenx_tgz
-if(params.tenx_tgz) summary["10x SAM tags"] = params.tenx_tags
-if(params.tenx_tgz) summary["10x Cell pattern"] = params.tenx_cell_barcode_pattern
-if(params.tenx_tgz) summary["10x UMI pattern"] = params.tenx_molecular_barcode_pattern
-if(params.tenx_tgz) summary['Min UMI/cell'] = params.tenx_min_umi_per_cell
+if(params.tenx_tgz || params.bam) summary["10x .tgz"] = params.tenx_tgz
+if(params.tenx_tgz || params.bam) summary["10x SAM tags"] = params.tenx_tags
+if(params.tenx_tgz || params.bam) summary["10x Cell pattern"] = params.tenx_cell_barcode_pattern
+if(params.tenx_tgz || params.bam) summary["10x UMI pattern"] = params.tenx_molecular_barcode_pattern
+if(params.tenx_tgz || params.bam) summary['Min UMI/cell'] = params.tenx_min_umi_per_cell
 // Orpheum Translate parameters
 if(params.translate_proteome_fasta) summary["Orpheum Translate Peptide fasta"] = params.translate_proteome_fasta
 if(params.translate_proteome_fasta) summary['Orpheum Translate Peptide ksize'] = params.translate_peptide_ksize
