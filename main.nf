@@ -579,15 +579,21 @@ if (have_constitutive_fastas) {
 if (have_constitutive_sigs) {
   // Use sourmash moltypes of "protein,dayhoff" instead of the original protein
   // as used for the fastas as that's what matches the sourmash outputs
-  ch_constitutive_sig = Channel.from(
+  Channel.from(
     ["protein,dayhoff", file(constitutive_protein_sig)], 
-    ["dna", file(constitutive_rna_sig)]
-  )
+    ["dna", file(constitutive_rna_sig)])
+    .set { ch_constitutive_sig }
 
-  ch_refseq_moltype_to_fasta
+  // Refseq molecule types are "protein" and "rna"
+  Channel.from(
+    ["protein", file(constitutive_protein_sig)], 
+    ["rna", file(constitutive_rna_sig)])
+    .into { ch_refseq_moltype_to_sig }
+
+  ch_refseq_moltype_to_sig
     // Check if protein molecules were even specified 
     .filter{ 
-      it[0] == "protein" ? peptide_molecules.size() > 0 : nucleotide_molecules.size() > 0 
+      it[0]== "protein" ? peptide_molecules.size() > 0 : nucleotide_molecules.size() > 0 
     }
     // Take only the first item, the molecule type
     .map{ it[0] }
