@@ -531,6 +531,42 @@ else {
   barcode_metadata_folder = "barcode_metadata"
 }
 
+
+////////////////////////////////////////////////////
+/* --    Parse Sourmash Seach Parameters       -- */
+////////////////////////////////////////////////////
+
+if (params.celltype_sbt_db_dna) {
+  Channel.fromPath(params.celltype_sbt_db_dna, checkIfExists: true)
+     .ifEmpty { exit 1, "Reference cell label DNA k-mer signatures file not found:"
+          "${params.reference_proteome_fasta}" }
+     .map { tuple("dna", params.celltype_sbt_db_dna_ksize, it) }
+     .set{ ch_celltype_db_sbt_dna }
+} else {
+  ch_celltype_db_sbt_dna = Channel.empty()
+}
+
+if (params.celltype_sbt_db_protein) {
+  Channel.fromPath(params.celltype_sbt_db_protein, checkIfExists: true)
+     .ifEmpty { exit 1, "Reference cell label Protein k-mer signatures file not found:"
+          "${params.reference_proteome_fasta}" }
+     .map { tuple("protein", params.celltype_sbt_db_protein_ksize, it) }
+     .set{ ch_celltype_db_sbt_protein }
+} else {
+  ch_celltype_db_sbt_protein = Channel.empty()
+}
+
+if (params.celltype_sbt_db_dayhoff) {
+  Channel.fromPath(params.celltype_sbt_db_dayhoff, checkIfExists: true)
+     .ifEmpty { exit 1, "Reference cell label Dayhoff k-mer signatures file not found:"
+          "${params.reference_proteome_fasta}" }
+     .map { tuple("dayhoff", params.celltype_sbt_db_dayhoff_ksize, it) }
+     .set{ ch_celltype_db_sbt_dayhoff }
+} else {
+  ch_celltype_db_sbt_dayhoff = Channel.empty()
+}
+
+
 // Has the run name been specified by the user?
 //  this has the bonus effect of catching both -name and --name
 custom_runName = params.name
@@ -1646,6 +1682,41 @@ if (!params.split_kmer && !params.skip_compare && !params.skip_compute) {
     """
 
   }
+}
+
+// If a cell type databse is present
+if (params.celltype_sbt_db) {
+  process sourmash_search {
+    // Combine peptide and nucleotide sketches
+    tag "${sketch_id}"
+    publishDir "${params.outdir}/index", mode: 'copy'
+
+    input:
+    file(celltype_db_sbt_zip) from ch_celltype_db_sbt_zip.collect()
+    set val(molecule), val(ksize), file(sigs) from ch_sourmash_sketches_to_search
+
+    output:
+    file(csv)
+
+    script:
+    csv = "${sbt_zip.simpleName}.csv"
+    // Parse sourmash search parameters
+    containment_flag = params.containment ? "--containment" : ""
+    threshold_flag = "--threshold ${params.search_threshold}"
+    """
+    sourmash search \\
+          ${threshold_flag} \\
+          ${containment_flag} \\
+          --ksize ${ksize} \\
+          --${molecule} \\
+          --output ${csv} \\
+          ${celltype_db_sbt_zip} \\
+          .
+    """
+  }
+}
+
+
 }
 
 
