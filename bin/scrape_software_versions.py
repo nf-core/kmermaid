@@ -14,8 +14,10 @@ regexes = {
     "SKA": ["v_ska.txt", r"SKA Version: (\S+)"],
     "htslib": ["v_samtools.txt", r"htslib (\S+)"],
     "Sourmash": ["v_sourmash.txt", r"sourmash (\S+)"],
-    "SortMeRNA": ["v_sortmerna.txt", r"SortMeRNA version (\S+),"],
+    "Rsync": ["v_rsync.txt", r"rsync  version (\S+)"],
+    "Rsync (Protocol)": ["v_rsync.txt", r"protocol version (\S+)"],
     "orpheum": ["v_orpheum.txt", r"Version: (\S+)"],
+    "Python": ["v_python.txt", r"Python (\S+)"],
 }
 results = OrderedDict()
 results["nf-core/kmermaid"] = '<span style="color:#999999;">N/A</span>'
@@ -25,11 +27,13 @@ results["MultiQC"] = '<span style="color:#999999;">N/A</span>'
 results["bam2fasta"] = '<span style="color:#999999;">N/A</span>'
 results["fastp"] = '<span style="color:#999999;">N/A</span>'
 results["htslib"] = '<span style="color:#999999;">N/A</span>'
+results["orpheum"] = '<span style="color:#999999;">N/A</span>'
+results["Python"] = '<span style="color:#999999;">N/A</span>'
+results["Rsync"] = '<span style="color:#999999;">N/A</span>'
+results["Rsync (Protocol)"] = '<span style="color:#999999;">N/A</span>'
 results["Samtools"] = '<span style="color:#999999;">N/A</span>'
 results["SKA"] = '<span style="color:#999999;">N/A</span>'
 results["Sourmash"] = '<span style="color:#999999;">N/A</span>'
-results["SortMeRNA"] = '<span style="color:#999999;">N/A</span>'
-results["orpheum"] = '<span style="color:#999999;">N/A</span>'
 
 # Search each file using its regex
 for k, v in regexes.items():

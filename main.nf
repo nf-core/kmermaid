@@ -120,7 +120,7 @@ def helpMessage() {
                                     to new name, e.g. with channel or cell annotation label
 
     Translate RNA-seq reads into protein-coding sequences options:
-      --reference_proteome_fasta    Path to a well-curated fasta file of protein sequences. Used to filter for coding reads
+      --translate_proteome_fasta    Path to a well-curated fasta file of protein sequences. Used to filter for coding reads
       --translate_peptide_ksize     K-mer size to use for translating RNA into protein.
                                     Default: 9, which is good for 'protein'. If using dayhoff, suggest 15
       --translate_peptide_molecule  Which molecular encoding to use for translating. Default: "protein"
@@ -324,10 +324,10 @@ if (params.protein_fastas){
   ch_protein_fastas = Channel.empty()
 }
 
-if (params.reference_proteome_fasta) {
-Channel.fromPath(params.reference_proteome_fasta, checkIfExists: true)
-     .ifEmpty { exit 1, "Reference proteome file not found: ${params.reference_proteome_fasta}" }
-     .set{ ch_reference_proteome_fasta }
+if (params.translate_proteome_fasta) {
+Channel.fromPath(params.translate_proteome_fasta, checkIfExists: true)
+     .ifEmpty { exit 1, "Reference proteome file not found: ${params.translate_proteome_fasta}" }
+     .set{ ch_translate_proteome_fasta }
 }
 
 ////////////////////////////////////////////////////
@@ -388,12 +388,12 @@ if (!protein_input) {
   if (params.subsample && params.skip_trimming ) {
     subsample_reads_ch_unchecked
       .ifEmpty{  exit 1, "No reads provided! Check read input files" }
-      .set { subsample_ch_reads_for_ribosomal_removal }
+      .set { subsample_ch_reads_to_translate }
   }
   if (params.skip_trimming && !(params.bam || params.tenx_tgz)) {
     reads_ch_unchecked
       .ifEmpty{ exit 1, "No reads provided! Check read input files" }
-      .set { ch_reads_for_ribosomal_removal }
+      .set { ch_reads_to_translate }
     ch_read_files_trimming_to_check_size = Channel.empty()
   } else if (params.bam || params.tenx_tgz) {
     ch_non_bam_reads_unchecked
@@ -409,11 +409,11 @@ if (!protein_input) {
   // Since there exists protein input, don't check if these are empty
   if (params.subsample) {
     subsample_reads_ch_unchecked
-      .set { subsample_ch_reads_for_ribosomal_removal }
+      .set { subsample_ch_reads_to_translate }
   }
   if (params.skip_trimming) {
     reads_ch_unchecked
-      .set { ch_reads_for_ribosomal_removal }
+      .set { ch_reads_to_translate }
     ch_read_files_trimming_to_check_size = Channel.empty()
   } else if (!have_nucleotide_fasta_input) {
     ch_read_files_trimming_unchecked
@@ -432,15 +432,6 @@ if (params.split_kmer){
     params.ksizes = '21,27,33,51'
 }
 
-// Get rRNA databases
-// Default is set to bundled DB list in `assets/rrna-db-defaults.txt`
-
-rRNA_database = file(params.rrna_database_manifest)
-if (rRNA_database.isEmpty()) {exit 1, "File ${rRNA_database.getName()} is empty!"}
-Channel
-    .from( rRNA_database.readLines() )
-    .map { row -> file(row) }
-    .set { sortmerna_fasta }
 
 // --- Parse Translate parameters ---
 save_translate_csv = params.save_translate_csv
@@ -450,18 +441,35 @@ save_translate_json = params.save_translate_json
 // --- Parse the Sourmash parameters ----
 ksizes = params.ksizes?.toString().tokenize(',')
 Channel.from(params.ksizes?.toString().tokenize(','))
-  .into { ch_ksizes_for_compare_peptide; ch_ksizes_for_compare_nucleotide }
+  .into { ch_ksizes_for_nucleotide; ch_ksizes_for_peptide; ch_ksizes_for_compare_peptide; ch_ksizes_for_compare_nucleotide }
 
 molecules = params.molecules?.toString().tokenize(',')
+nucleotide_molecules = molecules.findAll { it == "dna" }
 peptide_molecules = molecules.findAll { it != "dna" }
+// have_protein_input = params.translate_proteome_fasta || params.protein_fastas || protein_input
+// peptide_molecules = 
 peptide_molecules_comma_separated = peptide_molecules.join(",")
 peptide_molecule_flags = peptide_molecules.collect { it -> "--${it}" }.join ( " " )
 
 Channel.from( molecules )
   .set { ch_molecules }
 
+Channel.from( nucleotide_molecules )
+  .into { ch_nucleotide_molecules; ch_nucleotide_molecules_for_subtract; ch_nucleotide_molecules_for_compare }
+
 Channel.from( peptide_molecules )
-  .into { ch_peptide_molecules; ch_peptide_molecules_for_compare }
+  .into { ch_peptide_molecules; ch_peptide_molecules_for_subtract; ch_peptide_molecules_for_compare }
+
+
+ch_peptide_molecules
+  .combine( ch_ksizes_for_peptide )
+  .set { ch_sourmash_params_peptide }
+
+ch_nucleotide_molecules 
+  .combine( ch_ksizes_for_nucleotide )
+  .mix ( ch_sourmash_params_peptide )
+  .dump ( tag: 'ch_sourmash_params' )
+  .into { ch_sourmash_params_for_compare ; ch_sourmash_params_for_subtract }
 
 // Parse sketch value and style parameters
 sketch_num_hashes = params.sketch_num_hashes
@@ -531,6 +539,75 @@ else {
   barcode_metadata_folder = "barcode_metadata"
 }
 
+
+//////////////////////////////////////////////////////////
+/* --  Parse constitutive K-mer removal parameters  -- */
+/////////////////////////////////////////////////////////
+constitutive_protein_fasta = params.constitutive_protein_fasta
+constitutive_rna_fasta = params.constitutive_rna_fasta
+
+constitutive_protein_sig = params.constitutive_protein_sig
+constitutive_rna_sig = params.constitutive_rna_sig
+
+have_constitutive_fastas = constitutive_protein_fasta && constitutive_rna_fasta
+have_constitutive_sigs = constitutive_protein_sig && constitutive_rna_sig
+need_refseq_download = (!have_constitutive_fastas) && (!have_constitutive_sigs)
+
+if (have_constitutive_fastas) {
+  Channel.from(
+    ["protein", file(constitutive_protein_fasta)], 
+    ["rna", file(constitutive_rna_fasta)])
+    .into { ch_constitutive_fasta; ch_refseq_moltype_to_fasta }
+
+  ch_refseq_moltype_to_fasta
+    // Check if protein molecules were even specified 
+    .filter{ 
+      it[0] == "protein" ? peptide_molecules.size() > 0 : nucleotide_molecules.size() > 0 
+    }
+    // Take only the first item, the molecule type
+    .map{ it[0] }
+    .set{ ch_refseq_moltypes_to_download }
+} else {
+  // Don't look at the fastas, only check the parsed molecule types
+  Channel.from(['protein', 'rna'])
+    .filter{ 
+      it == "protein" ? peptide_molecules.size() > 0 : nucleotide_molecules.size() > 0 
+    }
+    .set{ ch_refseq_moltypes_to_download }
+}
+
+if (have_constitutive_sigs) {
+  // Use sourmash moltypes of "protein,dayhoff" instead of the original protein
+  // as used for the fastas as that's what matches the sourmash outputs
+  Channel.from(
+    ["protein,dayhoff", file(constitutive_protein_sig)], 
+    ["dna", file(constitutive_rna_sig)])
+    .set { ch_constitutive_sig }
+
+  // Refseq molecule types are "protein" and "rna"
+  Channel.from(
+    ["protein", file(constitutive_protein_sig)], 
+    ["rna", file(constitutive_rna_sig)])
+    .set { ch_refseq_moltype_to_sig }
+
+  ch_refseq_moltype_to_sig
+    // Check if protein molecules were even specified 
+    .filter{ 
+      it[0]== "protein" ? peptide_molecules.size() > 0 : nucleotide_molecules.size() > 0 
+    }
+    // Take only the first item, the molecule type
+    .map{ it[0] }
+    .set{ ch_refseq_moltypes_to_download }
+}
+
+
+// Parse refseq taxonomy group to download
+constitutive_refseq_taxonomy = params.constitutive_refseq_taxonomy
+/////////////////////////////////////////////////////////////
+/* -- END: Parse constitutive K-mer removal parameters  -- */
+/////////////////////////////////////////////////////////////
+
+
 // Has the run name been specified by the user?
 //  this has the bonus effect of catching both -name and --name
 custom_runName = params.name
@@ -588,16 +665,22 @@ if (params.sketch_num_hashes_log2) summary['Sketch Sizes (log2)']      = params.
 if (params.sketch_scaled) summary['Sketch scaled']               = params.sketch_scaled
 if (params.sketch_scaled_log2) summary['Sketch scaled (log2)']   = params.sketch_scaled_log2
 // 10x parameters
-if(params.tenx_tgz) summary["10x .tgz"] = params.tenx_tgz
-if(params.tenx_tgz) summary["10x SAM tags"] = params.tenx_tags
-if(params.tenx_tgz) summary["10x Cell pattern"] = params.tenx_cell_barcode_pattern
-if(params.tenx_tgz) summary["10x UMI pattern"] = params.tenx_molecular_barcode_pattern
-if(params.tenx_tgz) summary['Min UMI/cell'] = params.tenx_min_umi_per_cell
-// Extract coding parameters
-if(params.reference_proteome_fasta) summary["Peptide fasta"] = params.reference_proteome_fasta
-if(params.reference_proteome_fasta) summary['Peptide ksize'] = params.translate_peptide_ksize
-if(params.reference_proteome_fasta) summary['Peptide molecule'] = params.translate_peptide_molecule
-if(params.reference_proteome_fasta) summary['Bloom filter table size'] = params.bloomfilter_tablesize
+if(params.tenx_tgz || params.bam) summary["10x .tgz"] = params.tenx_tgz
+if(params.tenx_tgz || params.bam) summary["10x SAM tags"] = params.tenx_tags
+if(params.tenx_tgz || params.bam) summary["10x Cell pattern"] = params.tenx_cell_barcode_pattern
+if(params.tenx_tgz || params.bam) summary["10x UMI pattern"] = params.tenx_molecular_barcode_pattern
+if(params.tenx_tgz || params.bam) summary['Min UMI/cell'] = params.tenx_min_umi_per_cell
+// Orpheum Translate parameters
+if(params.translate_proteome_fasta) summary["Orpheum Translate Peptide fasta"] = params.translate_proteome_fasta
+if(params.translate_proteome_fasta) summary['Orpheum Translate Peptide ksize'] = params.translate_peptide_ksize
+if(params.translate_proteome_fasta) summary['Orpheum Translate Peptide molecule'] = params.translate_peptide_molecule
+if(params.translate_proteome_fasta) summary['Oprheum Translate Bloom filter table size'] = params.bloomfilter_tablesize
+// constitutive k-mer removal paramters
+if(params.constitutive_protein_fasta) summary["Constitutive Peptide fasta"] = params.constitutive_protein_fasta
+if(params.constitutive_rna_fasta) summary["Constitutive RNA fasta"] = params.constitutive_rna_fasta
+if(params.constitutive_protein_sig) summary["Constitutive Peptide K-mer Signature"] = params.constitutive_protein_sig
+if(params.constitutive_rna_sig) summary["Constitutive RNA K-mer Signature"] = params.constitutive_rna_sig
+if(need_refseq_download) summary["Constitutive GBenes' Refseq Taxonomy"] = params.constitutive_refseq_taxonomy
 // Resource information
 summary['Max Resources']    = "$params.max_memory memory, $params.max_cpus cpus, $params.max_time time per job"
 if(workflow.containerEngine) summary['Container'] = "$workflow.containerEngine - $workflow.container"
@@ -669,10 +752,11 @@ process get_software_versions {
     bam2fasta info &> v_bam2fasta.txt
     fastp --version &> v_fastp.txt
     samtools --version &> v_samtools.txt
+    rsync --version &> v_rsync.txt
     ska version &> v_ska.txt
-    sortmerna --version &> v_sortmerna.txt
     sourmash -v &> v_sourmash.txt
     pip show orpheum &> v_orpheum.txt
+    python --version &> v_python.txt
     scrape_software_versions.py &> software_versions_mqc.yaml
     """
 }
@@ -743,7 +827,7 @@ if ( !params.split_kmer && have_sketch_value ) {
 
 
 
-if (params.reference_proteome_fasta){
+if (params.translate_proteome_fasta){
   process make_protein_index {
     tag "${peptides}__${bloom_id}"
     label "low_memory"
@@ -751,7 +835,7 @@ if (params.reference_proteome_fasta){
     publishDir "${params.outdir}/protein_index", mode: params.publish_dir_mode
 
     input:
-    file(peptides) from ch_reference_proteome_fasta
+    file(peptides) from ch_translate_proteome_fasta
     translate_peptide_ksize
     translate_peptide_molecule
 
@@ -853,8 +937,8 @@ if (params.tenx_tgz || params.bam) {
   // Put fastqs from aligned and unaligned reads into a single channel
   tenx_reads_aligned_concatenation_ch
     .mix( tenx_reads_unaligned_ch )
-    .dump(tag: "tenx_ch_reads_for_ribosomal_removal")
-    .set{ tenx_ch_reads_for_ribosomal_removal }
+    .dump(tag: "tenx_ch_reads_to_translate")
+    .set{ tenx_ch_reads_to_translate }
 
   if ((params.tenx_min_umi_per_cell > 0) || !params.barcodes_file) {
     process count_umis_per_cell {
@@ -900,14 +984,14 @@ if (params.tenx_tgz || params.bam) {
     good_barcodes_ch = tenx_bam_barcodes_ch
   }
 
-  tenx_ch_reads_for_ribosomal_removal
+  tenx_ch_reads_to_translate
     .combine( good_barcodes_ch, by: 0 )
-    .dump( tag: 'tenx_ch_reads_for_ribosomal_removal__combine__good_barcodes_ch' )
+    .dump( tag: 'tenx_ch_reads_to_translate__combine__good_barcodes_ch' )
     .map{ it -> [it[0], it[1], it[2], it[3].splitText()] }
     .transpose()
-    .dump( tag: 'tenx_ch_reads_for_ribosomal_removal__combine__good_barcodes_ch__transpose' )
+    .dump( tag: 'tenx_ch_reads_to_translate__combine__good_barcodes_ch__transpose' )
     .map{ it -> [it[0], it[1], it[2], it[3].replaceAll("\\s+", "") ] }
-    .dump( tag: 'tenx_ch_reads_for_ribosomal_removal__combine__good_barcodes_ch__transpose__no_newlines' )
+    .dump( tag: 'tenx_ch_reads_to_translate__combine__good_barcodes_ch__transpose__no_newlines' )
     .set{ tenx_reads_with_good_barcodes_ch }
 
   process extract_per_cell_fastqs {
@@ -949,8 +1033,8 @@ if (params.tenx_tgz || params.bam) {
   // // Filtering out fastq.gz files less than 200 bytes (arbitary number)
   // // ~200 bytes is about the size of a file with a single read or less
   // // We can't use .size() > 0 because it's fastq.gz is gzipped content
-  // per_channel_cell_ch_reads_for_ribosomal_removal
-  //   .dump(tag: 'per_channel_cell_ch_reads_for_ribosomal_removal')
+  // per_channel_cell_ch_reads_to_translate
+  //   .dump(tag: 'per_channel_cell_ch_reads_to_translate')
   //   .flatten()
   //   .filter{ it -> it.size() > 200 }   // each item is just a single file, no need to do it[1]
   //   .map{ it -> tuple(it.simpleName, file(it)) }
@@ -960,7 +1044,7 @@ if (params.tenx_tgz || params.bam) {
   if (params.skip_trimming) {
     ch_non_bam_reads
       .concat(per_cell_fastqs_ch)
-      .set { ch_reads_for_ribosomal_removal }
+      .set { ch_reads_to_translate }
   } else {
     ch_non_bam_reads
       .mix ( per_cell_fastqs_ch )
@@ -1053,13 +1137,13 @@ if ( have_nucleotide_input ) {
     ch_reads_trimmed
       .concat( fastas_ch )
       .dump ( tag: 'trimmed_reads__concat_fastas' )
-      .set { subsample_ch_reads_for_ribosomal_removal }
+      .set { subsample_ch_reads_to_translate }
   } else {
     // Concatenate trimmed reads with fastas for signature generation
-    ch_reads_for_ribosomal_removal = ch_reads_trimmed.mix(fastas_ch)
+    ch_reads_to_translate = ch_reads_trimmed.concat(fastas_ch)
   }
 } else {
-  ch_reads_for_ribosomal_removal = fastas_ch
+  ch_reads_to_translate = fastas_ch
   ch_fastp_results = Channel.from(false)
 }
 
@@ -1069,10 +1153,10 @@ if (params.subsample) {
     publishDir "${params.outdir}/seqtk/", mode: params.publish_dir_mode
 
     input:
-    set val(id), file(reads) from subsample_ch_reads_for_ribosomal_removal
+    set val(id), file(reads) from subsample_ch_reads_to_translate
 
     output:
-    set val(id), file("*_${params.subsample}.fastq.gz") into ch_reads_for_ribosomal_removal
+    set val(id), file("*_${params.subsample}.fastq.gz") into ch_reads_to_translate
 
     script:
     read1 = reads[0]
@@ -1087,101 +1171,8 @@ if (params.subsample) {
     }
   }
 
-/*
- * STEP 2+ - SortMeRNA - remove rRNA sequences on request
- */
-if (!params.remove_ribo_rna) {
-    ch_reads_for_ribosomal_removal
-        .set { ch_reads_to_translate }
-    sortmerna_logs = Channel.empty()
-} else {
-    process sortmerna_index {
-        label 'mid_memory_long'
-        label 'mid_cpu'
-        tag "${fasta.baseName}"
 
-        input:
-        file(fasta) from sortmerna_fasta
-
-        output:
-        val("${fasta.baseName}") into sortmerna_db_name
-        file("$fasta") into sortmerna_db_fasta
-        file("${fasta.baseName}*") into sortmerna_db
-
-        script:
-        """
-        indexdb_rna --ref $fasta,${fasta.baseName} -m 3072 -v
-        """
-    }
-
-    process sortmerna {
-        label 'mid_memory_long'
-        label 'mid_cpu'
-        tag "$name"
-        publishDir "${params.outdir}/SortMeRNA", mode: "${params.publish_dir_mode}",
-            saveAs: {filename ->
-                if (filename.indexOf("_rRNA_report.txt") > 0) "logs/$filename"
-                else if (params.save_non_rrna_reads) "reads/$filename"
-                else null
-            }
-
-        input:
-        set val(name), file(reads) from ch_reads_for_ribosomal_removal
-        val(db_name) from sortmerna_db_name.collect()
-        file(db_fasta) from sortmerna_db_fasta.collect()
-        file(db) from sortmerna_db.collect()
-
-        output:
-        set val(name), file("*.fq.gz") into ch_reads_to_translate
-        file "*_rRNA_report.txt" into sortmerna_logs
-
-
-        script:
-        //concatenate reference files: ${db_fasta},${db_name}:${db_fasta},${db_name}:...
-        def Refs = ''
-        for (i=0; i<db_fasta.size(); i++) { Refs+= ":${db_fasta[i]},${db_name[i]}" }
-        Refs = Refs.substring(1)
-
-        // One set of reads --> single end
-        if (reads[1] == null) {
-            """
-            gzip -d --force < ${reads} > all-reads.fastq
-            sortmerna --ref ${Refs} \
-                --reads all-reads.fastq \
-                --num_alignments 1 \
-                -a ${task.cpus} \
-                --fastx \
-                --aligned rRNA-reads \
-                --other non-rRNA-reads \
-                --log -v
-            gzip --force < non-rRNA-reads.fastq > ${name}.fq.gz
-            mv rRNA-reads.log ${name}_rRNA_report.txt
-            """
-        } else {
-            """
-            gzip -d --force < ${reads[0]} > reads-fw.fq
-            gzip -d --force < ${reads[1]} > reads-rv.fq
-            merge-paired-reads.sh reads-fw.fq reads-rv.fq all-reads.fastq
-            sortmerna --ref ${Refs} \
-                --reads all-reads.fastq \
-                --num_alignments 1 \
-                -a ${task.cpus} \
-                --fastx --paired_in \
-                --aligned rRNA-reads \
-                --other non-rRNA-reads \
-                --log -v
-            unmerge-paired-reads.sh non-rRNA-reads.fastq non-rRNA-reads-fw.fq non-rRNA-reads-rv.fq
-            gzip < non-rRNA-reads-fw.fq > ${name}-fw.fq.gz
-            gzip < non-rRNA-reads-rv.fq > ${name}-rv.fq.gz
-            mv rRNA-reads.log ${name}_rRNA_report.txt
-            """
-        }
-    }
-  }
-
-
-
-  if (params.reference_proteome_fasta){
+  if (params.translate_proteome_fasta){
     process translate {
       tag "${sample_id}"
       label "low_memory_long"
@@ -1375,7 +1366,7 @@ if (!have_nucleotide_input) {
 }
 
 
-if (!params.skip_compute && (protein_input || params.reference_proteome_fasta)){
+if (!params.skip_compute && (protein_input || params.translate_proteome_fasta)){
 
   process sourmash_compute_sketch_fastx_peptide {
     tag "${sig_id}"
@@ -1524,7 +1515,6 @@ if ((params.bam || params.tenx_tgz) && !params.skip_compute && !params.skip_sig_
 
   }
 
-
   ch_sourmash_sketches_merged_to_view
     .dump( tag: "ch_sourmash_sketches_to_view" )
 
@@ -1544,6 +1534,274 @@ if ((params.bam || params.tenx_tgz) && !params.skip_compute && !params.skip_sig_
     .set { ch_sourmash_sketches_merged }
   ch_sourmash_sig_describe_merged = Channel.empty()
 }
+
+
+if (!params.skip_remove_constitutive_genes) {
+  ///////////////////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////////////////
+  /* --                                                                     -- */
+  /* --              REMOVE K-MERS FROM constitutive GENES                  -- */
+  /* --                                                                     -- */
+  ///////////////////////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////////////////// 
+
+
+
+  ///////////////////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////////////////
+  /* --                                                                     -- */
+  /* --         DOWNLOAD NUCLEOTIDE AND PROTEIN SEQS FROM REFSEQ            -- */
+  /* --                                                                     -- */
+  ///////////////////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////////////////
+  /*
+  * STEP 6 - rsync to download refeseq
+  */
+  if (need_refseq_download){
+    // No fastas provided for removing constitutive genes
+    process download_refseq {
+      tag "${constitutive_refseq_taxonomy}--${refseq_moltype}"
+      label "process_low"
+      publishDir "${params.outdir}/reference/ncbi_refseq/", mode: 'copy'
+
+      input:
+      val refseq_moltype from ch_refseq_moltypes_to_download
+
+      output:
+      set val(refseq_moltype), file("${constitutive_refseq_taxonomy}--*.${refseq_moltype}.fa.gz") into ch_refseq_fasta_to_filter
+
+      script:
+      output_fasta = "${constitutive_refseq_taxonomy}--\$RELEASE_NUMBER--\$DATE.${refseq_moltype}.fa.gz"
+      include_fasta = params.test_mini_refseq_download ? "${constitutive_refseq_taxonomy}.1.${refseq_moltype}.f*a.gz"  : "*${refseq_moltype}.f*a.gz" 
+      """
+      rsync \\
+            --prune-empty-dirs \\
+            --archive \\
+            --verbose \\
+            --recursive \\
+            --include '${include_fasta}' \\
+            --exclude '/*' \\
+            rsync://ftp.ncbi.nlm.nih.gov/refseq/release/${constitutive_refseq_taxonomy}/ .
+      wget https://ftp.ncbi.nlm.nih.gov/refseq/release/RELEASE_NUMBER
+      DATE=\$(date +'%Y-%m-%d')
+      RELEASE_NUMBER=\$(cat RELEASE_NUMBER)
+      zcat ${constitutive_refseq_taxonomy}.*.${refseq_moltype}*.gz | gzip -c - > ${output_fasta}
+      """
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////
+    /* --                                                                     -- */
+    /* --              REMOVE K-MERS FROM constitutive GENES                  -- */
+    /* --                                                                     -- */
+    ///////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////
+    /*
+    * STEP 7 - Get only constitutive genes from 
+    */
+    // Keep genes whose names match constitutive gene regular expression pattern
+    process extract_fasta_constitutive {
+      tag "${fasta.baseName}"
+      label "process_low"
+      publishDir "${params.outdir}/reference/constitutive_genes/", mode: 'copy'
+
+      input:
+      set val(refseq_moltype), file(fasta) from ch_refseq_fasta_to_filter
+
+      output:
+      set val(refseq_moltype), file(output_fasta_gz) into ch_constitutive_fasta, ch_constitutive_fasta_to_view
+
+      script:
+      output_fasta = "${fasta.baseName}__only_constitutive_genes.fa"
+      output_fasta_gz = "${fasta.baseName}__only_constitutive_genes.fa.gz"
+      """
+      filter_fasta_regex.py \\
+          --input-fasta ${fasta} \\
+          --output-fasta ${output_fasta} \\
+          --regex-pattern '${params.constitutive_gene_regex}'
+      gzip -c ${output_fasta} > ${output_fasta_gz}
+      """
+    }
+    
+    ch_constitutive_fasta_to_view
+      .dump( tag: 'ch_constitutive_fasta' )
+  }
+
+  if (!have_constitutive_sigs) {
+      ///////////////////////////////////////////////////////////////////////////////
+      ///////////////////////////////////////////////////////////////////////////////
+      /* --                                                                     -- */
+      /* --          COMPUTE constitutive GENE K-MER SIGNATURE                  -- */
+      /* --                                                                     -- */
+      ///////////////////////////////////////////////////////////////////////////////
+      ///////////////////////////////////////////////////////////////////////////////
+      /*
+      * STEP 8 - Compute constitutive Gene K-mer Signature
+      */
+      // No fastas provided for removing constitutive genes
+      process compute_constitutive_kmer_sig {
+        tag "${fasta.baseName}"
+        label "process_low"
+        publishDir "${params.outdir}/reference/constitutive_genes/", mode: 'copy'
+
+        input:
+        val track_abundance
+        val sketch_value_parsed
+        val sketch_style_parsed
+        set val(refseq_moltype), file(fasta) from ch_constitutive_fasta
+
+        output:
+        set val(sourmash_moltypes), file(sig) into ch_constitutive_sig
+
+        script:
+        is_protein = refseq_moltype == "protein"
+        sourmash_moltype = is_protein ? "protein,dayhoff" : 'dna'
+        sourmash_moltypes = tuple(sourmash_moltype.split(","))
+        sketch_id = make_sketch_id(
+          sourmash_moltype, 
+          params.ksizes, 
+          sketch_value_parsed[0], 
+          track_abundance, 
+          sketch_style_parsed[0]
+        )
+
+        sketch_value_flag = make_sketch_value_flag(
+          sketch_style_parsed[0], 
+          sketch_value_parsed[0]
+        )
+        moltype_flags = is_protein ? '--protein --dayhoff --input-is-protein' : '--dna'
+        track_abundance_flag = track_abundance ? '--track-abundance' : ''
+        sig_id = "${fasta.baseName}__${sketch_id}"
+        sig = "${sig_id}.sig"
+        csv = "${sig_id}.csv"
+        """
+        sourmash compute \\
+          ${sketch_value_flag} \\
+          --ksizes ${params.ksizes} \\
+          ${moltype_flags} \\
+          ${track_abundance_flag} \\
+          --output ${sig} \\
+          --name '${fasta.baseName}' \\
+          ${fasta}
+        sourmash sig describe --csv ${csv} ${sig}
+        """
+      }
+  }
+
+
+  ch_sourmash_sketches_merged
+    // index 2: moltypes
+    // index 4: signature
+    .map { tuple( tuple(it[2].split(",")), it[4] ) }
+    .transpose()
+    .dump( tag: 'ch_sourmash_sketches_moltype_to_sig' )
+    .groupTuple( by: 0 )
+    .dump( tag: 'ch_sourmash_sketches_moltype_to_sig__groupTuple' )
+    .set { ch_sourmash_sketches_moltype_to_sigs }
+
+  ch_constitutive_sig
+    .dump( tag: 'ch_constitutive_sig' )
+    .transpose()
+    .dump( tag: 'ch_constitutive_sig__transposed' )
+    .combine( ch_sourmash_params_for_subtract, by: 0)
+    .dump( tag: 'ch_constitutive_sig__transposed__combined' )
+    .combine ( ch_sourmash_sketches_moltype_to_sigs, by: 0 )
+    .dump( tag: 'ch_constitutive_sig__transposed__combined_joined' )
+    .into { ch_subtract_params_with_sigs; ch_subtract_params_to_sigs_for_siglist }
+
+  ch_subtract_params_to_sigs_for_siglist
+    .dump ( tag: 'ch_subtract_params_to_sigs_for_siglist' )
+    .transpose()
+    .dump ( tag: 'ch_subtract_params_to_sigs_for_siglist__transpose')
+    .collectFile() { it -> 
+      [ "${it[0]}__${it[2]}.txt", "${it[3].getFileName()}\n"] 
+    }
+      .dump ( tag: 'ch_subtract_params_to_sigs_for_siglist__transpose__collectfile' )
+      .map { [ tuple( it.baseName.split('__') ), it] }
+      .map { [ it[0][0], it[0][1], it[1] ] }
+      // .dump ( tag: 'ch_subtract_params_to_sigs_for_siglist__transpose__collectfile__map' )
+      // .transpose()
+      .dump ( tag: 'ch_subtract_params_with_siglist' )
+      .set { ch_subtract_params_with_siglist }
+
+  ch_subtract_params_with_sigs
+    // Reorder so molecule (it[0]) and ksize (it[2]) are first
+    .map{ [it[0], it[2], it[1], it[3]] }
+    .dump ( tag: 'ch_subtract_params_with_sigs__map' )
+    .combine( ch_subtract_params_with_siglist,  by: [0, 1] )
+    .dump( tag: 'ch_sigs_with_constitutive_sig_to_subtract' )
+    .set { ch_sigs_with_constitutive_sig_to_subtract }
+
+
+  // ///////////////////////////////////////////////////////////////////////////////
+  // ///////////////////////////////////////////////////////////////////////////////
+  // /* --                                                                     -- */
+  // /* --              REMOVE K-MERS FROM constitutive GENES                  -- */
+  // /* --                                                                     -- */
+  // ///////////////////////////////////////////////////////////////////////////////
+  // ///////////////////////////////////////////////////////////////////////////////
+  // /*
+  // * STEP 9 - Remove constitutive gene k-mers from single cells
+  // */
+  process subtract_constitutive_kmers {
+    tag "${subtract_id}"
+    label "process_medium"
+    publishDir "${params.outdir}/sketches_subtract_constitutive_kmers/${subtract_id}", mode: 'copy'
+
+    input:
+    val sketch_value_parsed
+    val sketch_style_parsed
+    set val(molecule), val(ksize), file(constitutive_sig), file(sigs), file(siglist) from ch_sigs_with_constitutive_sig_to_subtract
+
+    output:
+    set val(molecule), val(ksize), file("subtracted/*.sig") into ch_sigs_constitutive_removed
+    
+    script:
+    subtract_id = "${molecule}__k-${ksize}"
+    sketch_value_flag = make_sketch_value_flag(
+        sketch_style_parsed[0], 
+        sketch_value_parsed[0]
+    )
+    track_abundance_flag = track_abundance ? '--track-abundance' : ''
+
+    """
+    subtract \\
+        ${track_abundance_flag} \\
+        ${sketch_value_flag} \\
+        --ksize ${ksize} \\
+        --encoding ${molecule} \\
+        --output subtracted/ \\
+        ${constitutive_sig} \\
+        ${siglist}
+    """
+  }
+
+  ch_sigs_constitutive_removed
+    // .groupTuple( by: [0, 1] )
+    .transpose( by: 2 )
+    .set{ ch_sourmash_sketches_to_compare }
+
+} else {
+  ch_sourmash_sketches_merged
+    .map { [tuple(it[2].split(",")), it[4]] }
+    .dump(tag: 'ch_sourmash_sketches_merged__map_split' )
+    .transpose()
+    .dump(tag: 'ch_sourmash_sketches_merged__map_split__tranpose' )
+    // Perform cartesian product on the molecules with compare params
+    .combine( ch_sourmash_params_for_compare, by: 0)
+    .dump(tag: 'ch_sourmash_sketches_merged__map_split__combine' )
+    // .groupTuple(by: [0, 2])
+    .dump(tag: 'ch_sourmash_sketches_to_compare' )
+    // Reorder so signature files are last
+    // moltype, ksize, signature file
+    .map { [it[0], it[2], it[1]] }
+    .set { ch_sourmash_sketches_to_compare }
+
+    ch_sourmash_sig_describe_merged = Channel.empty()
+}
+
+
+
 
 if (params.split_kmer){
      process ska_compare_sketches {
@@ -1566,57 +1824,23 @@ if (params.split_kmer){
 }
 // If skip_compute is true, skip compare must be specified as true as well
 if (!params.split_kmer && !params.skip_compare && !params.skip_compute) {
-  // // Combine peptide and nucleotide sketches
-  // sourmash_sketches_nucleotide
-  //   .collect()
-  //   // Set as a list so that combine does cartesian product of all signatures
-  //   .map { it -> [it] }
-  //   .combine( ch_ksizes_for_compare_nucleotide )
-  //   .dump( tag: 'sourmash_sketches_nucleotide__ksizes' )
-  //   .map { x -> [x[0], x[1], 'dna'] }
-  //   .dump( tag: 'sourmash_sketches_nucleotide__ksizes__molecules' )
-  //   .set { sourmash_sketches_nucleotide_for_compare }
+  ch_sourmash_compare_sketch_params_to_sketches = Channel.create()
 
-  // sourmash_sketches_peptide
-  //   .collect()
-  //   // Set as a list so that combine does cartesian product of all signatures
-  //   .map { it -> [it] }
-  //   .combine( ch_ksizes_for_compare_petide )
-  //   .dump( tag: 'sourmash_sketches_peptide__ksizes' )
-  //   .combine( ch_peptide_molecules )
-  //   .dump( tag: 'sourmash_sketches_peptide__ksizes__molecules' )
-  //   .set { sourmash_sketches_peptide_for_compare }
-
-  // sourmash_sketches_peptide_for_compare
-  //   .mix ( sourmash_sketches_nucleotide_for_compare )
-  //   .set { ch_sourmash_sketches_to_compare }
-
-  // ch_sourmash_sketches_to_compare = Channel.empty()
-
-  ch_peptide_molecules_for_compare
-    .combine( ch_ksizes_for_compare_peptide )
-    .set { ch_sourmash_compare_params_peptide }
-
-  Channel.from("dna")  
-    .combine( ch_ksizes_for_compare_nucleotide )
-    .mix ( ch_sourmash_compare_params_peptide )
-    .set { ch_sourmash_compare_params_both }
-
-  ch_sourmash_sketches_merged
-    // Drop first index (index 0) which is the cell id
-    // Drop the second index (index 1) which is the sketch id
-    // Keep only moltype
-    // Drop ksize
-    .map { [tuple(it[2].split(",")), it[4]] }
-    .dump(tag: 'ch_sourmash_sketches_merged__map_split' )
-    .transpose()
-    .dump(tag: 'ch_sourmash_sketches_merged__map_split__tranpose' )
-    // Perform cartesian product on the molecules with compare params
-    .combine( ch_sourmash_compare_params_both, by: 0)
-    .dump(tag: 'ch_sourmash_sketches_merged__map_split__combine' )
-    .groupTuple(by: [0, 2])
-    .dump(tag: 'ch_sourmash_sketches_to_compare' )
-    .set { ch_sourmash_sketches_to_compare }
+  ch_sourmash_sketches_to_compare
+    .tap ( ch_sourmash_compare_sketch_params_to_sketches )
+    .dump( tag: 'ch_compare_params_to_sigs_for_siglist__transpose' )
+    .collectFile() { it -> 
+      [ "${it[0]}__${it[1]}.txt", "${it[2].getFileName()}\n"] 
+    }
+    .dump ( tag: 'ch_compare_params_to_sigs_for_siglist__transpose__collectfile' )
+    .map { [ tuple( it.baseName.split('__') ), it] }
+    .map { [ it[0][0], it[0][1], it[1] ] }
+    .dump ( tag: 'ch_compare_params_with_siglist' )
+    .combine( ch_sourmash_compare_sketch_params_to_sketches,  by: [0, 1] )
+    .dump( tag: 'ch_compare_params_with_siglist__add_sketches' )
+    .groupTuple( by: [0, 1, 2] )
+    .dump ( tag: 'ch_compare_params_with_siglist__add_sketches__groupTuple' )
+    .set { ch_sourmash_params_to_siglist_sketches }
 
   process sourmash_compare_sketches {
     // Combine peptide and nucleotide sketches
@@ -1624,8 +1848,8 @@ if (!params.split_kmer && !params.skip_compare && !params.skip_compute) {
     publishDir "${params.outdir}/compare_sketches", mode: 'copy'
 
     input:
-    // Weird order but that's how it shakes out with the groupTuple
-    set val(molecule), file("*.sig"), val(ksize) from ch_sourmash_sketches_to_compare
+    // file(sigs) is necessary to stage all the signature files present in file(siglist)
+    set val(molecule), val(ksize), file(siglist), file(sigs) from ch_sourmash_params_to_siglist_sketches
 
     output:
     file(csv)
@@ -1640,7 +1864,7 @@ if (!params.split_kmer && !params.skip_compare && !params.skip_compute) {
           --${molecule} \\
           --csv ${csv} \\
           ${processes} \\
-          --traverse-directory .
+          --from-file ${siglist}
     # Use --traverse-directory instead of all the files explicitly to avoid
     # "too many arguments" error for bash when there are lots of samples
     """
@@ -1662,7 +1886,6 @@ if (!params.skip_multiqc){
       file ("sourmash_describe_peptides/") from ch_sourmash_sig_describe_peptides.collect().ifEmpty([])
       file ("sourmash_describe_nucleotides/") from ch_sourmash_sig_describe_nucleotides.collect().ifEmpty([])
       file ('fastp/*') from ch_fastp_results.collect().ifEmpty([])
-      file ('sortmerna/*') from sortmerna_logs.collect().ifEmpty([])
       file ('software_versions/*') from ch_software_versions_yaml.collect()
       file workflow_summary from ch_workflow_summary.collectFile(name: "workflow_summary_mqc.yaml")
 

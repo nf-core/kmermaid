@@ -1,0 +1,4 @@
+SRR4238351__molecule-dna__ksize-21,30,51__scaled-2__track_abundance-true.sig
+SRR4238355__molecule-dna__ksize-21,30,51__scaled-2__track_abundance-true.sig
+SRR4050380__molecule-dna__ksize-21,30,51__scaled-2__track_abundance-true.sig
+SRR4050379__molecule-dna__ksize-21,30,51__scaled-2__track_abundance-true.sig
