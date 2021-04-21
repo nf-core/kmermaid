@@ -468,6 +468,7 @@ sketch_num_hashes = params.sketch_num_hashes
 sketch_num_hashes_log2 = params.sketch_num_hashes_log2
 sketch_scaled = params.sketch_scaled
 sketch_scaled_log2 = params.sketch_scaled_log2
+sketch_singleton = params.sketch_singleton
 have_sketch_value = params.sketch_num_hashes || params.sketch_num_hashes_log2 || params.sketch_scaled || params.sketch_scaled_log2
 
 if (!have_sketch_value && !params.split_kmer) {
@@ -1324,12 +1325,14 @@ if (!params.remove_ribo_rna) {
       )
       sketch_value_flag = make_sketch_value_flag(sketch_style_parsed[0], sketch_value_parsed[0])
       track_abundance_flag = track_abundance ? '--track-abundance' : ''
+      singleton_flag = sketch_singleton ? "--singleton" : ''
       sig_id = "${sample_id}__${sketch_id}"
       sig = "${sig_id}.sig"
       csv = "${sig_id}.csv"
       """
         sourmash compute \\
           ${sketch_value_flag} \\
+          ${singleton_flag} \\
           --ksizes ${params.ksizes} \\
           --dna \\
           $track_abundance_flag \\
@@ -1408,12 +1411,14 @@ if (!params.skip_compute && (protein_input || params.reference_proteome_fasta)){
 
     sketch_value_flag = make_sketch_value_flag(sketch_style_parsed[0], sketch_value_parsed[0])
     track_abundance_flag = track_abundance ? '--track-abundance' : ''
+    singleton_flag = sketch_singleton ? "--singleton" : ''
     sig_id = "${sample_id}__${sketch_id}"
     sig = "${sig_id}.sig"
     csv = "${sig_id}.csv"
     """
       sourmash compute \\
         ${sketch_value_flag} \\
+        ${singleton_flag} \\
         --ksizes ${params.ksizes} \\
         --input-is-protein \\
         ${peptide_molecule_flags} \\
