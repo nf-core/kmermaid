@@ -90,6 +90,7 @@ def helpMessage() {
       --skip_compare                If provided, skip comparison of hashes using sourmash compare
       --skip_compute                If provided, skip computing of signatures using sourmash compute
       --skip_sig_merge              If provided, skip merging of aligned/unaligned signatures created from bam files or tenx tgz files
+      --sketch_singleton            If provided, compute one k-mer sketch per fasta entry, not for the whole file
 
      Sketch size options:
       --sketch_num_hashes           Number of hashes to use for making the sketches.
@@ -583,6 +584,7 @@ summary['Skip multiqc?'] = params.skip_multiqc
 summary['K-mer sizes']            = params.ksizes
 summary['Molecule']               = params.molecules
 summary['Track Abundance']        = params.track_abundance
+summary['Singleton sketches?'] = params.sketch_singleton
 // -- Sketch size parameters --
 if (params.sketch_num_hashes) summary['Sketch Sizes']                  = params.sketch_num_hashes
 if (params.sketch_num_hashes_log2) summary['Sketch Sizes (log2)']      = params.sketch_num_hashes_log2
@@ -1325,7 +1327,7 @@ if (!params.remove_ribo_rna) {
       )
       sketch_value_flag = make_sketch_value_flag(sketch_style_parsed[0], sketch_value_parsed[0])
       track_abundance_flag = track_abundance ? '--track-abundance' : ''
-      singleton_flag = sketch_singleton ? "--singleton" : ''
+      singleton_flag = sketch_singleton ? "--singleton" : "--name '${sample_id}'"
       sig_id = "${sample_id}__${sketch_id}"
       sig = "${sig_id}.sig"
       csv = "${sig_id}.csv"
@@ -1337,7 +1339,6 @@ if (!params.remove_ribo_rna) {
           --dna \\
           $track_abundance_flag \\
           --output ${sig} \\
-          --name '${sample_id}' \\
           $reads
         sourmash sig describe --csv ${csv} ${sig}
       """
@@ -1411,7 +1412,7 @@ if (!params.skip_compute && (protein_input || params.reference_proteome_fasta)){
 
     sketch_value_flag = make_sketch_value_flag(sketch_style_parsed[0], sketch_value_parsed[0])
     track_abundance_flag = track_abundance ? '--track-abundance' : ''
-    singleton_flag = sketch_singleton ? "--singleton" : ''
+      singleton_flag = sketch_singleton ? "--singleton" : "--name '${sample_id}'"
     sig_id = "${sample_id}__${sketch_id}"
     sig = "${sig_id}.sig"
     csv = "${sig_id}.csv"
@@ -1422,7 +1423,6 @@ if (!params.skip_compute && (protein_input || params.reference_proteome_fasta)){
         --ksizes ${params.ksizes} \\
         --input-is-protein \\
         ${peptide_molecule_flags} \\
-        --name '${sample_id}' \\
         --no-dna \\
         $track_abundance_flag \\
         --output ${sig} \\
