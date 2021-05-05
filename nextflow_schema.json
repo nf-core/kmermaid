@@ -150,6 +150,11 @@
                     "type": "integer",
                     "fa_icon": "fas fa-barcode",
                     "description": "Integer value to subsample reads from input fastq files"
+                },
+                "sketch_singleton": {
+                    "type": "string",
+                    "description": "Compute one signature per entry in the FASTA file, which is useful when the file contains e.g. a transcript or genome per entry. This is not recommended for FASTQ files as it would compute one signature per read, and presumably one would want one signature per sequencing dataset",
+                    "fa_icon": "fas fa-dice-one"
                 }
             },
             "fa_icon": "fas fa-cogs"
@@ -187,6 +192,16 @@
                     "type": "integer",
                     "description": "Maximum table size for bloom filter creation",
                     "fa_icon": "fas fa-code-branch"
+                },
+                "save_translate_csv": {
+                    "type": "string",
+                    "description": "Path to save the coding scores as a csv",
+                    "default": "False"
+                },
+                "save_translate_json": {
+                    "type": "string",
+                    "description": "Path to save summarization of coding/\"     \"noncoding/other categorizations, the \"     \"min/max/mean/median/stddev of Jaccard scores, and other as a json",
+                    "default": "False"
                 }
             }
         },
@@ -484,17 +499,5 @@
         {
             "$ref": "#/definitions/generic_options"
         }
-    ],
-    "properties": {
-        "save_translate_csv": {
-            "type": "string",
-            "description": "Path to save the coding scores as a csv",
-            "default": "False"
-        },
-        "save_translate_json": {
-            "type": "string",
-            "description": "Path to save summarization of coding/\"     \"noncoding/other categorizations, the \"     \"min/max/mean/median/stddev of Jaccard scores, and other as a json",
-            "default": "False"
-        }
-    }
+    ]
 }
