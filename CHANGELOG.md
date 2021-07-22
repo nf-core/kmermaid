@@ -25,6 +25,7 @@ barcode fastq
 * Add `--skip_compare option` to skip `sourmash_compare_sketches` process
 * Add merging of aligned/unaligned parts of single-cell data ([#117](https://github.com/nf-core/kmermaid/pull/117))
 * Add renamed package dependency orpheum (used to be known as sencha)
+* Added `--singleton` option for sourmash to compute one signature per FASTA/FASTQ entry
 
 ### `Fixed`
 
