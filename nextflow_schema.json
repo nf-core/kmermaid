@@ -178,15 +178,16 @@
                     "default": "protein"
                 },
                 "translate_jaccard_threshold": {
-                    "type": "string",
+                    "type": "number",
                     "fa_icon": "fas fa-code-branch",
                     "description": "Minimum fraction of overlapping translated k-mers from the read to match to the reference.",
-                    "default": 0.95
+                    "default": 0.05
                 },
                 "bloomfilter_tablesize": {
-                    "type": "integer",
+                    "type": "number",
                     "description": "Maximum table size for bloom filter creation",
-                    "fa_icon": "fas fa-code-branch"
+                    "fa_icon": "fas fa-code-branch",
+                    "default": 100000000
                 }
             }
         },
@@ -487,14 +488,14 @@
     ],
     "properties": {
         "save_translate_csv": {
-            "type": "string",
-            "description": "Path to save the coding scores as a csv",
-            "default": "False"
+            "type": "boolean",
+            "description": "Save the coding scores as a csv",
+            "help_text": "Saving the translate results for each dataset makes it take extra long, it is recommended for debugging purposes only."
         },
         "save_translate_json": {
-            "type": "string",
-            "description": "Path to save summarization of coding/\"     \"noncoding/other categorizations, the \"     \"min/max/mean/median/stddev of Jaccard scores, and other as a json",
-            "default": "False"
+            "type": "boolean",
+            "description": "Save summarization of coding/noncoding/other categorizations, the min/max/mean/median/stddev of Jaccard scores, and other as a json",
+            "help_text": "Saving the translate results for each dataset makes it take extra long, it is recommended for debugging purposes only."
         }
     }
 }

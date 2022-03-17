@@ -464,10 +464,10 @@ Channel.from( peptide_molecules )
   .into { ch_peptide_molecules; ch_peptide_molecules_for_compare }
 
 // Parse sketch value and style parameters
-sketch_num_hashes = params.sketch_num_hashes
-sketch_num_hashes_log2 = params.sketch_num_hashes_log2
-sketch_scaled = params.sketch_scaled
-sketch_scaled_log2 = params.sketch_scaled_log2
+sketch_num_hashes = params.sketch_num_hashes ? params.sketch_num_hashes : false
+sketch_num_hashes_log2 = params.sketch_num_hashes_log2 ? params.sketch_num_hashes_log2 : false
+sketch_scaled = params.sketch_scaled ? params.sketch_scaled : false
+sketch_scaled_log2 = params.sketch_scaled_log2 ? params.sketch_scaled_log2 : false
 have_sketch_value = params.sketch_num_hashes || params.sketch_num_hashes_log2 || params.sketch_scaled || params.sketch_scaled_log2
 
 if (!have_sketch_value && !params.split_kmer) {
