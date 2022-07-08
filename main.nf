@@ -417,7 +417,7 @@ if (!protein_input) {
     ch_read_files_trimming_to_check_size = Channel.empty()
   } else if (!have_nucleotide_fasta_input) {
     ch_read_files_trimming_unchecked
-      .into { ch_read_files_trimming_to_trim; ch_read_files_trimming_to_check_size }
+      .set { ch_read_files_trimming_to_trim; ch_read_files_trimming_to_check_size }
   }
   if (params.bam) {
     ch_non_bam_reads_unchecked
