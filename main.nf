@@ -451,7 +451,7 @@ save_translate_json = params.save_translate_json
 // --- Parse the Sourmash parameters ----
 ksizes = params.ksizes?.toString().tokenize(',')
 Channel.from(params.ksizes?.toString().tokenize(','))
-  .set { ch_ksizes_for_compare_peptide; ch_ksizes_for_compare_nucleotide }
+  .set { ch_ksizes_for_compare }
 
 molecules = params.molecules?.toString().tokenize(',')
 peptide_molecules = molecules.findAll { it != "dna" }
@@ -1572,7 +1572,7 @@ if (!params.split_kmer && !params.skip_compare && !params.skip_compute) {
   //   .collect()
   //   // Set as a list so that combine does cartesian product of all signatures
   //   .map { it -> [it] }
-  //   .combine( ch_ksizes_for_compare_nucleotide )
+  //   .combine( ch_ksizes_for_compare )
   //   .dump( tag: 'sourmash_sketches_nucleotide__ksizes' )
   //   .map { x -> [x[0], x[1], 'dna'] }
   //   .dump( tag: 'sourmash_sketches_nucleotide__ksizes__molecules' )
@@ -1595,11 +1595,11 @@ if (!params.split_kmer && !params.skip_compare && !params.skip_compute) {
   // ch_sourmash_sketches_to_compare = Channel.empty()
 
   ch_peptide_molecules_for_compare
-    .combine( ch_ksizes_for_compare_peptide )
+    .combine( ch_ksizes_for_compare )
     .set { ch_sourmash_compare_params_peptide }
 
   Channel.from("dna")  
-    .combine( ch_ksizes_for_compare_nucleotide )
+    .combine( ch_ksizes_for_compare )
     .mix ( ch_sourmash_compare_params_peptide )
     .set { ch_sourmash_compare_params_both }
 
