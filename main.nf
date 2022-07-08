@@ -367,7 +367,7 @@ if (params.subsample) {
             csv_pairs_ch, csv_singles_ch, read_pairs_ch,
             read_singles_ch, input_paths_ch)
           .dump ( tag: 'ch_read_files_trimming_unchecked__with_fastas' )
-          .into { ch_read_files_trimming_to_trim; ch_read_files_trimming_to_check_size }
+          .into { ch_read_files_trimming; ch_read_files_trimming_to_check_size }
       } else {
         // No fasta files - combine everything and error out
         sra_ch.concat(
@@ -397,7 +397,6 @@ if (!protein_input) {
     reads_ch_unchecked
       .ifEmpty{ exit 1, "No reads provided! Check read input files" }
       .set { ch_reads_for_ribosomal_removal }
-    ch_read_files_trimming_to_check_size = Channel.empty()
   } else if (params.bam || params.tenx_tgz) {
     ch_non_bam_reads_unchecked
       // No need to check if empty since there is bam input
@@ -406,7 +405,7 @@ if (!protein_input) {
       // if no fastas, then definitely trimming the remaining reads
       ch_read_files_trimming_unchecked
         .ifEmpty{ exit 1, "No reads provided! Check read input files" }
-        .set { ch_read_files_trimming_to_trim; ch_read_files_trimming_to_check_size }
+        .set { ch_read_files_trimming }
   }
 } else {
   // Since there exists protein input, don't check if these are empty
@@ -417,10 +416,9 @@ if (!protein_input) {
   if (params.skip_trimming) {
     reads_ch_unchecked
       .set { ch_reads_for_ribosomal_removal }
-    ch_read_files_trimming_to_check_size = Channel.empty()
   } else if (!have_nucleotide_fasta_input) {
     ch_read_files_trimming_unchecked
-      .set { ch_read_files_trimming_to_trim; ch_read_files_trimming_to_check_size }
+      .set { ch_read_files_trimming }
   }
   if (params.bam) {
     ch_non_bam_reads_unchecked
@@ -968,7 +966,7 @@ if (params.tenx_tgz || params.bam) {
     ch_non_bam_reads
       .mix ( per_cell_fastqs_ch )
       .dump ( tag: 'ch_non_bam_reads__per_cell_fastqs_ch' )
-      .into{ ch_read_files_trimming_to_trim; ch_read_files_trimming_to_check_size }
+      .into{ ch_read_files_trimming }
   }
 }
 
@@ -987,7 +985,7 @@ if ( have_nucleotide_input ) {
                   }
 
         input:
-        set val(name), file(reads) from ch_read_files_trimming_to_trim
+        set val(name), file(reads) from ch_read_files_trimming
 
         output:
         set val(name), file("*trimmed.fastq.gz") into ch_reads_all_trimmed
