@@ -403,7 +403,7 @@ if (!protein_input) {
       // if no fastas, then definitely trimming the remaining reads
       ch_read_files_trimming_unchecked
         .ifEmpty{ exit 1, "No reads provided! Check read input files" }
-        .into { ch_read_files_trimming_to_trim; ch_read_files_trimming_to_check_size }
+        .set { ch_read_files_trimming_to_trim; ch_read_files_trimming_to_check_size }
   }
 } else {
   // Since there exists protein input, don't check if these are empty
@@ -450,7 +450,7 @@ save_translate_json = params.save_translate_json
 // --- Parse the Sourmash parameters ----
 ksizes = params.ksizes?.toString().tokenize(',')
 Channel.from(params.ksizes?.toString().tokenize(','))
-  .into { ch_ksizes_for_compare_peptide; ch_ksizes_for_compare_nucleotide }
+  .set { ch_ksizes_for_compare_peptide; ch_ksizes_for_compare_nucleotide }
 
 molecules = params.molecules?.toString().tokenize(',')
 peptide_molecules = molecules.findAll { it != "dna" }
@@ -461,7 +461,7 @@ Channel.from( molecules )
   .set { ch_molecules }
 
 Channel.from( peptide_molecules )
-  .into { ch_peptide_molecules; ch_peptide_molecules_for_compare }
+  .set { ch_peptide_molecules; ch_peptide_molecules_for_compare }
 
 // Parse sketch value and style parameters
 sketch_num_hashes = params.sketch_num_hashes
