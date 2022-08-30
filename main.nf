@@ -4,7 +4,7 @@
     nf-core/kmermaid
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     Github : https://github.com/nf-core/kmermaid
-    Website: https://nf-co.re/kmermaid
+Website: https://nf-co.re/kmermaid
     Slack  : https://nfcore.slack.com/channels/kmermaid
 ----------------------------------------------------------------------------------------
 */
