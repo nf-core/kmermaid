@@ -1660,6 +1660,7 @@ def checkHostname() {
 
 workflow {
   validate_sketch_value(sketch_num_hashes, sketch_num_hashes_log2, sketch_scaled, sketch_scaled_log2)
+  validate_sketch_value.out.sketch_style.view()
 
     // Parse sketch style into value
   sketch_style_parsed = validate_sketch_value.out.sketch_style
@@ -1829,7 +1830,7 @@ if (!have_nucleotide_input) {
 if (!params.skip_compute && (protein_input || params.reference_proteome_fasta)){
   sourmash_compute_sketch_fastx_peptide(track_abundance, sketch_value_parsed, sketch_style_parsed, ch_protein_seq_to_sketch)
 
-  sourmash_sketches_peptide = sourmash_sketches_all_peptide.filter{ it[3].size() > 0 }
+    sourmash_sketches_peptide = sourmash_sketches_all_peptide.filter{ it[3].size() > 0 }
 } else {
   sourmash_sketches_peptide = Channel.empty()
   ch_sourmash_sig_describe_peptides = Channel.empty()
