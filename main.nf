@@ -1653,20 +1653,14 @@ def checkHostname() {
 
 workflow {
   if ( !params.split_kmer && have_sketch_value ) {
-    println('!params.split_kmer && have_sketch_value')
     // Only use this for sourmash sketches, not split k-mer sketches
     /*
     * Validate sketch sizes
     */
     validate_sketch_value(sketch_num_hashes, sketch_num_hashes_log2, sketch_scaled, sketch_scaled_log2)
-    println(validate_sketch_value.out.sketch_style)
-    println(validate_sketch_value.out.sketch_style.flatten())
-    println(validate_sketch_value.out.sketch_style.toList())
-    println(validate_sketch_value.out.sketch_style.collect())
-    println(validate_sketch_value.out.sketch_style.map{ it.splitText()})
 
 
-      // Parse sketch style into value
+    // Parse sketch style into value
     sketch_style = validate_sketch_value.out.sketch_style
     sketch_style_parsed = sketch_style
       .splitText()
@@ -1676,11 +1670,7 @@ workflow {
       .dump ( tag: 'sketch_style_parsed' )
       .collect ()
     // get first item of returned array from .collect()
-    // sketch_style_parsed = sketch_style_parsed[0]
-      // .into { ch_sketch_style_for_nucleotides; ch_sketch_style_for_proteins }
-    // sketch_style = sketch_styles[0]
-    // println "sketch_style_parsed: ${sketch_style_parsed}"
-    // println "sketch_style: ${sketch_style}"
+
 
     // Parse file into values
     sketch_value_parsed = validate_sketch_value.out.sketch_value
@@ -1690,8 +1680,6 @@ workflow {
       .dump ( tag : 'sketch_value_parsed' )
       .collect()
     // get first item of returned array from .collect()
-    // sketch_value_parsed = sketch_value_parsed[0]
-      // .into { ch_sketch_value_for_proteins; ch_sketch_value_for_dna }
   }
 
 
