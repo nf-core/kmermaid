@@ -1201,11 +1201,11 @@ process sourmash_compute_sketch_fastx_nucleotide {
   val track_abundance
   val sketch_value_parsed
   val sketch_style_parsed
-  set val(sample_id), file(reads) from ch_reads_to_sketch
+  tuple val(sample_id), path(reads)
 
   output:
   path(csv)                                                                      , emit: describe_csv
-  tuple val(sample_id), val(sketch_id), val("dna"), val(params.ksizes), file(sig), emit: sketches
+  tuple val(sample_id), val(sketch_id), val("dna"), val(params.ksizes), path(sig), emit: sketches
 
   script:
   // Don't calculate DNA signature if this is protein, to minimize disk,
