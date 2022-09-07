@@ -1786,7 +1786,9 @@ if (!params.remove_ribo_rna) {
     sourmash_compute_sketch_fastx_nucleotide(track_abundance, sketch_value_parsed, sketch_style_parsed, ch_reads_to_sketch)
 
     sourmash_compute_sketch_fastx_nucleotide.out.sketches
-          .filter{ it[3].size() > 0 }
+          // 5th item (4 when 0-based) is the actual signature.
+          // Make sure it is non-empty
+          .filter{ it[4].size() > 0 }
           .dump ( tag: "sourmash_sketches_all_nucleotide" )
           .set { sourmash_sketches_nucleotide }
       } else {
