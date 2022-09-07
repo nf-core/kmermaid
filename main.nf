@@ -678,11 +678,7 @@ process get_software_versions {
     """
 }
 
-if ( !params.split_kmer && have_sketch_value ) {
-  // Only use this for sourmash sketches, not split k-mer sketches
-  /*
-   * Validate sketch sizes
-   */
+
   process validate_sketch_value {
       // publishDir "${params.outdir}/pipeline_info", mode: params.publish_dir_mode,
       // saveAs: {filename ->
@@ -696,15 +692,12 @@ if ( !params.split_kmer && have_sketch_value ) {
       val sketch_scaled_log2
 
       output:
-      path sketch_value
-      path sketch_style
-
-      when:
-      true
+      path 'sketch_value.txt', emit: sketch_value
+      path "sketch_style.txt", emit: sketch_style
 
       script:
-      sketch_style = "sketch_style.txt"
-      sketch_value = 'sketch_value.txt'
+      def sketch_style = "sketch_style.txt"
+      def sketch_value = 'sketch_value.txt'
       """
       validate_sketch_value.py \\
         --sketch_num_hashes ${sketch_num_hashes} \\
@@ -717,7 +710,7 @@ if ( !params.split_kmer && have_sketch_value ) {
   }
 
 
-}
+
 
 // Combine sketch values with ksize and molecule types
 
@@ -962,12 +955,12 @@ process fastp {
               }
 
     input:
-    tuple val(name), file(reads)
+    tuple val(name), path(reads)
 
     output:
-    tuple val(name), file("*trimmed.fastq.gz") into trimmed_reads
-    path "*fastp.json" into json
-    path "*fastp.html" into html
+    tuple val(name), path("*trimmed.fastq.gz"), emit: trimmed_reads
+    path "*fastp.json"                        , emit: json
+    path "*fastp.html"                        , emit: html
 
     script:
     // One set of reads --> single end
@@ -1659,34 +1652,47 @@ def checkHostname() {
 
 
 workflow {
-  validate_sketch_value(sketch_num_hashes, sketch_num_hashes_log2, sketch_scaled, sketch_scaled_log2)
-  validate_sketch_value.out.sketch_style.view()
+  if ( !params.split_kmer && have_sketch_value ) {
+    println('!params.split_kmer && have_sketch_value')
+    // Only use this for sourmash sketches, not split k-mer sketches
+    /*
+    * Validate sketch sizes
+    */
+    validate_sketch_value(sketch_num_hashes, sketch_num_hashes_log2, sketch_scaled, sketch_scaled_log2)
+    println(validate_sketch_value.out.sketch_style)
+    println(validate_sketch_value.out.sketch_style.flatten())
+    println(validate_sketch_value.out.sketch_style.toList())
+    println(validate_sketch_value.out.sketch_style.collect())
+    println(validate_sketch_value.out.sketch_style.map{ it.splitText()})
 
-    // Parse sketch style into value
-  sketch_style_parsed = validate_sketch_value.out.sketch_style
-    .splitText()
-    .dump ( tag: 'ch_sketch_style' )
-    .map { it -> it.replaceAll('\\n', '' ) }
-    .first()
-    .dump ( tag: 'sketch_style_parsed' )
-    .collect ()
-  // get first item of returned array from .collect()
-  // sketch_style_parsed = sketch_style_parsed[0]
-    // .into { ch_sketch_style_for_nucleotides; ch_sketch_style_for_proteins }
-  // sketch_style = sketch_styles[0]
-  // println "sketch_style_parsed: ${sketch_style_parsed}"
-  // println "sketch_style: ${sketch_style}"
 
-  // Parse file into values
-  sketch_value_parsed = validate_sketch_value.out.sketch_value
-    .splitText()
-    .map { it -> it.replaceAll('\\n', '')}
-    .first()
-    .dump ( tag : 'sketch_value_parsed' )
-    .collect()
-  // get first item of returned array from .collect()
-  // sketch_value_parsed = sketch_value_parsed[0]
-    // .into { ch_sketch_value_for_proteins; ch_sketch_value_for_dna }
+      // Parse sketch style into value
+    sketch_style = validate_sketch_value.out.sketch_style
+    sketch_style_parsed = sketch_style
+      .splitText()
+      .dump ( tag: 'ch_sketch_style' )
+      .map { it -> it.replaceAll('\\n', '' ) }
+      .first()
+      .dump ( tag: 'sketch_style_parsed' )
+      .collect ()
+    // get first item of returned array from .collect()
+    // sketch_style_parsed = sketch_style_parsed[0]
+      // .into { ch_sketch_style_for_nucleotides; ch_sketch_style_for_proteins }
+    // sketch_style = sketch_styles[0]
+    // println "sketch_style_parsed: ${sketch_style_parsed}"
+    // println "sketch_style: ${sketch_style}"
+
+    // Parse file into values
+    sketch_value_parsed = validate_sketch_value.out.sketch_value
+      .splitText()
+      .map { it -> it.replaceAll('\\n', '')}
+      .first()
+      .dump ( tag : 'sketch_value_parsed' )
+      .collect()
+    // get first item of returned array from .collect()
+    // sketch_value_parsed = sketch_value_parsed[0]
+      // .into { ch_sketch_value_for_proteins; ch_sketch_value_for_dna }
+  }
 
 
   if ( have_nucleotide_input ) {
@@ -1695,7 +1701,7 @@ workflow {
       // Filtering out fastq.gz files less than 200 bytes (arbitary number)
       // ~200 bytes is about the size of a file with a single read or less
       // We can't use .size() > 0 because it's fastq.gz is gzipped content
-      fastp.out.trimmed_Reads
+      fastp.out.trimmed_reads
         .dump ( tag: 'ch_reads_all_trimmed' )
         .branch {
           // Paired is a tuple of two reads
