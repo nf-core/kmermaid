@@ -1026,26 +1026,19 @@ if (params.subsample) {
     }
   }
 
-/*
- * STEP 2+ - SortMeRNA - remove rRNA sequences on request
- */
-if (!params.remove_ribo_rna) {
-    ch_reads_for_ribosomal_removal
-        .set { ch_reads_to_translate }
-    sortmerna_logs = Channel.empty()
-} else {
+
     process sortmerna_index {
         label 'mid_memory_long'
         label 'mid_cpu'
         tag "${fasta.baseName}"
 
         input:
-        file(fasta) from sortmerna_fasta
+        file(fasta)
 
         output:
-        val("${fasta.baseName}") into sortmerna_db_name
-        file("$fasta") into sortmerna_db_fasta
-        file("${fasta.baseName}*") into sortmerna_db
+        val("${fasta.baseName}")  , emit: db_name
+        path("$fasta")            , emit: db_fasta
+        path("${fasta.baseName}*"), emit: db
 
         script:
         """
@@ -1116,83 +1109,61 @@ if (!params.remove_ribo_rna) {
             """
         }
     }
-  }
+  
 
 
 
-  if (params.reference_proteome_fasta){
-    process translate {
-      tag "${sample_id}"
-      label "low_memory_long"
-      publishDir "${params.outdir}/translate/", mode: params.publish_dir_mode,
-        saveAs: {
-          filename ->
-              if (save_translate_csv && filename.indexOf(".csv") > 0) "$filename"
-              else if (save_translate_json && filename.indexOf(".json") > 0) "$filename"
-              else if (filename.indexOf("_noncoding_reads_nucleotides") > 0) "noncoding_nucleotides/${filename}"
-              else if (filename.indexOf("_coding_reads_nucleotides") > 0) "coding_nucleotides/${filename}"
-              else if (filename.indexOf("_coding_reads_peptides") > 0) "coding_peptides/${filename}"
-              else "$filename"
-          }
 
-      input:
-      set bloom_id, molecule, file(bloom_filter) from ch_orpheum_bloom_filter.collect()
-      set sample_id, file(reads) from ch_reads_to_translate
+process translate {
+  tag "${sample_id}"
+  label "low_memory_long"
+  publishDir "${params.outdir}/translate/", mode: params.publish_dir_mode,
+    saveAs: {
+      filename ->
+          if (save_translate_csv && filename.indexOf(".csv") > 0) "$filename"
+          else if (save_translate_json && filename.indexOf(".json") > 0) "$filename"
+          else if (filename.indexOf("_noncoding_reads_nucleotides") > 0) "noncoding_nucleotides/${filename}"
+          else if (filename.indexOf("_coding_reads_nucleotides") > 0) "coding_nucleotides/${filename}"
+          else if (filename.indexOf("_coding_reads_peptides") > 0) "coding_peptides/${filename}"
+          else "$filename"
+      }
 
-      output:
-      // TODO also extract nucleotide sequence of coding reads and do sourmash compute using only DNA on that?
-      set val(sample_id), file("${sample_id}__noncoding_reads_nucleotides.fasta") into ch_noncoding_nucleotides_potentially_empty
-      set val(sample_id), file("${sample_id}__coding_reads_peptides.fasta") into ch_translated_protein_seqs
-      set val(sample_id), file("${sample_id}__coding_reads_nucleotides.fasta") into ch_translatable_nucleotide_seqs
-      set val(sample_id), file(translate_csv) into ch_coding_scores_csv
-      set val(sample_id), file(translate_json) into ch_coding_scores_json
+  input:
+  tuple bloom_id, molecule, path(bloom_filter)
+  tuple sample_id, path(reads)
 
-      script:
-      translate_json = "${sample_id}__coding_summary.json"
-      translate_csv = "${sample_id}__coding_scores.csv"
-      csv_flag = save_translate_csv ? "--csv ${translate_csv}" : ''
-      json_flag = save_translate_json ? "--json-summary ${translate_json}" : ''
+  output:
+  // TODO also extract nucleotide sequence of coding reads and do sourmash compute using only DNA on that?
+  set val(sample_id), file("${sample_id}__noncoding_reads_nucleotides.fasta") into ch_noncoding_nucleotides_potentially_empty
+  set val(sample_id), file("${sample_id}__coding_reads_peptides.fasta") into ch_translated_protein_seqs
+  set val(sample_id), file("${sample_id}__coding_reads_nucleotides.fasta") into ch_translatable_nucleotide_seqs
+  set val(sample_id), file(translate_csv) into ch_coding_scores_csv
+  set val(sample_id), file(translate_json) into ch_coding_scores_json
 
-      """
-      orpheum translate \\
-        --molecule ${molecule} \\
-        --coding-nucleotide-fasta ${sample_id}__coding_reads_nucleotides.fasta \\
-        --noncoding-nucleotide-fasta ${sample_id}__noncoding_reads_nucleotides.fasta \\
-        ${csv_flag} \\
-        ${json_flag} \\
-        --jaccard-threshold ${translate_jaccard_threshold} \\
-        --peptide-ksize ${translate_peptide_ksize} \\
-        --peptides-are-bloom-filter \\
-        ${bloom_filter} \\
-        ${reads} > ${sample_id}__coding_reads_peptides.fasta
-      touch ${translate_csv}
-      touch ${translate_json}
-      """
-    }
+  script:
+  translate_json = "${sample_id}__coding_summary.json"
+  translate_csv = "${sample_id}__coding_scores.csv"
+  csv_flag = save_translate_csv ? "--csv ${translate_csv}" : ''
+  json_flag = save_translate_json ? "--json-summary ${translate_json}" : ''
 
-    // Remove empty files
-    // it[0] = sample id
-    // it[1] = sequence fasta file
-    ch_translated_protein_seqs
-      .mix ( ch_protein_fastas )
-      .dump ( tag: 'ch_protein_seq_to_sketch_from_translate' )
-      .set { ch_protein_seq_to_sketch }
-    // Remove empty files
-    // it[0] = sample bloom id
-    // it[1] = sequence fasta file
-    ch_noncoding_nucleotides_nonempty =  ch_noncoding_nucleotides_potentially_empty.filter{ it[1].size() > 0 }
-    ch_translatable_nucleotide_seqs
-      .dump( tag: 'ch_translatable_nucleotide_seqs' )
-      .filter{ it[1].size() > 0 }
-      .dump ( tag: 'ch_reads_to_sketch__from_translate' )
-      .set { ch_reads_to_sketch }
+  """
+  orpheum translate \\
+    --molecule ${molecule} \\
+    --coding-nucleotide-fasta ${sample_id}__coding_reads_nucleotides.fasta \\
+    --noncoding-nucleotide-fasta ${sample_id}__noncoding_reads_nucleotides.fasta \\
+    ${csv_flag} \\
+    ${json_flag} \\
+    --jaccard-threshold ${translate_jaccard_threshold} \\
+    --peptide-ksize ${translate_peptide_ksize} \\
+    --peptides-are-bloom-filter \\
+    ${bloom_filter} \\
+    ${reads} > ${sample_id}__coding_reads_peptides.fasta
+  touch ${translate_csv}
+  touch ${translate_json}
+  """
+}
 
-  } else {
-    // Send reads directly into coding/noncoding
-    ch_reads_to_translate
-      .dump ( tag: 'ch_reads_to_sketch__no_translation' )
-      .set{ ch_reads_to_sketch }
-  }
+
 
 
   
@@ -1857,6 +1828,50 @@ workflow {
       ch_reads_for_ribosomal_removal = fastas_ch
       ch_fastp_results = Channel.from(false)
     }
+
+    /*
+ * STEP 2+ - SortMeRNA - remove rRNA sequences on request
+ */
+if (!params.remove_ribo_rna) {
+    ch_reads_for_ribosomal_removal
+        .set { ch_reads_to_translate }
+    sortmerna_logs = Channel.empty()
+} else {
+  sortmerna_index(sortmerna_fasta)
+  sortmerna(
+    ch_reads_for_ribosomal_removal, 
+    sortmerna_index.out.db_name, 
+    sortmerna_index.out.db_fasta, 
+    sortmerna_index.out.db
+  )
+}
+
+  if (params.reference_proteome_fasta){
+    translate(ch_orpheum_bloom_filter.collect(), ch_reads_to_translate)
+
+    // Remove empty files
+    // it[0] = sample id
+    // it[1] = sequence fasta file
+    ch_translated_protein_seqs
+      .mix ( ch_protein_fastas )
+      .dump ( tag: 'ch_protein_seq_to_sketch_from_translate' )
+      .set { ch_protein_seq_to_sketch }
+    // Remove empty files
+    // it[0] = sample bloom id
+    // it[1] = sequence fasta file
+    ch_noncoding_nucleotides_nonempty =  ch_noncoding_nucleotides_potentially_empty.filter{ it[1].size() > 0 }
+    ch_translatable_nucleotide_seqs
+      .dump( tag: 'ch_translatable_nucleotide_seqs' )
+      .filter{ it[1].size() > 0 }
+      .dump ( tag: 'ch_reads_to_sketch__from_translate' )
+      .set { ch_reads_to_sketch }
+
+  } else {
+    // Send reads directly into coding/noncoding
+    ch_reads_to_translate
+      .dump ( tag: 'ch_reads_to_sketch__no_translation' )
+      .set{ ch_reads_to_sketch }
+  }
   
   if (params.split_kmer){
   ///////////////////////////////////////////////////////////////////////////////
