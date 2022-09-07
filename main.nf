@@ -1244,22 +1244,6 @@ process sourmash_compute_sketch_fastx_nucleotide {
     
 
 
-if ((!have_nucleotide_input) || params.skip_trimming || have_nucleotide_fasta_input) {
-  // Only protein input or skip trimming, or fastas which can't be trimmed.
-  ch_fastp_results = Channel.from(false)
-  sortmerna_logs = Channel.from(false)
-
-}
-
-if (!have_nucleotide_input) {
-  // Only protein input, can't do sortMeRNA
-  sortmerna_logs = Channel.empty()
-  ch_fastp_results = Channel.from(false)
-}
-
-
-if (!params.skip_compute && (protein_input || params.reference_proteome_fasta)){
-
   process sourmash_compute_sketch_fastx_peptide {
     tag "${sig_id}"
     label "low_memory"
@@ -1274,7 +1258,7 @@ if (!params.skip_compute && (protein_input || params.reference_proteome_fasta)){
     val track_abundance
     val sketch_value_parsed
     val sketch_style_parsed
-    set val(sample_id), file(reads) from ch_protein_seq_to_sketch
+    tuple val(sample_id), path(protein_seqs) 
 
     output:
     file(csv) into ch_sourmash_sig_describe_peptides
@@ -1304,72 +1288,11 @@ if (!params.skip_compute && (protein_input || params.reference_proteome_fasta)){
         --no-dna \\
         $track_abundance_flag \\
         --output ${sig} \\
-        $reads
+        $protein_seqs
       sourmash sig describe --csv ${csv} ${sig}
     """
     }
-  sourmash_sketches_peptide = sourmash_sketches_all_peptide.filter{ it[3].size() > 0 }
-} else {
-  sourmash_sketches_peptide = Channel.empty()
-  ch_sourmash_sig_describe_peptides = Channel.empty()
-}
 
-// -------------
-// Merge signatures from same sample id and sketch id
-// -------------
-if ((params.bam || params.tenx_tgz) && !params.skip_compute && !params.skip_sig_merge) {
-
-  sourmash_sketches_nucleotide
-    .mix ( sourmash_sketches_peptide )
-    .dump ( tag: 'ch_sourmash_sketches_mixed' )
-    .set { ch_sourmash_sketches_mixed }
-
-  ch_fastq_id_to_cell_id_is_aligned
-    .dump( tag: 'ch_fastq_id_to_cell_id_is_aligned' )
-    .combine ( ch_sourmash_sketches_mixed, by: 0 )
-    .unique()
-    .dump( tag: 'fastq_id_to_cells__combine__sketches' )
-    // [DUMP: fastq_id_to_cells__combine__sketches] 
-    // ['mouse_brown_fat_ptprc_plus_unaligned__aligned__CTGAAGTCAATGGTCT', 
-    //   mouse_brown_fat_ptprc_plus_unaligned__CTGAAGTCAATGGTCT, 
-    //   'aligned', 
-    //   molecule-dna__ksize-3__num_hashes-4__track_abundance-false, 
-    //   'dna', 
-    //   '3', 
-    //   mouse_brown_fat_ptprc_plus_unaligned__aligned__CTGAAGTCAATGGTCT__molecule-dna__ksize-3__num_hashes-4__track_abundance-false.sig]
-    // it[0]: fastq_id, e.g. "mouse_brown_fat_ptprc_plus_unaligned__aligned__CTGAAGTCAATGGTCT" (contains aligned/unaligned)
-    // it[1]: cell_id, e.g. "mouse_brown_fat_ptprc_plus_unaligned__CTGAAGTCAATGGTCT"
-    // it[2]: is_aligned, e.g. "aligned"
-    // it[3]: sketch_id, e.g. molecule-dna__ksize-3__num_hashes-4__track_abundance-false
-    // it[4]: molecule, e.g. 'dna'
-    // it[5]: ksize, e.g. '3'
-    // it[6]: signature file, e.g. mouse_brown_fat_ptprc_plus_unaligned__aligned__CTGAAGTCAATGGTCT__molecule-dna__ksize-3__num_hashes-4__track_abundance-false.sig
-    .groupTuple( by: [1, 3, 4, 5] )
-    // [DUMP: fastq_id_to_cells__combine__sketches__grouptuple] 
-    // [
-    //   ['mouse_brown_fat_ptprc_plus_unaligned__aligned__GCGCAGTCATGCCTTC'], 
-    //   mouse_brown_fat_ptprc_plus_unaligned__GCGCAGTCATGCCTTC, 
-    //   ['aligned'], 
-    //   molecule-dna__ksize-3,9__scaled-2__track_abundance-false, 
-    //   'dna', 
-    //    '3,9', 
-    //    [mouse_brown_fat_ptprc_plus_unaligned__aligned__GCGCAGTCATGCCTTC__molecule-dna__ksize-3,9__scaled-2__track_abundance-false.sig]
-    // ]
-    .dump( tag: 'fastq_id_to_cells__combine__sketches__grouptuple' )
-    .map { it -> [it[0].unique(), it[1], it[2].unique(), it[3], it[4], it[5], it[6]] }
-    .dump( tag: 'fastq_id_to_cells__combine__sketches__grouptuple__unique' )
-    .set { ch_sourmash_sketches_to_merge }
-
-  // ch_sourmash_sketches_branched
-  //   .to_merge
-  //   .dump ( tag: 'ch_sourmash_sketches_to_merge' )
-  //   .set { ch_sourmash_sketches_to_merge }
-
-  // ch_sourmash_sketches_branched
-  //   .single
-  //   .map { [it[0][0], it[1], it[2][0], it[3], it[4], it[5], file(it[6][0])] }
-  //   .dump ( tag: 'ch_sourmash_sketches_to_mix_with_merged' )
-  //   .set { ch_sourmash_sketches_to_mix_with_merged }
 
   process sourmash_sig_merge {
     tag "${sig_id}"
@@ -1382,11 +1305,11 @@ if ((params.bam || params.tenx_tgz) && !params.skip_compute && !params.skip_sig_
         }
 
     input:
-    set val(fasta_ids), val(cell_id), val(is_aligned), val(sketch_id), val(moltypes), val(ksizes), file(sigs) from ch_sourmash_sketches_to_merge
+    tuple val(fasta_ids), val(cell_id), val(is_aligned), val(sketch_id), val(moltypes), val(ksizes), path(sigs)
 
     output:
-    file(csv) into ch_sourmash_sig_describe_merged
-    set val(cell_id), val(sketch_id), val(moltypes), val(ksizes), file(output_sig) into ch_sourmash_sketches_merged, ch_sourmash_sketches_merged_to_view, ch_sourmash_sketches_merged_for_moltypes_ksizes
+    file(csv) into describe_csv
+    set val(cell_id), val(sketch_id), val(moltypes), val(ksizes), file(output_sig) into sketches
 
     script:
     // sketch_id = make_sketch_id(molecule, ksize, sketch_value, track_abundance, sketch_style)
@@ -1408,25 +1331,6 @@ if ((params.bam || params.tenx_tgz) && !params.skip_compute && !params.skip_sig_
   }
 
 
-  ch_sourmash_sketches_merged_to_view
-    .dump( tag: "ch_sourmash_sketches_to_view" )
-
-
-
-// } else if (!params.skip_compute) {
-//   sourmash_sketches_nucleotide
-//     .mix ( sourmash_sketches_peptide )
-//     .dump ( tag: 'skip_merge__ch_sourmash_sketches_to_comapre' )
-//     .set { ch_sourmash_sketches_to_comapre }
-//   ch_sourmash_sig_describe_merged = Channel.empty()
-} else {
-  // Use "mix" to aggregate the nucleotide and peptide sketches into one place
-  sourmash_sketches_nucleotide
-    .mix ( sourmash_sketches_peptide )
-    .dump ( tag: 'skip_merge__ch_sourmash_sketches_to_compare' )
-    .set { ch_sourmash_sketches_merged }
-  ch_sourmash_sig_describe_merged = Channel.empty()
-}
 
 if (params.split_kmer){
      process ska_compare_sketches {
@@ -1905,5 +1809,99 @@ if (!params.remove_ribo_rna) {
         .set { ch_protein_seq_to_sketch }
       ch_sourmash_sig_describe_nucleotides = Channel.empty()
   }
+
+
+
+if ((!have_nucleotide_input) || params.skip_trimming || have_nucleotide_fasta_input) {
+  // Only protein input or skip trimming, or fastas which can't be trimmed.
+  ch_fastp_results = Channel.from(false)
+  sortmerna_logs = Channel.from(false)
+
+}
+
+if (!have_nucleotide_input) {
+  // Only protein input, can't do sortMeRNA
+  sortmerna_logs = Channel.empty()
+  ch_fastp_results = Channel.from(false)
+}
+
+
+if (!params.skip_compute && (protein_input || params.reference_proteome_fasta)){
+  sourmash_compute_sketch_fastx_peptide(track_abundance, sketch_value_parsed, sketch_style_parsed, ch_protein_seq_to_sketch)
+
+  sourmash_sketches_peptide = sourmash_sketches_all_peptide.filter{ it[3].size() > 0 }
+} else {
+  sourmash_sketches_peptide = Channel.empty()
+  ch_sourmash_sig_describe_peptides = Channel.empty()
+}
+
+// -------------
+// Merge signatures from same sample id and sketch id
+// -> for single-cell data where aligned/unaligned reads were separated
+// -------------
+if ((params.bam || params.tenx_tgz) && !params.skip_compute && !params.skip_sig_merge) {
+
+  sourmash_sketches_nucleotide
+    .mix ( sourmash_sketches_peptide )
+    .dump ( tag: 'ch_sourmash_sketches_mixed' )
+    .set { ch_sourmash_sketches_mixed }
+
+  ch_fastq_id_to_cell_id_is_aligned
+    .dump( tag: 'ch_fastq_id_to_cell_id_is_aligned' )
+    .combine ( ch_sourmash_sketches_mixed, by: 0 )
+    .unique()
+    .dump( tag: 'fastq_id_to_cells__combine__sketches' )
+    // [DUMP: fastq_id_to_cells__combine__sketches] 
+    // ['mouse_brown_fat_ptprc_plus_unaligned__aligned__CTGAAGTCAATGGTCT', 
+    //   mouse_brown_fat_ptprc_plus_unaligned__CTGAAGTCAATGGTCT, 
+    //   'aligned', 
+    //   molecule-dna__ksize-3__num_hashes-4__track_abundance-false, 
+    //   'dna', 
+    //   '3', 
+    //   mouse_brown_fat_ptprc_plus_unaligned__aligned__CTGAAGTCAATGGTCT__molecule-dna__ksize-3__num_hashes-4__track_abundance-false.sig]
+    // it[0]: fastq_id, e.g. "mouse_brown_fat_ptprc_plus_unaligned__aligned__CTGAAGTCAATGGTCT" (contains aligned/unaligned)
+    // it[1]: cell_id, e.g. "mouse_brown_fat_ptprc_plus_unaligned__CTGAAGTCAATGGTCT"
+    // it[2]: is_aligned, e.g. "aligned"
+    // it[3]: sketch_id, e.g. molecule-dna__ksize-3__num_hashes-4__track_abundance-false
+    // it[4]: molecule, e.g. 'dna'
+    // it[5]: ksize, e.g. '3'
+    // it[6]: signature file, e.g. mouse_brown_fat_ptprc_plus_unaligned__aligned__CTGAAGTCAATGGTCT__molecule-dna__ksize-3__num_hashes-4__track_abundance-false.sig
+    .groupTuple( by: [1, 3, 4, 5] )
+    // [DUMP: fastq_id_to_cells__combine__sketches__grouptuple] 
+    // [
+    //   ['mouse_brown_fat_ptprc_plus_unaligned__aligned__GCGCAGTCATGCCTTC'], 
+    //   mouse_brown_fat_ptprc_plus_unaligned__GCGCAGTCATGCCTTC, 
+    //   ['aligned'], 
+    //   molecule-dna__ksize-3,9__scaled-2__track_abundance-false, 
+    //   'dna', 
+    //    '3,9', 
+    //    [mouse_brown_fat_ptprc_plus_unaligned__aligned__GCGCAGTCATGCCTTC__molecule-dna__ksize-3,9__scaled-2__track_abundance-false.sig]
+    // ]
+    .dump( tag: 'fastq_id_to_cells__combine__sketches__grouptuple' )
+    .map { it -> [it[0].unique(), it[1], it[2].unique(), it[3], it[4], it[5], it[6]] }
+    .dump( tag: 'fastq_id_to_cells__combine__sketches__grouptuple__unique' )
+    .set { ch_sourmash_sketches_to_merge }
+
+  sourmash_sig_merge(ch_sourmash_sketches_to_merge)
+
+  sourmash_sig_merge.out.sketches
+    .dump( tag: "ch_sourmash_sketches_to_view" )
+
+  ch_sourmash_sketches_merged = sourmash_sig_merge.out.sketches
+  ch_sourmash_sig_describe_merged = sourmash_sig_merge.out.describe_csv
+  // } else if (!params.skip_compute) {
+//   sourmash_sketches_nucleotide
+//     .mix ( sourmash_sketches_peptide )
+//     .dump ( tag: 'skip_merge__ch_sourmash_sketches_to_comapre' )
+//     .set { ch_sourmash_sketches_to_comapre }
+//   ch_sourmash_sig_describe_merged = Channel.empty()
+} else {
+  // Use "mix" to aggregate the nucleotide and peptide sketches into one place
+  sourmash_sketches_nucleotide
+    .mix ( sourmash_sketches_peptide )
+    .dump ( tag: 'skip_merge__ch_sourmash_sketches_to_compare' )
+    .set { ch_sourmash_sketches_merged }
+  ch_sourmash_sig_describe_merged = Channel.empty()
+}
 
 }
