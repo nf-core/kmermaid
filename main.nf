@@ -367,7 +367,7 @@ if (params.subsample) {
             csv_pairs_ch, csv_singles_ch, read_pairs_ch,
             read_singles_ch, input_paths_ch)
           .dump ( tag: 'ch_read_files_trimming_unchecked__with_fastas' )
-          .into { ch_read_files_trimming; ch_read_files_trimming_to_check_size }
+          .set { ch_read_files_trimming }
       } else {
         // No fasta files - combine everything and error out
         sra_ch.concat(
@@ -462,7 +462,7 @@ Channel.from( molecules )
   .set { ch_molecules }
 
 Channel.from( peptide_molecules )
-  .set { ch_peptide_molecules; ch_peptide_molecules_for_compare }
+  .set { ch_peptide_molecules }
 
 // Parse sketch value and style parameters
 sketch_num_hashes = params.sketch_num_hashes
@@ -547,7 +547,7 @@ if (workflow.profile.contains('awsbatch')) {
     // related: https://github.com/nextflow-io/nextflow/issues/813
     if (!params.outdir.startsWith('s3:')) exit 1, "Outdir not on S3 - specify S3 Bucket to run on AWSBatch!"
     // Prevent trace files to be stored on S3 since S3 does not support rolling files.
-    if (params.tracedir.startsWith('s3:')) exit 1, "Specify a local tracedir or run without trace! S3 cannot be used for tracefiles."
+    // if (params.tracedir.startsWith('s3:')) exit 1, "Specify a local tracedir or run without trace! S3 cannot be used for tracefiles."
 }
 
 // Stage config files
@@ -677,17 +677,18 @@ process get_software_versions {
     scrape_software_versions.py &> software_versions_mqc.yaml
     """
 }
+
 if ( !params.split_kmer && have_sketch_value ) {
   // Only use this for sourmash sketches, not split k-mer sketches
   /*
    * Validate sketch sizes
    */
   process validate_sketch_value {
-      publishDir "${params.outdir}/pipeline_info", mode: params.publish_dir_mode,
-      saveAs: {filename ->
-          if (filename.indexOf(".txt") > 0) filename
-          else null
-      }
+      // publishDir "${params.outdir}/pipeline_info", mode: params.publish_dir_mode,
+      // saveAs: {filename ->
+      //     if (filename.indexOf(".txt") > 0) filename
+      //     else null
+      // }
       input:
       val sketch_num_hashes
       val sketch_num_hashes_log2
@@ -695,8 +696,11 @@ if ( !params.split_kmer && have_sketch_value ) {
       val sketch_scaled_log2
 
       output:
-      file sketch_value into ch_sketch_value_unparsed
-      file sketch_style into ch_sketch_style_unparsed
+      path sketch_value
+      path sketch_style
+
+      when:
+      true
 
       script:
       sketch_style = "sketch_style.txt"
@@ -712,31 +716,6 @@ if ( !params.split_kmer && have_sketch_value ) {
       """
   }
 
-  // Parse sketch style into value
-  sketch_style_parsed = ch_sketch_style_unparsed
-    .splitText()
-    .dump ( tag: 'ch_sketch_style' )
-    .map { it -> it.replaceAll('\\n', '' ) }
-    .first()
-    .dump ( tag: 'sketch_style_parsed' )
-    .collect ()
-  // get first item of returned array from .collect()
-  // sketch_style_parsed = sketch_style_parsed[0]
-    // .into { ch_sketch_style_for_nucleotides; ch_sketch_style_for_proteins }
-  // sketch_style = sketch_styles[0]
-  // println "sketch_style_parsed: ${sketch_style_parsed}"
-  // println "sketch_style: ${sketch_style}"
-
-  // Parse file into values
-  sketch_value_parsed = ch_sketch_value_unparsed
-    .splitText()
-    .map { it -> it.replaceAll('\\n', '')}
-    .first()
-    .dump ( tag : 'sketch_value_parsed' )
-    .collect()
-  // get first item of returned array from .collect()
-  // sketch_value_parsed = sketch_value_parsed[0]
-    // .into { ch_sketch_value_for_proteins; ch_sketch_value_for_dna }
 
 }
 
@@ -971,98 +950,57 @@ if (params.tenx_tgz || params.bam) {
 }
 
 
-if ( have_nucleotide_input ) {
-  if (!params.skip_trimming && have_nucleotide_fastq_input){
-    process fastp {
-        label 'process_low'
-        tag "$name"
-        publishDir "${params.outdir}/fastp", mode: params.publish_dir_mode,
-          saveAs: {filename ->
-                      if (filename.indexOf(".fastq.gz") == -1) "logs/$filename"
-                      else if (reads[1] == null) "single_end/$filename"
-                      else if (reads[1] != null) "paired_end/$filename"
-                      else null
-                  }
+process fastp {
+    label 'process_low'
+    tag "$name"
+    publishDir "${params.outdir}/fastp", mode: params.publish_dir_mode,
+      saveAs: {filename ->
+                  if (filename.indexOf(".fastq.gz") == -1) "logs/$filename"
+                  else if (reads[1] == null) "single_end/$filename"
+                  else if (reads[1] != null) "paired_end/$filename"
+                  else null
+              }
 
-        input:
-        set val(name), file(reads) from ch_read_files_trimming
+    input:
+    tuple val(name), file(reads)
 
-        output:
-        set val(name), file("*trimmed.fastq.gz") into ch_reads_all_trimmed
-        file "*fastp.json" into ch_fastp_results
-        file "*fastp.html" into ch_fastp_html
+    output:
+    tuple val(name), file("*trimmed.fastq.gz") into trimmed_reads
+    path "*fastp.json" into json
+    path "*fastp.html" into html
 
-        script:
-        // One set of reads --> single end
-        if (reads[1] == null) {
-            """
-            fastp \\
-                --in1 ${reads} \\
-                --out1 ${name}_R1_trimmed.fastq.gz \\
-                --json ${name}_fastp.json \\
-                --html ${name}_fastp.html
-            """
-        } else if (reads[1] != null ){
-          // More than one set of reads --> paired end
-            """
-            fastp \\
-                --in1 ${reads[0]} \\
-                --in2 ${reads[1]} \\
-                --out1 ${name}_R1_trimmed.fastq.gz \\
-                --out2 ${name}_R2_trimmed.fastq.gz \\
-                --json ${name}_fastp.json \\
-                --html ${name}_fastp.html
-            """
-        } else {
-          """
-          echo name ${name}
-          echo reads: ${reads}
-          echo "Number of reads is not equal to 1 or 2 --> don't know how to trim non-paired-end and non-single-end reads"
-          """
-        }
+    script:
+    // One set of reads --> single end
+    if (reads[1] == null) {
+        """
+        fastp \\
+            --in1 ${reads} \\
+            --out1 ${name}_R1_trimmed.fastq.gz \\
+            --json ${name}_fastp.json \\
+            --html ${name}_fastp.html
+        """
+    } else if (reads[1] != null ){
+      // More than one set of reads --> paired end
+        """
+        fastp \\
+            --in1 ${reads[0]} \\
+            --in2 ${reads[1]} \\
+            --out1 ${name}_R1_trimmed.fastq.gz \\
+            --out2 ${name}_R2_trimmed.fastq.gz \\
+            --json ${name}_fastp.json \\
+            --html ${name}_fastp.html
+        """
+    } else {
+      """
+      echo name ${name}
+      echo reads: ${reads}
+      echo "Number of reads is not equal to 1 or 2 --> don't know how to trim non-paired-end and non-single-end reads"
+      """
     }
-
-  // Filtering out fastq.gz files less than 200 bytes (arbitary number)
-  // ~200 bytes is about the size of a file with a single read or less
-  // We can't use .size() > 0 because it's fastq.gz is gzipped content
-  ch_reads_all_trimmed
-    .dump ( tag: 'ch_reads_all_trimmed' )
-    .branch {
-      // Paired is a tuple of two reads
-      paired: it[1].size() == 2
-      single: true
-    }
-    .set { ch_reads_trimmed_branched }
-
-  ch_reads_trimmed_branched.paired
-    .filter{ it -> it[1][0].size() > 200 }
-    .dump ( tag: 'ch_reads_trimmed_paired' )
-    .set{ ch_reads_trimmed_paired }
-
-  ch_reads_trimmed_branched.single
-    .filter{ it -> it[1].size() > 200 }
-    .dump ( tag: 'ch_reads_trimmed_single' )
-    .set{ ch_reads_trimmed_single }
-
-  ch_reads_trimmed_single
-    .mix ( ch_reads_trimmed_paired )
-    .set { ch_reads_trimmed }
-
-  // Concatenate trimmed fastq files with fastas
-  if (params.subsample){
-    // Concatenate trimmed reads with fastas for subsequent subsampling
-    ch_reads_trimmed
-      .concat( fastas_ch )
-      .dump ( tag: 'trimmed_reads__concat_fastas' )
-      .set { subsample_ch_reads_for_ribosomal_removal }
-  } else {
-    // Concatenate trimmed reads with fastas for signature generation
-    ch_reads_for_ribosomal_removal = ch_reads_trimmed.mix(fastas_ch)
-  }
-} else {
-  ch_reads_for_ribosomal_removal = fastas_ch
-  ch_fastp_results = Channel.from(false)
 }
+
+
+
 
 if (params.subsample) {
   process subsample_input {
@@ -1257,109 +1195,82 @@ if (!params.remove_ribo_rna) {
   }
 
 
-  if (params.split_kmer){
-  ///////////////////////////////////////////////////////////////////////////////
-  ///////////////////////////////////////////////////////////////////////////////
-  /* --                                                                     -- */
-  /* --                     CREATE SKA SKETCH                               -- */
-  /* --                                                                     -- */
-  ///////////////////////////////////////////////////////////////////////////////
-  ///////////////////////////////////////////////////////////////////////////////
-
-    process ska_compute_sketch {
-        tag "${sketch_id}"
-        publishDir "${params.outdir}/ska/sketches/", mode: params.publish_dir_mode
-        errorStrategy 'retry'
-        maxRetries 3
+  
+process ska_compute_sketch {
+    tag "${sketch_id}"
+    publishDir "${params.outdir}/ska/sketches/", mode: params.publish_dir_mode
+    errorStrategy 'retry'
+    maxRetries 3
 
 
-      input:
-      each ksize from ksizes
-      set id, file(reads) from ch_reads_to_sketch
+  input:
+  each ksize from ksizes
+  set id, file(reads) from ch_reads_to_sketch
 
-      output:
-      set val(ksize), file("${sketch_id}.skf") into ska_sketches
+  output:
+  set val(ksize), file("${sketch_id}.skf") into ska_sketches
 
-      script:
-      sketch_id = "${id}_ksize_${ksize}"
+  script:
+  sketch_id = "${id}_ksize_${ksize}"
 
-        """
-        ska fastq \\
-          -k $ksize \\
-          -o ${sketch_id} \\
-          ${reads}
-        """
+    """
+    ska fastq \\
+      -k $ksize \\
+      -o ${sketch_id} \\
+      ${reads}
+    """
 
-      }
-  } else if (!params.skip_compute) {
-
-    process sourmash_compute_sketch_fastx_nucleotide {
-      tag "${sig_id}"
-      label "low_memory"
-      publishDir "${params.outdir}/sketches_nucleotide/${sketch_id}", mode: "${params.publish_dir_mode}",
-          saveAs: {filename ->
-              if (filename.indexOf(".csv") > 0) "description/$filename"
-              else if (filename.indexOf(".sig") > 0) "sigs/$filename"
-              else null
-          }
-
-      input:
-      val track_abundance
-      val sketch_value_parsed
-      val sketch_style_parsed
-      set val(sample_id), file(reads) from ch_reads_to_sketch
-
-      output:
-      file(csv) into ch_sourmash_sig_describe_nucleotides
-      set val(sample_id), val(sketch_id), val("dna"), val(params.ksizes), file(sig) into sourmash_sketches_all_nucleotide
-
-      script:
-      // Don't calculate DNA signature if this is protein, to minimize disk,
-      // memory and IO requirements in the future
-      sketch_id = make_sketch_id(
-        "dna", 
-        params.ksizes, 
-        sketch_value_parsed[0], 
-        track_abundance, 
-        sketch_style_parsed[0]
-      )
-      sketch_value_flag = make_sketch_value_flag(sketch_style_parsed[0], sketch_value_parsed[0])
-      track_abundance_flag = track_abundance ? '--track-abundance' : ''
-      sig_id = "${sample_id}__${sketch_id}"
-      sig = "${sig_id}.sig"
-      csv = "${sig_id}.csv"
-      """
-        sourmash compute \\
-          ${sketch_value_flag} \\
-          --ksizes ${params.ksizes} \\
-          --dna \\
-          $track_abundance_flag \\
-          --output ${sig} \\
-          --name '${sample_id}' \\
-          $reads
-        sourmash sig describe --csv ${csv} ${sig}
-      """
-    }
-    sourmash_sketches_all_nucleotide
-      .filter{ it[3].size() > 0 }
-      .dump ( tag: "sourmash_sketches_all_nucleotide" )
-      .set { sourmash_sketches_nucleotide }
-  } else {
-  sourmash_sketches_nucleotide = Channel.empty()
-  ch_protein_fastas
-    .set { ch_protein_seq_to_sketch }
-  ch_sourmash_sig_describe_nucleotides = Channel.empty()
   }
-} else {
-  sourmash_sketches_nucleotide = Channel.empty()
-  ch_fastp_results = Channel.from(false)
-  sortmerna_logs = Channel.from(false)
 
-  ch_protein_fastas
-    .set { ch_protein_seq_to_sketch }
-  ch_sourmash_sig_describe_nucleotides = Channel.empty()
+
+process sourmash_compute_sketch_fastx_nucleotide {
+  tag "${sig_id}"
+  label "low_memory"
+  publishDir "${params.outdir}/sketches_nucleotide/${sketch_id}", mode: "${params.publish_dir_mode}",
+      saveAs: {filename ->
+          if (filename.indexOf(".csv") > 0) "description/$filename"
+          else if (filename.indexOf(".sig") > 0) "sigs/$filename"
+          else null
+      }
+
+  input:
+  val track_abundance
+  val sketch_value_parsed
+  val sketch_style_parsed
+  set val(sample_id), file(reads) from ch_reads_to_sketch
+
+  output:
+  path(csv)                                                                      , emit: describe_csv
+  tuple val(sample_id), val(sketch_id), val("dna"), val(params.ksizes), file(sig), emit: sketches
+
+  script:
+  // Don't calculate DNA signature if this is protein, to minimize disk,
+  // memory and IO requirements in the future
+  sketch_id = make_sketch_id(
+    "dna", 
+    params.ksizes, 
+    sketch_value_parsed[0], 
+    track_abundance, 
+    sketch_style_parsed[0]
+  )
+  sketch_value_flag = make_sketch_value_flag(sketch_style_parsed[0], sketch_value_parsed[0])
+  track_abundance_flag = track_abundance ? '--track-abundance' : ''
+  sig_id = "${sample_id}__${sketch_id}"
+  sig = "${sig_id}.sig"
+  csv = "${sig_id}.csv"
+  """
+    sourmash compute \\
+      ${sketch_value_flag} \\
+      --ksizes ${params.ksizes} \\
+      --dna \\
+      $track_abundance_flag \\
+      --output ${sig} \\
+      --name '${sample_id}' \\
+      $reads
+    sourmash sig describe --csv ${csv} ${sig}
+  """
 }
-
+    
 
 
 if ((!have_nucleotide_input) || params.skip_trimming || have_nucleotide_fasta_input) {
@@ -1594,7 +1505,7 @@ if (!params.split_kmer && !params.skip_compare && !params.skip_compute) {
 
   // ch_sourmash_sketches_to_compare = Channel.empty()
 
-  ch_peptide_molecules_for_compare
+  ch_peptide_molecules
     .combine( ch_ksizes_for_compare )
     .set { ch_sourmash_compare_params_peptide }
 
@@ -1869,4 +1780,115 @@ def checkHostname() {
             }
         }
     }
+}
+
+
+workflow {
+  validate_sketch_value(sketch_num_hashes, sketch_num_hashes_log2, sketch_scaled, sketch_scaled_log2)
+
+    // Parse sketch style into value
+  sketch_style_parsed = validate_sketch_value.out.sketch_style
+    .splitText()
+    .dump ( tag: 'ch_sketch_style' )
+    .map { it -> it.replaceAll('\\n', '' ) }
+    .first()
+    .dump ( tag: 'sketch_style_parsed' )
+    .collect ()
+  // get first item of returned array from .collect()
+  // sketch_style_parsed = sketch_style_parsed[0]
+    // .into { ch_sketch_style_for_nucleotides; ch_sketch_style_for_proteins }
+  // sketch_style = sketch_styles[0]
+  // println "sketch_style_parsed: ${sketch_style_parsed}"
+  // println "sketch_style: ${sketch_style}"
+
+  // Parse file into values
+  sketch_value_parsed = validate_sketch_value.out.sketch_value
+    .splitText()
+    .map { it -> it.replaceAll('\\n', '')}
+    .first()
+    .dump ( tag : 'sketch_value_parsed' )
+    .collect()
+  // get first item of returned array from .collect()
+  // sketch_value_parsed = sketch_value_parsed[0]
+    // .into { ch_sketch_value_for_proteins; ch_sketch_value_for_dna }
+
+
+  if ( have_nucleotide_input ) {
+    if (!params.skip_trimming && have_nucleotide_fastq_input){
+      fastp(ch_read_files_trimming)
+      // Filtering out fastq.gz files less than 200 bytes (arbitary number)
+      // ~200 bytes is about the size of a file with a single read or less
+      // We can't use .size() > 0 because it's fastq.gz is gzipped content
+      fastp.out.trimmed_Reads
+        .dump ( tag: 'ch_reads_all_trimmed' )
+        .branch {
+          // Paired is a tuple of two reads
+          paired: it[1].size() == 2
+          single: true
+        }
+        .set { ch_reads_trimmed_branched }
+
+      ch_reads_trimmed_branched.paired
+        .filter{ it -> it[1][0].size() > 200 }
+        .dump ( tag: 'ch_reads_trimmed_paired' )
+        .set{ ch_reads_trimmed_paired }
+
+      ch_reads_trimmed_branched.single
+        .filter{ it -> it[1].size() > 200 }
+        .dump ( tag: 'ch_reads_trimmed_single' )
+        .set{ ch_reads_trimmed_single }
+
+      ch_reads_trimmed_single
+        .mix ( ch_reads_trimmed_paired )
+        .set { ch_reads_trimmed }
+
+      // Concatenate trimmed fastq files with fastas
+      if (params.subsample){
+        // Concatenate trimmed reads with fastas for subsequent subsampling
+        ch_reads_trimmed
+          .concat( fastas_ch )
+          .dump ( tag: 'trimmed_reads__concat_fastas' )
+          .set { subsample_ch_reads_for_ribosomal_removal }
+      } else {
+        // Concatenate trimmed reads with fastas for signature generation
+        ch_reads_for_ribosomal_removal = ch_reads_trimmed.mix(fastas_ch)
+      }
+    } else {
+      ch_reads_for_ribosomal_removal = fastas_ch
+      ch_fastp_results = Channel.from(false)
+    }
+  
+  if (params.split_kmer){
+  ///////////////////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////////////////
+  /* --                                                                     -- */
+  /* --                     CREATE SKA SKETCH                               -- */
+  /* --                                                                     -- */
+  ///////////////////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////////////////
+
+    ska_compute_sketch(ksizes, ch_reads_to_sketch)
+    } else if (!params.skip_compute) {
+    sourmash_compute_sketch_fastx_nucleotide(track_abundance, sketch_value_parsed, sketch_style_parsed, ch_reads_to_sketch)
+
+    sourmash_compute_sketch_fastx_nucleotide.out.sketches
+          .filter{ it[3].size() > 0 }
+          .dump ( tag: "sourmash_sketches_all_nucleotide" )
+          .set { sourmash_sketches_nucleotide }
+      } else {
+      sourmash_sketches_nucleotide = Channel.empty()
+      ch_protein_fastas
+        .set { ch_protein_seq_to_sketch }
+      ch_sourmash_sig_describe_nucleotides = Channel.empty()
+      }
+    } else {
+      sourmash_sketches_nucleotide = Channel.empty()
+      ch_fastp_results = Channel.from(false)
+      sortmerna_logs = Channel.from(false)
+
+      ch_protein_fastas
+        .set { ch_protein_seq_to_sketch }
+      ch_sourmash_sig_describe_nucleotides = Channel.empty()
+  }
+
 }
