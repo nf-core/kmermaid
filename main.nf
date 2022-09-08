@@ -1226,15 +1226,18 @@ process sourmash_compute_sketch_fastx_nucleotide {
   sig = "${sig_id}.sig"
   csv = "${sig_id}.csv"
   """
-    sourmash compute \\
-      ${sketch_value_flag} \\
-      --ksizes ${ksizes} \\
-      --dna \\
-      $track_abundance_flag \\
-      --output ${sig} \\
-      --name '${sample_id}' \\
-      $reads
-    sourmash sig describe --csv ${csv} ${sig}
+  sourmash compute \\
+    ${sketch_value_flag} \\
+    --ksizes ${ksize} \\
+    --dna \\
+    $track_abundance_flag \\
+    --output ${sig} \\
+    --name '${sample_id}' \\
+    $reads
+  
+  sourmash sig describe \\
+    --csv ${csv} \\
+    ${sig}
   """
 }
     
@@ -1251,7 +1254,7 @@ process sourmash_compute_sketch_fastx_nucleotide {
         }
 
     input:
-    each ksize
+    each val(ksize) from ksizes
     val track_abundance
     val sketch_value_parsed
     val sketch_style_parsed
@@ -1276,17 +1279,20 @@ process sourmash_compute_sketch_fastx_nucleotide {
     sig = "${sig_id}.sig"
     csv = "${sig_id}.csv"
     """
-      sourmash compute \\
-        ${sketch_value_flag} \\
-        --ksizes ${ksize} \\
-        --input-is-protein \\
-        ${peptide_molecule_flags} \\
-        --name '${sample_id}' \\
-        --no-dna \\
-        $track_abundance_flag \\
-        --output ${sig} \\
-        $protein_seqs
-      sourmash sig describe --csv ${csv} ${sig}
+    sourmash compute \\
+      ${sketch_value_flag} \\
+      --ksizes ${ksize} \\
+      --input-is-protein \\
+      ${peptide_molecule_flags} \\
+      --name '${sample_id}' \\
+      --no-dna \\
+      $track_abundance_flag \\
+      --output ${sig} \\
+      $protein_seqs
+    
+    sourmash sig describe \\
+      --csv ${csv} \\
+      ${sig}
     """
     }
 
@@ -1787,9 +1793,9 @@ if (!params.remove_ribo_rna) {
 
     ska_compute_sketch(ksizes, ch_reads_to_sketch)
   } else if (!params.skip_compute) {
-    ksizes = Channel.from(params.ksizes.split(','))
+    ch_ksizes = Channel.from(params.ksizes.split(','))
   
-    sourmash_compute_sketch_fastx_nucleotide(ksizes, track_abundance, sketch_value_parsed, sketch_style_parsed, ch_reads_to_sketch)
+    sourmash_compute_sketch_fastx_nucleotide(ch_ksizes, track_abundance, sketch_value_parsed, sketch_style_parsed, ch_reads_to_sketch)
 
     sourmash_compute_sketch_fastx_nucleotide.out.sketches
           // 5th item (4 when 0-based) is the actual signature.
