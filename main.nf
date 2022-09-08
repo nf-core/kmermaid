@@ -1190,6 +1190,8 @@ process ska_compute_sketch {
 process sourmash_compute_sketch_fastx_nucleotide {
   tag "${sig_id}"
   label "low_memory"
+
+  memory { reads.size() * 4 * task.attempt }
   publishDir "${params.outdir}/sketches_nucleotide/${sketch_id}", mode: "${params.publish_dir_mode}",
       saveAs: {filename ->
           if (filename.indexOf(".csv") > 0) "description/$filename"
@@ -1198,6 +1200,7 @@ process sourmash_compute_sketch_fastx_nucleotide {
       }
 
   input:
+  each ksize
   val track_abundance
   val sketch_value_parsed
   val sketch_style_parsed
@@ -1205,14 +1208,14 @@ process sourmash_compute_sketch_fastx_nucleotide {
 
   output:
   path(csv)                                                                      , emit: describe_csv
-  tuple val(sample_id), val(sketch_id), val("dna"), val(params.ksizes), path(sig), emit: sketches
+  tuple val(sample_id), val(sketch_id), val("dna"), val(ksize), path(sig), emit: sketches
 
   script:
   // Don't calculate DNA signature if this is protein, to minimize disk,
   // memory and IO requirements in the future
   sketch_id = make_sketch_id(
     "dna", 
-    params.ksizes, 
+    ksize, 
     sketch_value_parsed[0], 
     track_abundance, 
     sketch_style_parsed[0]
@@ -1225,7 +1228,7 @@ process sourmash_compute_sketch_fastx_nucleotide {
   """
     sourmash compute \\
       ${sketch_value_flag} \\
-      --ksizes ${params.ksizes} \\
+      --ksizes ${ksizes} \\
       --dna \\
       $track_abundance_flag \\
       --output ${sig} \\
@@ -1248,6 +1251,7 @@ process sourmash_compute_sketch_fastx_nucleotide {
         }
 
     input:
+    each ksize
     val track_abundance
     val sketch_value_parsed
     val sketch_style_parsed
@@ -1255,12 +1259,12 @@ process sourmash_compute_sketch_fastx_nucleotide {
 
     output:
     file(csv) into ch_sourmash_sig_describe_peptides
-    set val(sample_id), val(sketch_id), val(peptide_molecules_comma_separated), val(params.ksizes), file(sig) into sourmash_sketches_all_peptide
+    set val(sample_id), val(sketch_id), val(peptide_molecules_comma_separated), val(ksize), file(sig) into sourmash_sketches_all_peptide
 
     script:
     sketch_id = make_sketch_id(
       peptide_molecules_comma_separated, 
-      params.ksizes, 
+      ksize, 
       sketch_value_parsed[0], 
       track_abundance, 
       sketch_style_parsed[0]
@@ -1274,7 +1278,7 @@ process sourmash_compute_sketch_fastx_nucleotide {
     """
       sourmash compute \\
         ${sketch_value_flag} \\
-        --ksizes ${params.ksizes} \\
+        --ksizes ${ksize} \\
         --input-is-protein \\
         ${peptide_molecule_flags} \\
         --name '${sample_id}' \\
@@ -1782,8 +1786,10 @@ if (!params.remove_ribo_rna) {
   ///////////////////////////////////////////////////////////////////////////////
 
     ska_compute_sketch(ksizes, ch_reads_to_sketch)
-    } else if (!params.skip_compute) {
-    sourmash_compute_sketch_fastx_nucleotide(track_abundance, sketch_value_parsed, sketch_style_parsed, ch_reads_to_sketch)
+  } else if (!params.skip_compute) {
+    ksizes = Channel.from(params.ksizes.split(','))
+  
+    sourmash_compute_sketch_fastx_nucleotide(ksizes, track_abundance, sketch_value_parsed, sketch_style_parsed, ch_reads_to_sketch)
 
     sourmash_compute_sketch_fastx_nucleotide.out.sketches
           // 5th item (4 when 0-based) is the actual signature.
@@ -1824,7 +1830,7 @@ if (!have_nucleotide_input) {
 
 
 if (!params.skip_compute && (protein_input || params.reference_proteome_fasta)){
-  sourmash_compute_sketch_fastx_peptide(track_abundance, sketch_value_parsed, sketch_style_parsed, ch_protein_seq_to_sketch)
+  sourmash_compute_sketch_fastx_peptide(ksizes, track_abundance, sketch_value_parsed, sketch_style_parsed, ch_protein_seq_to_sketch)
 
     sourmash_sketches_peptide = sourmash_sketches_all_peptide.filter{ it[3].size() > 0 }
 } else {
