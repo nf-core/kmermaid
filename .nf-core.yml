@@ -4,6 +4,10 @@ lint:
     - conf/igenomes_ignored.config
     - conf/igenomes.config
     - conf/igenomes_ignored.config
+    - .github/workflows/linting_comment.yml
+  files_unchanged:
+    - .github/workflows/branch.yml
+    - .github/workflows/linting.yml
 nf_core_version: 3.1.1
 repository_type: pipeline
 template:
